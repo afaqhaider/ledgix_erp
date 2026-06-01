@@ -41,6 +41,7 @@ class AuthService {
         'email': email,
         'fullName': fullName,
         'companyName': companyName,
+        'role': 'owner',
         'createdAt': FieldValue.serverTimestamp(),
       });
 
