@@ -34,9 +34,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Failed to create account. Please try again.';
+        if (e.toString().contains('email-already-in-use')) {
+          errorMessage = 'The email address is already in use by another account.';
+        } else if (e.toString().contains('weak-password')) {
+          errorMessage = 'The password provided is too weak.';
+        } else if (e.toString().contains('invalid-email')) {
+          errorMessage = 'The email address is badly formatted.';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(errorMessage),
             backgroundColor: Colors.redAccent,
           ),
         );
