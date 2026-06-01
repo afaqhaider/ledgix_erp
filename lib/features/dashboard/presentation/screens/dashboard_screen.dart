@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:ledgixerp/widgets/sidebar_navigation.dart';
+import 'package:ledgixerp/features/auth/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -27,34 +29,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () {},
           ),
           const VerticalDivider(width: 1, indent: 12, endIndent: 12),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Color(0xFFE2E8F0),
-                  child: Icon(Icons.person, size: 20, color: Color(0xFF64748B)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'logout') {
+                  AuthService().signOut();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'profile',
+                  child: Text('Profile Settings'),
                 ),
-                SizedBox(width: 12),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Afaq Haider',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Administrator',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Text('Logout'),
                 ),
               ],
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Color(0xFFE2E8F0),
+                    child: Icon(Icons.person, size: 20, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        FirebaseAuth.instance.currentUser?.email?.split('@')[0] ?? 'User',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        'Administrator',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
