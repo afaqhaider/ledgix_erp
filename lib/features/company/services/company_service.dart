@@ -6,12 +6,14 @@ class CompanyService {
 
   Future<void> setupCompany({
     required String uid,
-    required String legalName,
+    required String companyLegalName,
     required String tradeName,
     required String country,
     required String currency,
-    String? trn,
+    String? trnVatNumber,
     required int financialYearStartMonth,
+    String? companyLogoUrl,
+    String? primaryBrandColor,
   }) async {
     final batch = _firestore.batch();
     
@@ -21,19 +23,21 @@ class CompanyService {
 
     final company = CompanyModel(
       id: companyId,
-      legalName: legalName,
+      companyLegalName: companyLegalName,
       tradeName: tradeName,
       country: country,
       currency: currency,
-      trn: trn,
+      trnVatNumber: trnVatNumber,
       financialYearStartMonth: financialYearStartMonth,
-      ownerId: uid,
+      companyLogoUrl: companyLogoUrl,
+      primaryBrandColor: primaryBrandColor,
       createdAt: DateTime.now(),
+      createdByUserId: uid,
     );
 
     batch.set(companyRef, company.toMap());
 
-    // 2. Update user document with companyId
+    // 2. Update user document with companyId and set role as owner
     final userRef = _firestore.collection('users').doc(uid);
     batch.update(userRef, {
       'companyId': companyId,
@@ -43,7 +47,11 @@ class CompanyService {
     await batch.commit();
   }
 
-  Future<DocumentSnapshot> getUserProfile(String uid) {
-    return _firestore.collection('users').doc(uid).get();
+  Future<CompanyModel?> getCompany(String companyId) async {
+    final doc = await _firestore.collection('companies').doc(companyId).get();
+    if (doc.exists) {
+      return CompanyModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    }
+    return null;
   }
 }

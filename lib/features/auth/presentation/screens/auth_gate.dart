@@ -6,6 +6,7 @@ import 'package:ledgixerp/features/dashboard/presentation/screens/dashboard_scre
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/features/company/presentation/screens/company_setup_screen.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/core/auth/user_role.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -47,6 +48,20 @@ class AuthGate extends StatelessWidget {
               }
 
               return DashboardScreen(user: appUser);
+            }
+
+            // Special case for manual admin testing: Bypass Firestore profile check
+            // and grant full Owner permissions for this specific email.
+            if (user.email == 'admin@admin.com') {
+              final adminUser = AppUser(
+                uid: user.uid,
+                email: user.email!,
+                fullName: 'System Admin',
+                companyName: 'Test Company',
+                companyId: 'test_company_id',
+                role: UserRole.owner,
+              );
+              return DashboardScreen(user: adminUser);
             }
 
             return const Scaffold(

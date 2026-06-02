@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
@@ -88,6 +89,7 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                     DataColumn(label: Text('Code', style: TextStyle(fontWeight: FontWeight.bold))),
                     DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
                     DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('Opening Balance', style: TextStyle(fontWeight: FontWeight.bold))),
                     DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
                     DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
                   ],
@@ -111,6 +113,12 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            '${NumberFormat('#,##0.00').format(account.openingBalance)} ${account.openingBalanceType.label.substring(0, 2)}',
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                         ),
                         DataCell(
