@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:ledgixerp/widgets/sidebar_navigation.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ledgixerp/core/auth/app_user.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final AppUser user;
+  const DashboardScreen({super.key, required this.user});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -60,15 +61,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        FirebaseAuth.instance.currentUser?.email?.split('@')[0] ?? 'User',
+                        widget.user.fullName,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Text(
-                        'Administrator',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      Text(
+                        widget.user.role.name.toUpperCase(),
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -81,6 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       drawer: isMobile
           ? Drawer(
               child: SidebarNavigation(
+                role: widget.user.role,
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: (index) {
                   setState(() => _selectedIndex = index);
@@ -93,6 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           if (!isMobile)
             SidebarNavigation(
+              role: widget.user.role,
               selectedIndex: _selectedIndex,
               onDestinationSelected: (index) {
                 setState(() => _selectedIndex = index);

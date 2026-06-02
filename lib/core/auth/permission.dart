@@ -1,0 +1,15 @@
+enum AppPermission {
+  viewDashboard,
+  manageCompany,
+  manageUsers,
+  viewAccounting,
+  manageAccounting,
+  viewCustomers,
+  manageCustomers,
+  viewSuppliers,
+  manageSuppliers,
+  viewInvoices,
+  manageInvoices,
+  viewReports,
+  manageSettings,
+}

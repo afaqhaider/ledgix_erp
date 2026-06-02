@@ -5,6 +5,7 @@ import 'package:ledgixerp/features/auth/presentation/screens/login_screen.dart';
 import 'package:ledgixerp/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/features/company/presentation/screens/company_setup_screen.dart';
+import 'package:ledgixerp/core/auth/app_user.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -25,7 +26,6 @@ class AuthGate extends StatelessWidget {
           return const LoginScreen();
         }
 
-        // User is logged in, now check for company onboarding
         return StreamBuilder<DocumentSnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
@@ -40,16 +40,15 @@ class AuthGate extends StatelessWidget {
 
             if (userSnapshot.hasData && userSnapshot.data!.exists) {
               final userData = userSnapshot.data!.data() as Map<String, dynamic>;
-              final String? companyId = userData['companyId'];
+              final appUser = AppUser.fromMap(userData, user.uid);
 
-              if (companyId == null || companyId.isEmpty) {
+              if (appUser.companyId == null || appUser.companyId!.isEmpty) {
                 return const CompanySetupScreen();
               }
 
-              return const DashboardScreen();
+              return DashboardScreen(user: appUser);
             }
 
-            // Fallback if user doc doesn't exist yet (should be created on registration)
             return const Scaffold(
               body: Center(child: Text('Initializing user profile...')),
             );
