@@ -3,6 +3,7 @@ import 'package:ledgixerp/core/auth/app_user.dart';
 import '../../services/inventory_service.dart';
 import '../../models/product_model.dart';
 import 'package:intl/intl.dart';
+import 'product_form_screen.dart';
 
 class InventoryScreen extends StatefulWidget {
   final AppUser user;
@@ -22,7 +23,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
         title: const Text('Inventory Management'),
         actions: [
           ElevatedButton.icon(
-            onPressed: () => _showAddProductDialog(context),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductFormScreen(user: widget.user),
+              ),
+            ),
             icon: const Icon(Icons.add),
             label: const Text('Add Product'),
           ),
@@ -49,39 +55,73 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   DataColumn(label: Text('SKU')),
                   DataColumn(label: Text('Product Name')),
                   DataColumn(label: Text('Type')),
-                  DataColumn(label: Text('Stock Quantity', textAlign: TextAlign.right), numeric: true),
+                  DataColumn(
+                    label: Text('Stock Quantity', textAlign: TextAlign.right),
+                    numeric: true,
+                  ),
                   DataColumn(label: Text('UOM')),
-                  DataColumn(label: Text('Sale Price', textAlign: TextAlign.right), numeric: true),
+                  DataColumn(
+                    label: Text('Sale Price', textAlign: TextAlign.right),
+                    numeric: true,
+                  ),
                   DataColumn(label: Text('Actions')),
                 ],
-                rows: products.map((product) => DataRow(
-                  cells: [
-                    DataCell(Text(product.sku)),
-                    DataCell(Text(product.name)),
-                    DataCell(Text(product.type.name.toUpperCase())),
-                    DataCell(Text(
-                      product.stockQuantity.toString(),
-                      style: TextStyle(
-                        color: product.stockQuantity < 10 ? Colors.red : null,
-                        fontWeight: product.stockQuantity < 10 ? FontWeight.bold : null,
+                rows: products
+                    .map(
+                      (product) => DataRow(
+                        cells: [
+                          DataCell(Text(product.sku)),
+                          DataCell(Text(product.name)),
+                          DataCell(Text(product.type.name.toUpperCase())),
+                          DataCell(
+                            Text(
+                              product.stockQuantity.toString(),
+                              style: TextStyle(
+                                color: product.stockQuantity < 10
+                                    ? Colors.red
+                                    : null,
+                                fontWeight: product.stockQuantity < 10
+                                    ? FontWeight.bold
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          DataCell(Text(product.uom)),
+                          DataCell(
+                            Text(
+                              NumberFormat.simpleCurrency().format(
+                                product.salePrice,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 20),
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ProductFormScreen(
+                                        user: widget.user,
+                                        product: product,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.exposure, size: 20),
+                                  tooltip: 'Stock Adjustment',
+                                  onPressed: () =>
+                                      _showAdjustmentDialog(context, product),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    )),
-                    DataCell(Text(product.uom)),
-                    DataCell(Text(NumberFormat.simpleCurrency().format(product.salePrice))),
-                    DataCell(Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () {},
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.history, size: 20),
-                          onPressed: () {},
-                        ),
-                      ],
-                    )),
-                  ],
-                )).toList(),
+                    )
+                    .toList(),
               ),
             ),
           );
@@ -90,17 +130,81 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  void _showAddProductDialog(BuildContext context) {
-    // Basic implementation of add product dialog
+  void _showAdjustmentDialog(BuildContext context, ProductModel product) {
+    final qtyController = TextEditingController();
+    final reasonController = TextEditingController();
+    bool isAddition = true;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add New Product'),
-        content: const Text('Product addition form would go here.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Save')),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Adjust Stock: ${product.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<bool>(
+                      title: const Text('Add'),
+                      value: true,
+                      groupValue: isAddition,
+                      onChanged: (v) => setDialogState(() => isAddition = v!),
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<bool>(
+                      title: const Text('Remove'),
+                      value: false,
+                      groupValue: isAddition,
+                      onChanged: (v) => setDialogState(() => isAddition = v!),
+                    ),
+                  ),
+                ],
+              ),
+              TextField(
+                controller: qtyController,
+                decoration: const InputDecoration(
+                  labelText: 'Quantity',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  labelText: 'Reason',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final qty = double.tryParse(qtyController.text) ?? 0;
+                if (qty <= 0) return;
+
+                await _inventoryService.recordStockAdjustment(
+                  companyId: widget.user.companyId!,
+                  productId: product.id,
+                  quantity: isAddition ? qty : -qty,
+                  reason: reasonController.text,
+                  userId: widget.user.uid,
+                );
+
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Save Adjustment'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -5,7 +5,8 @@ enum ApprovalStatus { pending, approved, rejected }
 class ApprovalRequestModel {
   final String id;
   final String companyId;
-  final String sourceType; // quotation, salesInvoice, purchaseOrder, supplierPayment, journalEntry
+  final String
+  sourceType; // quotation, salesInvoice, purchaseOrder, supplierPayment, journalEntry
   final String sourceId;
   final String sourceNumber;
   final String requestedByUserId;

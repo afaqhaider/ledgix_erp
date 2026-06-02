@@ -28,7 +28,8 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
       final request = ApprovalRequestModel(
         id: '',
         companyId: widget.user.companyId!,
-        sourceType: 'customerPayment', // We need to handle this in ApprovalService
+        sourceType:
+            'customerPayment', // We need to handle this in ApprovalService
         sourceId: payment.id,
         sourceNumber: payment.paymentNumber,
         requestedByUserId: widget.user.uid,
@@ -37,7 +38,7 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
       );
 
       await _approvalService.submitForApproval(request);
-      
+
       await FirebaseFirestore.instance
           .collection('companies')
           .doc(widget.user.companyId)
@@ -52,32 +53,47 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 
   Future<void> _postToAccounting(CustomerPaymentModel payment) async {
     // Check approval
-    if (payment.approvalStatus != 'approved' && 
+    if (payment.approvalStatus != 'approved' &&
         !widget.user.role.hasPermission(AppPermission.manageAccounting)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment must be approved before posting'), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text('Payment must be approved before posting'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
 
     try {
-      await _postingService.postCustomerPayment(widget.user.companyId!, payment, widget.user);
+      await _postingService.postCustomerPayment(
+        widget.user.companyId!,
+        payment,
+        widget.user,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment posted successfully'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Payment posted successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }
@@ -86,9 +102,12 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final canManage = widget.user.role.hasPermission(AppPermission.manageInvoices) || 
-                      widget.user.role.hasPermission(AppPermission.manageAccounting);
-    final isAdmin = widget.user.role.hasPermission(AppPermission.manageAccounting);
+    final canManage =
+        widget.user.role.hasPermission(AppPermission.manageInvoices) ||
+        widget.user.role.hasPermission(AppPermission.manageAccounting);
+    final isAdmin = widget.user.role.hasPermission(
+      AppPermission.manageAccounting,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -102,7 +121,8 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddCustomerPaymentScreen(user: widget.user),
+                      builder: (context) =>
+                          AddCustomerPaymentScreen(user: widget.user),
                     ),
                   );
                 },
@@ -134,11 +154,17 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.payments_outlined, size: 64, color: Colors.grey[400]),
+                  Icon(
+                    Icons.payments_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No customer payments found',
-                    style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
                   ),
                 ],
               ),
@@ -152,13 +178,48 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
                 horizontalMargin: 24,
                 columnSpacing: 32,
                 columns: const [
-                  DataColumn(label: Text('Payment #', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Customer', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Amount', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Method', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Approval', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(
+                    label: Text(
+                      'Payment #',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Customer',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Date',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Amount',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Method',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Approval',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Actions',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
                 rows: payments.map((payment) {
                   final isApproved = payment.approvalStatus == 'approved';
@@ -166,40 +227,77 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
                     cells: [
                       DataCell(Text(payment.paymentNumber)),
                       DataCell(Text(payment.customerName)),
-                      DataCell(Text(DateFormat('dd MMM yyyy').format(payment.paymentDate))),
-                      DataCell(Text(NumberFormat('#,##0.00').format(payment.amount))),
-                      DataCell(Text(payment.paymentMethod.name.toUpperCase())),
                       DataCell(
-                        payment.approvalStatus == null 
-                          ? TextButton(
-                              onPressed: () => _submitForApproval(payment),
-                              child: const Text('Submit', style: TextStyle(fontSize: 12)),
-                            )
-                          : Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getApprovalStatusColor(payment.approvalStatus!).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                payment.approvalStatus!.toUpperCase(),
-                                style: TextStyle(
-                                  color: _getApprovalStatusColor(payment.approvalStatus!),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                        Text(
+                          DateFormat('dd MMM yyyy').format(payment.paymentDate),
+                        ),
                       ),
                       DataCell(
-                        payment.isPosted
-                          ? const Icon(Icons.check_circle, color: Colors.blue, size: 20)
-                          : IconButton(
-                              icon: const Icon(Icons.account_balance, size: 20),
-                              color: (isApproved || isAdmin) ? Colors.orange : Colors.grey,
-                              tooltip: 'Post to Accounting',
-                              onPressed: (isApproved || isAdmin) ? () => _postToAccounting(payment) : null,
-                            ),
+                        Text(NumberFormat('#,##0.00').format(payment.amount)),
+                      ),
+                      DataCell(Text(payment.paymentMethod.name.toUpperCase())),
+                      DataCell(
+                        payment.approvalStatus == null
+                            ? TextButton(
+                                onPressed: () => _submitForApproval(payment),
+                                child: const Text(
+                                  'Submit',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getApprovalStatusColor(
+                                    payment.approvalStatus!,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  payment.approvalStatus!.toUpperCase(),
+                                  style: TextStyle(
+                                    color: _getApprovalStatusColor(
+                                      payment.approvalStatus!,
+                                    ),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            payment.isPosted
+                                ? const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.blue,
+                                    size: 20,
+                                  )
+                                : IconButton(
+                                    icon: const Icon(
+                                      Icons.account_balance,
+                                      size: 20,
+                                    ),
+                                    color: (isApproved || isAdmin)
+                                        ? Colors.orange
+                                        : Colors.grey,
+                                    tooltip: 'Post to Accounting',
+                                    onPressed: (isApproved || isAdmin)
+                                        ? () => _postToAccounting(payment)
+                                        : null,
+                                  ),
+                            if (!payment.isPosted && canManage)
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                onPressed: () => _confirmDelete(payment),
+                              ),
+                          ],
+                        ),
                       ),
                     ],
                   );
@@ -212,12 +310,54 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
     );
   }
 
+  Future<void> _confirmDelete(CustomerPaymentModel payment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: Text('Are you sure you want to delete payment ${payment.paymentNumber}? This will also update the linked invoice balance.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _paymentService.deletePayment(widget.user.companyId!, payment.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment deleted successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          );
+        }
+      }
+    }
+  }
+
   Color _getApprovalStatusColor(String status) {
     switch (status) {
-      case 'approved': return Colors.green;
-      case 'pending': return Colors.orange;
-      case 'rejected': return Colors.red;
-      default: return Colors.grey;
+      case 'approved':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 }

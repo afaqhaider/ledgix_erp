@@ -40,11 +40,12 @@ class AuthGate extends StatelessWidget {
             }
 
             if (userSnapshot.hasData && userSnapshot.data!.exists) {
-              final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+              final userData =
+                  userSnapshot.data!.data() as Map<String, dynamic>;
               final appUser = AppUser.fromMap(userData, user.uid);
 
               if (appUser.companyId == null || appUser.companyId!.isEmpty) {
-                return const CompanySetupScreen();
+                return CompanySetupScreen(user: appUser);
               }
 
               return DashboardScreen(user: appUser);

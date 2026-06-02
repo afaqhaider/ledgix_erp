@@ -113,6 +113,27 @@ class SidebarNavigation extends StatefulWidget {
       ],
     ),
     NavigationSection(
+      header: 'Operations',
+      icon: Icons.precision_manufacturing_rounded,
+      items: [
+        NavigationItem(
+          icon: Icons.work_rounded,
+          label: 'Jobs',
+          permission: AppPermission.viewDashboard,
+        ),
+        NavigationItem(
+          icon: Icons.task_alt_rounded,
+          label: 'Tasks',
+          permission: AppPermission.viewDashboard,
+        ),
+        NavigationItem(
+          icon: Icons.more_time_rounded,
+          label: 'Shifts',
+          permission: AppPermission.viewDashboard,
+        ),
+      ],
+    ),
+    NavigationSection(
       header: 'Accounting',
       icon: Icons.account_tree_rounded,
       items: [
@@ -185,13 +206,23 @@ class SidebarNavigation extends StatefulWidget {
           permission: AppPermission.manageSettings,
         ),
         NavigationItem(
-          icon: Icons.manage_accounts_rounded,
-          label: 'User Settings',
+          icon: Icons.account_balance_wallet_rounded,
+          label: 'Financial Settings',
           permission: AppPermission.manageSettings,
+        ),
+        NavigationItem(
+          icon: Icons.manage_accounts_rounded,
+          label: 'User Management',
+          permission: AppPermission.manageUsers,
         ),
         NavigationItem(
           icon: Icons.history_rounded,
           label: 'Audit Logs',
+          permission: AppPermission.manageSettings,
+        ),
+        NavigationItem(
+          icon: Icons.storage_rounded,
+          label: 'Data Management',
           permission: AppPermission.manageSettings,
         ),
       ],
@@ -205,16 +236,18 @@ class SidebarNavigation extends StatefulWidget {
 class _SidebarNavigationState extends State<SidebarNavigation> {
   bool _isHovered = false;
   bool _isPinned = false;
-  String? _expandedSection;
+  String? _expandedSection; // Null means all sections collapsed by default
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
-    final sidebarColor = isDark ? const Color(0xFF020617) : const Color(0xFF0F172A);
+
+    final sidebarColor = isDark
+        ? const Color(0xFF020617)
+        : const Color(0xFF0F172A);
     final activeColor = theme.colorScheme.primary;
-    
+
     final bool isExpanded = _isHovered || _isPinned;
     final double width = isExpanded ? 260 : 76;
 
@@ -233,9 +266,15 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               height: 64,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                mainAxisAlignment: isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+                mainAxisAlignment: isExpanded
+                    ? MainAxisAlignment.start
+                    : MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.account_balance_wallet_rounded, color: theme.colorScheme.secondary, size: 28),
+                  Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: theme.colorScheme.secondary,
+                    size: 28,
+                  ),
                   if (isExpanded) ...[
                     const SizedBox(width: 12),
                     const Expanded(
@@ -251,7 +290,9 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                     ),
                     IconButton(
                       icon: Icon(
-                        _isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+                        _isPinned
+                            ? Icons.push_pin_rounded
+                            : Icons.push_pin_outlined,
                         color: Colors.white54,
                         size: 18,
                       ),
@@ -262,19 +303,22 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               ),
             ),
             const Divider(color: Colors.white10, height: 1),
-            
+
             // Menu Items
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: SidebarNavigation.sections.map((section) {
                   final visibleItems = section.items
-                      .where((item) => widget.role.hasPermission(item.permission))
+                      .where(
+                        (item) => widget.role.hasPermission(item.permission),
+                      )
                       .toList();
 
                   if (visibleItems.isEmpty) return const SizedBox.shrink();
 
-                  final bool isSectionExpanded = _expandedSection == section.header;
+                  final bool isSectionExpanded =
+                      _expandedSection == section.header;
 
                   if (!section.isCollapsible) {
                     return Column(
@@ -301,14 +345,17 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                         onTap: () {
                           if (isExpanded) {
                             setState(() {
-                              _expandedSection = isSectionExpanded ? null : section.header;
+                              _expandedSection = isSectionExpanded
+                                  ? null
+                                  : section.header;
                             });
                           }
                         },
                       ),
                       if (isExpanded && isSectionExpanded)
                         ...visibleItems.map((item) {
-                          final bool isSelected = widget.selectedItem == item.label;
+                          final bool isSelected =
+                              widget.selectedItem == item.label;
                           return Padding(
                             padding: const EdgeInsets.only(left: 12),
                             child: _SidebarTile(
@@ -356,8 +403,6 @@ class _SidebarHeaderTileState extends State<_SidebarHeaderTile> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     Widget content = MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -366,17 +411,23 @@ class _SidebarHeaderTileState extends State<_SidebarHeaderTile> {
         height: 48,
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         decoration: BoxDecoration(
-          color: _isHovered ? Colors.white.withValues(alpha: 0.05) : Colors.transparent,
+          color: _isHovered
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
-          mainAxisAlignment: widget.isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+          mainAxisAlignment: widget.isExpanded
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.center,
           children: [
             SizedBox(
               width: widget.isExpanded ? 46 : 52,
               child: Icon(
                 widget.icon,
-                color: _isHovered || widget.isSectionExpanded ? Colors.white : Colors.white70,
+                color: _isHovered || widget.isSectionExpanded
+                    ? Colors.white
+                    : Colors.white70,
                 size: 24,
               ),
             ),
@@ -385,9 +436,13 @@ class _SidebarHeaderTileState extends State<_SidebarHeaderTile> {
                 child: Text(
                   widget.title,
                   style: TextStyle(
-                    color: _isHovered || widget.isSectionExpanded ? Colors.white : Colors.white70,
+                    color: _isHovered || widget.isSectionExpanded
+                        ? Colors.white
+                        : Colors.white70,
                     fontSize: 14,
-                    fontWeight: widget.isSectionExpanded ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: widget.isSectionExpanded
+                        ? FontWeight.w600
+                        : FontWeight.w400,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -396,7 +451,9 @@ class _SidebarHeaderTileState extends State<_SidebarHeaderTile> {
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: Icon(
-                  widget.isSectionExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  widget.isSectionExpanded
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
                   color: Colors.white54,
                   size: 20,
                 ),
@@ -409,8 +466,8 @@ class _SidebarHeaderTileState extends State<_SidebarHeaderTile> {
     return InkWell(
       onTap: widget.onTap,
       borderRadius: BorderRadius.circular(10),
-      child: widget.isExpanded 
-          ? content 
+      child: widget.isExpanded
+          ? content
           : Tooltip(
               message: widget.title,
               preferBelow: false,
@@ -446,7 +503,7 @@ class _SidebarTileState extends State<_SidebarTile> {
   @override
   Widget build(BuildContext context) {
     final bool showHighlight = widget.isSelected || _isTileHovered;
-    
+
     Widget content = MouseRegion(
       onEnter: (_) => setState(() => _isTileHovered = true),
       onExit: (_) => setState(() => _isTileHovered = false),
@@ -455,19 +512,25 @@ class _SidebarTileState extends State<_SidebarTile> {
         height: 48,
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         decoration: BoxDecoration(
-          color: widget.isSelected 
-              ? widget.activeColor.withValues(alpha: 0.15) 
-              : (_isTileHovered ? Colors.white.withValues(alpha: 0.05) : Colors.transparent),
+          color: widget.isSelected
+              ? widget.activeColor.withValues(alpha: 0.15)
+              : (_isTileHovered
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.transparent),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
-          mainAxisAlignment: widget.isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+          mainAxisAlignment: widget.isExpanded
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.center,
           children: [
             SizedBox(
               width: widget.isExpanded ? 46 : 52,
               child: Icon(
                 widget.item.icon,
-                color: widget.isSelected ? widget.activeColor : (showHighlight ? Colors.white : Colors.white70),
+                color: widget.isSelected
+                    ? widget.activeColor
+                    : (showHighlight ? Colors.white : Colors.white70),
                 size: 24,
               ),
             ),
@@ -476,9 +539,13 @@ class _SidebarTileState extends State<_SidebarTile> {
                 child: Text(
                   widget.item.label,
                   style: TextStyle(
-                    color: widget.isSelected ? Colors.white : (showHighlight ? Colors.white : Colors.white70),
+                    color: widget.isSelected
+                        ? Colors.white
+                        : (showHighlight ? Colors.white : Colors.white70),
                     fontSize: 14,
-                    fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: widget.isSelected
+                        ? FontWeight.w600
+                        : FontWeight.w400,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -503,8 +570,8 @@ class _SidebarTileState extends State<_SidebarTile> {
       borderRadius: BorderRadius.circular(10),
       hoverColor: Colors.transparent,
       splashColor: widget.activeColor.withValues(alpha: 0.1),
-      child: widget.isExpanded 
-          ? content 
+      child: widget.isExpanded
+          ? content
           : Tooltip(
               message: widget.item.label,
               preferBelow: false,

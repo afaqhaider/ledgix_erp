@@ -6,10 +6,16 @@ class PermissionService {
     return role.hasPermission(permission);
   }
 
-  static bool canViewAccounting(UserRole role) => hasPermission(role, AppPermission.viewAccounting);
-  static bool canViewCustomers(UserRole role) => hasPermission(role, AppPermission.viewCustomers);
-  static bool canViewSuppliers(UserRole role) => hasPermission(role, AppPermission.viewSuppliers);
-  static bool canViewInvoices(UserRole role) => hasPermission(role, AppPermission.viewInvoices);
-  static bool canViewReports(UserRole role) => hasPermission(role, AppPermission.viewReports);
-  static bool canManageSettings(UserRole role) => hasPermission(role, AppPermission.manageSettings);
+  static bool canViewAccounting(UserRole role) =>
+      hasPermission(role, AppPermission.viewAccounting);
+  static bool canViewCustomers(UserRole role) =>
+      hasPermission(role, AppPermission.viewCustomers);
+  static bool canViewSuppliers(UserRole role) =>
+      hasPermission(role, AppPermission.viewSuppliers);
+  static bool canViewInvoices(UserRole role) =>
+      hasPermission(role, AppPermission.viewInvoices);
+  static bool canViewReports(UserRole role) =>
+      hasPermission(role, AppPermission.viewReports);
+  static bool canManageSettings(UserRole role) =>
+      hasPermission(role, AppPermission.manageSettings);
 }

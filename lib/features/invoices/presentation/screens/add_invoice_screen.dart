@@ -23,7 +23,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   CustomerModel? _selectedCustomer;
   DateTime _invoiceDate = DateTime.now();
   DateTime _dueDate = DateTime.now().add(const Duration(days: 30));
-  
+
   final List<InvoiceLineItemModel> _items = [];
   bool _isLoading = false;
 
@@ -35,7 +35,9 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _invoiceService.generateNextInvoiceNumber(widget.user.companyId!);
+    final number = await _invoiceService.generateNextInvoiceNumber(
+      widget.user.companyId!,
+    );
     if (mounted) {
       setState(() => _invoiceNumber = number);
     }
@@ -43,15 +45,17 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
 
   void _addItem() {
     setState(() {
-      _items.add(InvoiceLineItemModel(
-        description: '',
-        quantity: 1,
-        unitPrice: 0,
-        vatRate: 5, // Default 5%
-        lineSubtotal: 0,
-        lineVat: 0,
-        lineTotal: 0,
-      ));
+      _items.add(
+        InvoiceLineItemModel(
+          description: '',
+          quantity: 1,
+          unitPrice: 0,
+          vatRate: 5, // Default 5%
+          lineSubtotal: 0,
+          lineVat: 0,
+          lineTotal: 0,
+        ),
+      );
     });
   }
 
@@ -61,15 +65,21 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
     }
   }
 
-  void _updateItem(int index, {String? desc, double? qty, double? price, double? vat}) {
+  void _updateItem(
+    int index, {
+    String? desc,
+    double? qty,
+    double? price,
+    double? vat,
+  }) {
     final item = _items[index];
     final newQty = qty ?? item.quantity;
     final newPrice = price ?? item.unitPrice;
     final newVatRate = vat ?? item.vatRate;
-    
+
     final subtotal = newQty * newPrice;
     final vatAmt = subtotal * (newVatRate / 100);
-    
+
     setState(() {
       _items[index] = InvoiceLineItemModel(
         description: desc ?? item.description,
@@ -83,16 +93,17 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
     });
   }
 
-  double get _totalSubtotal => _items.fold(0, (sum, item) => sum + item.lineSubtotal);
+  double get _totalSubtotal =>
+      _items.fold(0, (sum, item) => sum + item.lineSubtotal);
   double get _totalVat => _items.fold(0, (sum, item) => sum + item.lineVat);
   double get _totalAmount => _totalSubtotal + _totalVat;
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a customer')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
       return;
     }
 
@@ -119,7 +130,10 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -161,20 +175,21 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
-                              initialValue: _invoiceNumber,
-                              readOnly: true,
+                            child: InputDecorator(
                               decoration: const InputDecoration(
                                 labelText: 'Invoice Number',
                                 border: OutlineInputBorder(),
                               ),
+                              child: Text(_invoiceNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             flex: 2,
                             child: StreamBuilder<List<CustomerModel>>(
-                              stream: _customerService.getCustomers(widget.user.companyId!),
+                              stream: _customerService.getCustomers(
+                                widget.user.companyId!,
+                              ),
                               builder: (context, snapshot) {
                                 final customers = snapshot.data ?? [];
                                 return DropdownButtonFormField<CustomerModel>(
@@ -184,10 +199,15 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
                                     border: OutlineInputBorder(),
                                   ),
                                   items: customers.map((c) {
-                                    return DropdownMenuItem(value: c, child: Text(c.name));
+                                    return DropdownMenuItem(
+                                      value: c,
+                                      child: Text(c.name),
+                                    );
                                   }).toList(),
-                                  onChanged: (val) => setState(() => _selectedCustomer = val),
-                                  validator: (v) => v == null ? 'Required' : null,
+                                  onChanged: (val) =>
+                                      setState(() => _selectedCustomer = val),
+                                  validator: (v) =>
+                                      v == null ? 'Required' : null,
                                 );
                               },
                             ),
@@ -201,7 +221,8 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
                             child: _buildDatePicker(
                               label: 'Invoice Date',
                               selectedDate: _invoiceDate,
-                              onTap: (date) => setState(() => _invoiceDate = date),
+                              onTap: (date) =>
+                                  setState(() => _invoiceDate = date),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -219,7 +240,10 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              const Text('Invoice Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Invoice Items',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
               _buildItemsTable(),
               const SizedBox(height: 16),
@@ -237,7 +261,11 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
     );
   }
 
-  Widget _buildDatePicker({required String label, required DateTime selectedDate, required Function(DateTime) onTap}) {
+  Widget _buildDatePicker({
+    required String label,
+    required DateTime selectedDate,
+    required Function(DateTime) onTap,
+  }) {
     return InkWell(
       onTap: () async {
         final date = await showDatePicker(
@@ -249,7 +277,10 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
         if (date != null) onTap(date);
       },
       child: InputDecorator(
-        decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
         child: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
       ),
     );
@@ -268,11 +299,39 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
       children: [
         const TableRow(
           children: [
-            Padding(padding: EdgeInsets.all(8), child: Text('Description', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Unit Price', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('VAT%', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold))),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Description',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Unit Price',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'VAT%',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Total',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
             Padding(padding: EdgeInsets.all(8), child: Text('')),
           ],
         ),
@@ -285,7 +344,9 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.description,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   onChanged: (v) => _updateItem(index, desc: v),
                   validator: (v) => v!.isEmpty ? 'Required' : null,
                 ),
@@ -294,32 +355,44 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.quantity.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, qty: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, qty: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.unitPrice.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, price: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, price: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.vatRate.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, vat: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, vat: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text(NumberFormat('#,##0.00').format(item.lineTotal), textAlign: TextAlign.right),
+                child: Text(
+                  NumberFormat('#,##0.00').format(item.lineTotal),
+                  textAlign: TextAlign.right,
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -359,10 +432,18 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
         Text(
           NumberFormat('#,##0.00').format(value),
-          style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 14),
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: isBold ? 18 : 14,
+          ),
         ),
       ],
     );

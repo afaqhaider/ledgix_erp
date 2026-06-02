@@ -22,7 +22,7 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
   final _numberController = TextEditingController();
   final _ibanController = TextEditingController();
   final _openingBalanceController = TextEditingController();
-  
+
   BankAccountType _type = BankAccountType.bank;
   String? _selectedChartAccountId;
   bool _isLoading = false;
@@ -39,14 +39,27 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Account Display Name', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Account Display Name',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<BankAccountType>(
                 initialValue: _type,
-                decoration: const InputDecoration(labelText: 'Account Type', border: OutlineInputBorder()),
-                items: BankAccountType.values.map((e) => DropdownMenuItem(value: e, child: Text(e.name.toUpperCase()))).toList(),
+                decoration: const InputDecoration(
+                  labelText: 'Account Type',
+                  border: OutlineInputBorder(),
+                ),
+                items: BankAccountType.values
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(e.name.toUpperCase()),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (v) => setState(() => _type = v!),
               ),
               const SizedBox(height: 16),
@@ -62,11 +75,16 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
                       labelText: 'Linked Chart of Account (Asset)',
                       border: OutlineInputBorder(),
                     ),
-                    items: assetAccounts.map((a) => DropdownMenuItem(
-                      value: a.id,
-                      child: Text('${a.accountCode} - ${a.accountName}'),
-                    )).toList(),
-                    onChanged: (v) => setState(() => _selectedChartAccountId = v),
+                    items: assetAccounts
+                        .map(
+                          (a) => DropdownMenuItem(
+                            value: a.id,
+                            child: Text('${a.accountCode} - ${a.accountName}'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _selectedChartAccountId = v),
                     validator: (v) => v == null ? 'Required' : null,
                   );
                 },
@@ -75,23 +93,35 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
               if (_type != BankAccountType.cash) ...[
                 TextFormField(
                   controller: _bankNameController,
-                  decoration: const InputDecoration(labelText: 'Bank Name', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Bank Name',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _numberController,
-                  decoration: const InputDecoration(labelText: 'Account Number', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Account Number',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _ibanController,
-                  decoration: const InputDecoration(labelText: 'IBAN', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'IBAN',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
               TextFormField(
                 controller: _openingBalanceController,
-                decoration: const InputDecoration(labelText: 'Opening Balance', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Opening Balance',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
@@ -100,7 +130,10 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         ElevatedButton(
           onPressed: _isLoading ? null : _save,
           child: const Text('Save Account'),
@@ -119,9 +152,15 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
         companyId: widget.companyId,
         accountName: _nameController.text.trim(),
         accountType: _type,
-        bankName: _bankNameController.text.trim().isEmpty ? null : _bankNameController.text.trim(),
-        accountNumber: _numberController.text.trim().isEmpty ? null : _numberController.text.trim(),
-        iban: _ibanController.text.trim().isEmpty ? null : _ibanController.text.trim(),
+        bankName: _bankNameController.text.trim().isEmpty
+            ? null
+            : _bankNameController.text.trim(),
+        accountNumber: _numberController.text.trim().isEmpty
+            ? null
+            : _numberController.text.trim(),
+        iban: _ibanController.text.trim().isEmpty
+            ? null
+            : _ibanController.text.trim(),
         currency: 'USD',
         linkedChartAccountId: _selectedChartAccountId!,
         openingBalance: double.parse(_openingBalanceController.text),
@@ -133,7 +172,9 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

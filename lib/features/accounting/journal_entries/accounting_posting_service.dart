@@ -8,50 +8,74 @@ import 'package:ledgixerp/features/crm/customer_payments/models/customer_payment
 import 'package:ledgixerp/features/supplier_payments/models/supplier_payment_model.dart';
 import 'package:ledgixerp/core/audit/audit_service.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 
 class AccountingPostingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _auditService = AuditService();
+  final _settingsService = FinancialSettingsService();
 
-  Future<void> postSalesInvoice(String companyId, InvoiceModel invoice, AppUser user) async {
+  Future<void> postSalesInvoice(
+    String companyId,
+    InvoiceModel invoice,
+    AppUser user,
+  ) async {
     final String userId = user.uid;
     if (invoice.isPosted) throw 'Invoice is already posted';
 
-    final arAccount = await _findAccount(companyId, 'Accounts Receivable', AccountType.asset);
-    final salesAccount = await _findAccount(companyId, 'Sales Revenue', AccountType.income);
-    final vatAccount = invoice.vatAmount > 0 
+    if (await _settingsService.isPeriodLocked(companyId, invoice.invoiceDate)) {
+      throw 'Accounting period for this invoice date is locked.';
+    }
+
+    final arAccount = await _findAccount(
+      companyId,
+      'Accounts Receivable',
+      AccountType.asset,
+    );
+    final salesAccount = await _findAccount(
+      companyId,
+      'Sales Revenue',
+      AccountType.income,
+    );
+    final vatAccount = invoice.vatAmount > 0
         ? await _findAccount(companyId, 'VAT Payable', AccountType.liability)
         : null;
 
     final List<JournalLineModel> lines = [];
-    
-    lines.add(JournalLineModel(
-      accountId: arAccount.id,
-      accountName: arAccount.accountName,
-      accountCode: arAccount.accountCode,
-      debit: invoice.totalAmount,
-      credit: 0,
-      memo: 'Sales Invoice ${invoice.invoiceNumber}',
-    ));
 
-    lines.add(JournalLineModel(
-      accountId: salesAccount.id,
-      accountName: salesAccount.accountName,
-      accountCode: salesAccount.accountCode,
-      debit: 0,
-      credit: invoice.subtotal,
-      memo: 'Sales Invoice ${invoice.invoiceNumber}',
-    ));
+    lines.add(
+      JournalLineModel(
+        accountId: arAccount.id,
+        accountName: arAccount.accountName,
+        accountCode: arAccount.accountCode,
+        debit: invoice.totalAmount,
+        credit: 0,
+        memo: 'Sales Invoice ${invoice.invoiceNumber}',
+      ),
+    );
 
-    if (vatAccount != null) {
-      lines.add(JournalLineModel(
-        accountId: vatAccount.id,
-        accountName: vatAccount.accountName,
-        accountCode: vatAccount.accountCode,
+    lines.add(
+      JournalLineModel(
+        accountId: salesAccount.id,
+        accountName: salesAccount.accountName,
+        accountCode: salesAccount.accountCode,
         debit: 0,
-        credit: invoice.vatAmount,
-        memo: 'VAT on ${invoice.invoiceNumber}',
-      ));
+        credit: invoice.subtotal,
+        memo: 'Sales Invoice ${invoice.invoiceNumber}',
+      ),
+    );
+
+    if (vatAccount != null && invoice.vatAmount > 0) {
+      lines.add(
+        JournalLineModel(
+          accountId: vatAccount.id,
+          accountName: vatAccount.accountName,
+          accountCode: vatAccount.accountCode,
+          debit: 0,
+          credit: invoice.vatAmount,
+          memo: 'VAT on ${invoice.invoiceNumber}',
+        ),
+      );
     }
 
     final journalEntry = JournalEntryModel(
@@ -72,14 +96,19 @@ class AccountingPostingService {
     _validateBalancing(lines);
 
     final batch = _firestore.batch();
-    final jeRef = _firestore.collection('companies').doc(companyId).collection('journalEntries').doc();
+    final jeRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('journalEntries')
+        .doc();
     batch.set(jeRef, journalEntry.toMap()..['id'] = jeRef.id);
 
-    final invoiceRef = _firestore.collection('companies').doc(companyId).collection('salesInvoices').doc(invoice.id);
-    batch.update(invoiceRef, {
-      'isPosted': true,
-      'journalEntryId': jeRef.id,
-    });
+    final invoiceRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('salesInvoices')
+        .doc(invoice.id);
+    batch.update(invoiceRef, {'isPosted': true, 'journalEntryId': jeRef.id});
 
     await batch.commit();
 
@@ -96,19 +125,41 @@ class AccountingPostingService {
     );
   }
 
-  Future<void> postCustomerPayment(String companyId, CustomerPaymentModel payment, AppUser user) async {
+  Future<void> postCustomerPayment(
+    String companyId,
+    CustomerPaymentModel payment,
+    AppUser user,
+  ) async {
     final String userId = user.uid;
     if (payment.isPosted) throw 'Payment is already posted';
 
-    AccountModel bankChartAccount;
-    if (payment.bankAccountId != null) {
-      final bankAccount = await _findBankAccount(companyId, payment.bankAccountId!);
-      bankChartAccount = await _findAccountById(companyId, bankAccount.linkedChartAccountId);
-    } else {
-      bankChartAccount = await _findAccount(companyId, 'Bank', AccountType.asset);
+    if (await _settingsService.isPeriodLocked(companyId, payment.paymentDate)) {
+      throw 'Accounting period for this payment date is locked.';
     }
 
-    final arAccount = await _findAccount(companyId, 'Accounts Receivable', AccountType.asset);
+    AccountModel bankChartAccount;
+    if (payment.bankAccountId != null) {
+      final bankAccount = await _findBankAccount(
+        companyId,
+        payment.bankAccountId!,
+      );
+      bankChartAccount = await _findAccountById(
+        companyId,
+        bankAccount.linkedChartAccountId,
+      );
+    } else {
+      bankChartAccount = await _findAccount(
+        companyId,
+        'Bank',
+        AccountType.asset,
+      );
+    }
+
+    final arAccount = await _findAccount(
+      companyId,
+      'Accounts Receivable',
+      AccountType.asset,
+    );
 
     final List<JournalLineModel> lines = [
       JournalLineModel(
@@ -147,14 +198,19 @@ class AccountingPostingService {
     _validateBalancing(lines);
 
     final batch = _firestore.batch();
-    final jeRef = _firestore.collection('companies').doc(companyId).collection('journalEntries').doc();
+    final jeRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('journalEntries')
+        .doc();
     batch.set(jeRef, journalEntry.toMap()..['id'] = jeRef.id);
 
-    final paymentRef = _firestore.collection('companies').doc(companyId).collection('customerPayments').doc(payment.id);
-    batch.update(paymentRef, {
-      'isPosted': true,
-      'journalEntryId': jeRef.id,
-    });
+    final paymentRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('customerPayments')
+        .doc(payment.id);
+    batch.update(paymentRef, {'isPosted': true, 'journalEntryId': jeRef.id});
 
     await batch.commit();
 
@@ -171,19 +227,41 @@ class AccountingPostingService {
     );
   }
 
-  Future<void> postSupplierPayment(String companyId, SupplierPaymentModel payment, AppUser user) async {
+  Future<void> postSupplierPayment(
+    String companyId,
+    SupplierPaymentModel payment,
+    AppUser user,
+  ) async {
     final String userId = user.uid;
     if (payment.isPosted) throw 'Payment is already posted';
 
-    AccountModel bankChartAccount;
-    if (payment.bankAccountId != null) {
-      final bankAccount = await _findBankAccount(companyId, payment.bankAccountId!);
-      bankChartAccount = await _findAccountById(companyId, bankAccount.linkedChartAccountId);
-    } else {
-      bankChartAccount = await _findAccount(companyId, 'Bank', AccountType.asset);
+    if (await _settingsService.isPeriodLocked(companyId, payment.paymentDate)) {
+      throw 'Accounting period for this payment date is locked.';
     }
 
-    final apAccount = await _findAccount(companyId, 'Accounts Payable', AccountType.liability);
+    AccountModel bankChartAccount;
+    if (payment.bankAccountId != null) {
+      final bankAccount = await _findBankAccount(
+        companyId,
+        payment.bankAccountId!,
+      );
+      bankChartAccount = await _findAccountById(
+        companyId,
+        bankAccount.linkedChartAccountId,
+      );
+    } else {
+      bankChartAccount = await _findAccount(
+        companyId,
+        'Bank',
+        AccountType.asset,
+      );
+    }
+
+    final apAccount = await _findAccount(
+      companyId,
+      'Accounts Payable',
+      AccountType.liability,
+    );
 
     final List<JournalLineModel> lines = [
       JournalLineModel(
@@ -222,14 +300,19 @@ class AccountingPostingService {
     _validateBalancing(lines);
 
     final batch = _firestore.batch();
-    final jeRef = _firestore.collection('companies').doc(companyId).collection('journalEntries').doc();
+    final jeRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('journalEntries')
+        .doc();
     batch.set(jeRef, journalEntry.toMap()..['id'] = jeRef.id);
 
-    final paymentRef = _firestore.collection('companies').doc(companyId).collection('supplierPayments').doc(payment.id);
-    batch.update(paymentRef, {
-      'isPosted': true,
-      'journalEntryId': jeRef.id,
-    });
+    final paymentRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('supplierPayments')
+        .doc(payment.id);
+    batch.update(paymentRef, {'isPosted': true, 'journalEntryId': jeRef.id});
 
     await batch.commit();
 
@@ -246,7 +329,11 @@ class AccountingPostingService {
     );
   }
 
-  Future<AccountModel> _findAccount(String companyId, String name, AccountType fallbackType) async {
+  Future<AccountModel> _findAccount(
+    String companyId,
+    String name,
+    AccountType fallbackType,
+  ) async {
     final snapshot = await _firestore
         .collection('companies')
         .doc(companyId)
@@ -259,7 +346,10 @@ class AccountingPostingService {
       throw 'Required account "$name" not found in Chart of Accounts. Please create it first.';
     }
 
-    return AccountModel.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
+    return AccountModel.fromMap(
+      snapshot.docs.first.data(),
+      snapshot.docs.first.id,
+    );
   }
 
   Future<AccountModel> _findAccountById(String companyId, String id) async {

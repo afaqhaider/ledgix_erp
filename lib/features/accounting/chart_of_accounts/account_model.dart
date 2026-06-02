@@ -90,7 +90,8 @@ class AccountModel {
           return BalanceType.credit;
         },
       ),
-      openingBalanceDate: (map['openingBalanceDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      openingBalanceDate:
+          (map['openingBalanceDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (map['createdAt'] as Timestamp).toDate(),
     );
   }

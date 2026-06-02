@@ -44,7 +44,8 @@ class AuditService {
     await docRef.set(log.toMap());
   }
 
-  Stream<List<AuditLogModel>> getLogs(String companyId, {
+  Stream<List<AuditLogModel>> getLogs(
+    String companyId, {
     String? userId,
     String? module,
     String? actionType,
@@ -55,8 +56,10 @@ class AuditService {
 
     if (userId != null) query = query.where('userId', isEqualTo: userId);
     if (module != null) query = query.where('module', isEqualTo: module);
-    if (actionType != null) query = query.where('actionType', isEqualTo: actionType);
-    
+    if (actionType != null) {
+      query = query.where('actionType', isEqualTo: actionType);
+    }
+
     if (startDate != null) {
       query = query.where('createdAt', isGreaterThanOrEqualTo: startDate);
     }
@@ -66,7 +69,10 @@ class AuditService {
 
     return query.limit(100).snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
-        return AuditLogModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        return AuditLogModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       }).toList();
     });
   }

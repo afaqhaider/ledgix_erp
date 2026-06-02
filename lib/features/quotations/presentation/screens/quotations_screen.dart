@@ -28,7 +28,9 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final canManage = widget.user.role.hasPermission(AppPermission.manageInvoices);
+    final canManage = widget.user.role.hasPermission(
+      AppPermission.manageInvoices,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -42,7 +44,8 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddQuotationScreen(user: widget.user),
+                      builder: (context) =>
+                          AddQuotationScreen(user: widget.user),
                     ),
                   );
                 },
@@ -74,11 +77,17 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.request_quote_outlined, size: 64, color: Colors.grey[400]),
+                  Icon(
+                    Icons.request_quote_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No quotations found',
-                    style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
                   ),
                 ],
               ),
@@ -92,29 +101,75 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                 horizontalMargin: 24,
                 columnSpacing: 32,
                 columns: const [
-                  DataColumn(label: Text('Quotation #', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Customer', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Approval', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(
+                    label: Text(
+                      'Quotation #',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Customer',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Date',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Total',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Status',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Approval',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Actions',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
                 rows: quotations.map((quo) {
                   final isConverted = quo.status == QuotationStatus.converted;
                   final isApproved = quo.approvalStatus == 'approved';
-                  
+
                   return DataRow(
                     cells: [
                       DataCell(Text(quo.quotationNumber)),
                       DataCell(Text(quo.customerName)),
-                      DataCell(Text(DateFormat('dd MMM yyyy').format(quo.quotationDate))),
-                      DataCell(Text(NumberFormat('#,##0.00').format(quo.totalAmount))),
+                      DataCell(
+                        Text(
+                          DateFormat('dd MMM yyyy').format(quo.quotationDate),
+                        ),
+                      ),
+                      DataCell(
+                        Text(NumberFormat('#,##0.00').format(quo.totalAmount)),
+                      ),
                       DataCell(
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(quo.status).withValues(alpha: 0.1),
+                            color: _getStatusColor(
+                              quo.status,
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -128,26 +183,36 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                         ),
                       ),
                       DataCell(
-                        quo.approvalStatus == null 
-                          ? TextButton(
-                              onPressed: () => _submitForApproval(quo),
-                              child: const Text('Submit', style: TextStyle(fontSize: 12)),
-                            )
-                          : Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getApprovalStatusColor(quo.approvalStatus!).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                quo.approvalStatus!.toUpperCase(),
-                                style: TextStyle(
-                                  color: _getApprovalStatusColor(quo.approvalStatus!),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                        quo.approvalStatus == null
+                            ? TextButton(
+                                onPressed: () => _submitForApproval(quo),
+                                child: const Text(
+                                  'Submit',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getApprovalStatusColor(
+                                    quo.approvalStatus!,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  quo.approvalStatus!.toUpperCase(),
+                                  style: TextStyle(
+                                    color: _getApprovalStatusColor(
+                                      quo.approvalStatus!,
+                                    ),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
                       ),
                       DataCell(
                         Row(
@@ -157,7 +222,11 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                               tooltip: 'Print/Download PDF',
                               onPressed: () => _printQuotation(quo),
                             ),
-                            if (canManage && !isConverted && (isApproved || widget.user.role.name == 'Admin' || widget.user.role.name == 'Owner'))
+                            if (canManage &&
+                                !isConverted &&
+                                (isApproved ||
+                                    widget.user.role.name == 'Admin' ||
+                                    widget.user.role.name == 'Owner'))
                               IconButton(
                                 icon: const Icon(Icons.receipt_long, size: 20),
                                 tooltip: 'Convert to Invoice',
@@ -180,21 +249,31 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
 
   Color _getStatusColor(QuotationStatus status) {
     switch (status) {
-      case QuotationStatus.draft: return Colors.grey;
-      case QuotationStatus.sent: return Colors.blue;
-      case QuotationStatus.accepted: return Colors.green;
-      case QuotationStatus.rejected: return Colors.red;
-      case QuotationStatus.expired: return Colors.orange;
-      case QuotationStatus.converted: return Colors.purple;
+      case QuotationStatus.draft:
+        return Colors.grey;
+      case QuotationStatus.sent:
+        return Colors.blue;
+      case QuotationStatus.accepted:
+        return Colors.green;
+      case QuotationStatus.rejected:
+        return Colors.red;
+      case QuotationStatus.expired:
+        return Colors.orange;
+      case QuotationStatus.converted:
+        return Colors.purple;
     }
   }
 
   Color _getApprovalStatusColor(String status) {
     switch (status) {
-      case 'approved': return Colors.green;
-      case 'pending': return Colors.orange;
-      case 'rejected': return Colors.red;
-      default: return Colors.grey;
+      case 'approved':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -212,7 +291,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
       );
 
       await _approvalService.submitForApproval(request);
-      
+
       await FirebaseFirestore.instance
           .collection('companies')
           .doc(widget.user.companyId)
@@ -227,18 +306,25 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 
   Future<void> _printQuotation(QuotationModel quo) async {
     try {
-      final company = await _companyService.getCompany(widget.user.companyId!);
+      final company = await _companyService
+          .getCompany(widget.user.companyId!)
+          .first;
       if (company == null) throw 'Company not found';
-      
-      final pdfBytes = await QuotationPdfService.generateQuotation(quo, company);
-      
+
+      final pdfBytes = await QuotationPdfService.generateQuotation(
+        quo,
+        company,
+      );
+
       await Printing.layoutPdf(
         onLayout: (format) async => pdfBytes,
         name: 'Quotation_${quo.quotationNumber}',
@@ -246,7 +332,10 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating PDF: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }
@@ -257,10 +346,18 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Convert to Invoice'),
-        content: Text('Do you want to convert Quotation ${quo.quotationNumber} to a Sales Invoice?'),
+        content: Text(
+          'Do you want to convert Quotation ${quo.quotationNumber} to a Sales Invoice?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Convert')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Convert'),
+          ),
         ],
       ),
     );
@@ -270,13 +367,19 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
         await _quotationService.convertToInvoice(quo);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Quotation converted to Invoice successfully'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('Quotation converted to Invoice successfully'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error converting to invoice: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error converting to invoice: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }

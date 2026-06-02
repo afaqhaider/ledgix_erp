@@ -12,12 +12,13 @@ class CreateJournalEntryScreen extends StatefulWidget {
   const CreateJournalEntryScreen({super.key, required this.user});
 
   @override
-  State<CreateJournalEntryScreen> createState() => _CreateJournalEntryScreenState();
+  State<CreateJournalEntryScreen> createState() =>
+      _CreateJournalEntryScreenState();
 }
 
 class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _refController = TextEditingController();
+  String _journalNumber = 'Loading...';
   final _descController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   final List<JournalLineModel> _lines = [];
@@ -30,26 +31,40 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAccounts();
+    _loadInitialData();
     // Start with 2 empty lines
     _addLine();
     _addLine();
   }
 
+  Future<void> _loadInitialData() async {
+    _loadAccounts();
+    final number = await _journalService.generateNextJournalNumber(
+      widget.user.companyId!,
+    );
+    if (mounted) {
+      setState(() => _journalNumber = number);
+    }
+  }
+
   Future<void> _loadAccounts() async {
-    final accounts = await _accountService.getAccounts(widget.user.companyId!).first;
+    final accounts = await _accountService
+        .getAccounts(widget.user.companyId!)
+        .first;
     setState(() => _accounts = accounts);
   }
 
   void _addLine() {
     setState(() {
-      _lines.add(JournalLineModel(
-        accountId: '',
-        accountName: '',
-        accountCode: '',
-        debit: 0,
-        credit: 0,
-      ));
+      _lines.add(
+        JournalLineModel(
+          accountId: '',
+          accountName: '',
+          accountCode: '',
+          debit: 0,
+          credit: 0,
+        ),
+      );
     });
   }
 
@@ -61,7 +76,10 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
 
     if ((totalDebit - totalCredit).abs() > 0.001) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entry is not balanced!'), backgroundColor: Colors.redAccent),
+        const SnackBar(
+          content: Text('Entry is not balanced!'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }
@@ -72,7 +90,7 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
         id: '',
         companyId: widget.user.companyId!,
         date: _selectedDate,
-        reference: _refController.text.trim(),
+        reference: _journalNumber,
         description: _descController.text.trim(),
         lines: _lines.where((l) => l.accountId.isNotEmpty).toList(),
         createdBy: widget.user.uid,
@@ -84,7 +102,10 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -124,10 +145,12 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
-                          controller: _refController,
-                          decoration: const InputDecoration(labelText: 'Reference', border: OutlineInputBorder()),
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: 'Reference',
+                            border: OutlineInputBorder(),
+                          ),
+                          child: Text(_journalNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -140,11 +163,18 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
                               firstDate: DateTime(2000),
                               lastDate: DateTime(2100),
                             );
-                            if (date != null) setState(() => _selectedDate = date);
+                            if (date != null) {
+                              setState(() => _selectedDate = date);
+                            }
                           },
                           child: InputDecorator(
-                            decoration: const InputDecoration(labelText: 'Date', border: OutlineInputBorder()),
-                            child: Text(DateFormat('yyyy-MM-dd').format(_selectedDate)),
+                            decoration: const InputDecoration(
+                              labelText: 'Date',
+                              border: OutlineInputBorder(),
+                            ),
+                            child: Text(
+                              DateFormat('yyyy-MM-dd').format(_selectedDate),
+                            ),
                           ),
                         ),
                       ),
@@ -155,11 +185,17 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descController,
-                decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 32),
-              const Text('Journal Lines', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Journal Lines',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
               _buildLinesTable(),
               const SizedBox(height: 16),
@@ -186,9 +222,27 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
       children: [
         const TableRow(
           children: [
-            Padding(padding: EdgeInsets.all(8), child: Text('Account', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Debit', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Credit', style: TextStyle(fontWeight: FontWeight.bold))),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Account',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Debit',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Credit',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
             Padding(padding: EdgeInsets.all(8), child: Text('')),
           ],
         ),
@@ -201,8 +255,17 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
                 padding: const EdgeInsets.all(4),
                 child: DropdownButtonFormField<String>(
                   initialValue: line.accountId.isEmpty ? null : line.accountId,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
-                  items: _accounts.map((a) => DropdownMenuItem(value: a.id, child: Text('${a.accountCode} - ${a.accountName}'))).toList(),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _accounts
+                      .map(
+                        (a) => DropdownMenuItem(
+                          value: a.id,
+                          child: Text('${a.accountCode} - ${a.accountName}'),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (val) {
                     final acc = _accounts.firstWhere((a) => a.id == val);
                     setState(() {
@@ -221,7 +284,9 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: line.debit == 0 ? '' : line.debit.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
                   onChanged: (val) {
                     setState(() {
@@ -240,7 +305,9 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: line.credit == 0 ? '' : line.credit.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
                   onChanged: (val) {
                     setState(() {

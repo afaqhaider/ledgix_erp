@@ -117,8 +117,12 @@ class QuotationModel {
         (e) => e.name == map['status'],
         orElse: () => QuotationStatus.draft,
       ),
-      items: (map['items'] as List<dynamic>?)
-              ?.map((i) => QuotationLineItemModel.fromMap(i as Map<String, dynamic>))
+      items:
+          (map['items'] as List<dynamic>?)
+              ?.map(
+                (i) =>
+                    QuotationLineItemModel.fromMap(i as Map<String, dynamic>),
+              )
               .toList() ??
           [],
       subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0.0,

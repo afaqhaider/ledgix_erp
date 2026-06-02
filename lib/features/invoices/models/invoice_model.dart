@@ -139,8 +139,11 @@ class InvoiceModel {
         (e) => e.name == map['status'],
         orElse: () => InvoiceStatus.draft,
       ),
-      items: (map['items'] as List<dynamic>?)
-              ?.map((i) => InvoiceLineItemModel.fromMap(i as Map<String, dynamic>))
+      items:
+          (map['items'] as List<dynamic>?)
+              ?.map(
+                (i) => InvoiceLineItemModel.fromMap(i as Map<String, dynamic>),
+              )
               .toList() ??
           [],
       subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0.0,

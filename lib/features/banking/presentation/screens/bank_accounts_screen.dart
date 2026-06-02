@@ -20,7 +20,9 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final canManage = widget.user.role.hasPermission(AppPermission.manageAccounting);
+    final canManage = widget.user.role.hasPermission(
+      AppPermission.manageAccounting,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -33,7 +35,8 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                 onPressed: () {
                   showDialog(
                     context: context,
-                    builder: (context) => AddBankAccountDialog(companyId: widget.user.companyId!),
+                    builder: (context) =>
+                        AddBankAccountDialog(companyId: widget.user.companyId!),
                   );
                 },
                 icon: const Icon(Icons.add),
@@ -63,22 +66,37 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
               return Card(
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: _getTypeColor(account.accountType).withValues(alpha: 0.1),
-                    child: Icon(_getTypeIcon(account.accountType), color: _getTypeColor(account.accountType)),
+                    backgroundColor: _getTypeColor(
+                      account.accountType,
+                    ).withValues(alpha: 0.1),
+                    child: Icon(
+                      _getTypeIcon(account.accountType),
+                      color: _getTypeColor(account.accountType),
+                    ),
                   ),
-                  title: Text(account.accountName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(account.bankName ?? account.accountType.name.toUpperCase()),
+                  title: Text(
+                    account.accountName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    account.bankName ?? account.accountType.name.toUpperCase(),
+                  ),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
                         '${account.currency} ${NumberFormat('#,##0.00').format(account.currentBalance)}',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text(
                         account.isActive ? 'Active' : 'Inactive',
-                        style: TextStyle(color: account.isActive ? Colors.green : Colors.red, fontSize: 12),
+                        style: TextStyle(
+                          color: account.isActive ? Colors.green : Colors.red,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -93,19 +111,27 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
 
   IconData _getTypeIcon(BankAccountType type) {
     switch (type) {
-      case BankAccountType.cash: return Icons.money;
-      case BankAccountType.bank: return Icons.account_balance;
-      case BankAccountType.card: return Icons.credit_card;
-      case BankAccountType.wallet: return Icons.account_balance_wallet;
+      case BankAccountType.cash:
+        return Icons.money;
+      case BankAccountType.bank:
+        return Icons.account_balance;
+      case BankAccountType.card:
+        return Icons.credit_card;
+      case BankAccountType.wallet:
+        return Icons.account_balance_wallet;
     }
   }
 
   Color _getTypeColor(BankAccountType type) {
     switch (type) {
-      case BankAccountType.cash: return Colors.green;
-      case BankAccountType.bank: return Colors.blue;
-      case BankAccountType.card: return Colors.orange;
-      case BankAccountType.wallet: return Colors.purple;
+      case BankAccountType.cash:
+        return Colors.green;
+      case BankAccountType.bank:
+        return Colors.blue;
+      case BankAccountType.card:
+        return Colors.orange;
+      case BankAccountType.wallet:
+        return Colors.purple;
     }
   }
 }

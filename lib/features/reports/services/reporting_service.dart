@@ -6,13 +6,17 @@ import '../models/report_models.dart';
 class ReportingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<TrialBalanceReport> getTrialBalance(String companyId, DateTime asOf) async {
+  Future<TrialBalanceReport> getTrialBalance(
+    String companyId,
+    DateTime asOf,
+  ) async {
     // 1. Fetch all accounts
     final accountsSnap = await _firestore
-        .collection('accounts')
-        .where('companyId', isEqualTo: companyId)
+        .collection('companies')
+        .doc(companyId)
+        .collection('chartOfAccounts')
         .get();
-    
+
     final accounts = accountsSnap.docs
         .map((doc) => AccountModel.fromMap(doc.data(), doc.id))
         .toList();
@@ -33,7 +37,8 @@ class ReportingService {
       final entry = JournalEntryModel.fromMap(doc.data(), doc.id);
       for (var line in entry.lines) {
         debits[line.accountId] = (debits[line.accountId] ?? 0.0) + line.debit;
-        credits[line.accountId] = (credits[line.accountId] ?? 0.0) + line.credit;
+        credits[line.accountId] =
+            (credits[line.accountId] ?? 0.0) + line.credit;
       }
     }
 
@@ -58,21 +63,36 @@ class ReportingService {
   }
 
   Future<ProfitLossReport> getProfitLoss(
-    String companyId, 
-    DateTime startDate, 
-    DateTime endDate
+    String companyId,
+    DateTime startDate,
+    DateTime endDate,
   ) async {
     final trialBalance = await getTrialBalance(companyId, endDate);
-    
+
     // Filter by date range for P&L accounts (Income, Expense, COGS)
     // Actually, Trial Balance gives cumulative, but P&L is for a period.
     // So we need to subtract the balances at 'startDate'.
-    
-    final startTrialBalance = await getTrialBalance(companyId, startDate.subtract(const Duration(days: 1)));
 
-    final income = _calculatePeriodBalances(trialBalance, startTrialBalance, AccountType.income);
-    final costOfSales = _calculatePeriodBalances(trialBalance, startTrialBalance, AccountType.costOfSales);
-    final expenses = _calculatePeriodBalances(trialBalance, startTrialBalance, AccountType.expense);
+    final startTrialBalance = await getTrialBalance(
+      companyId,
+      startDate.subtract(const Duration(days: 1)),
+    );
+
+    final income = _calculatePeriodBalances(
+      trialBalance,
+      startTrialBalance,
+      AccountType.income,
+    );
+    final costOfSales = _calculatePeriodBalances(
+      trialBalance,
+      startTrialBalance,
+      AccountType.costOfSales,
+    );
+    final expenses = _calculatePeriodBalances(
+      trialBalance,
+      startTrialBalance,
+      AccountType.expense,
+    );
 
     return ProfitLossReport(
       income: income,
@@ -84,16 +104,17 @@ class ReportingService {
   }
 
   List<AccountBalance> _calculatePeriodBalances(
-    TrialBalanceReport end, 
-    TrialBalanceReport start, 
-    AccountType type
+    TrialBalanceReport end,
+    TrialBalanceReport start,
+    AccountType type,
   ) {
     return end.balances
         .where((b) => b.account.accountType == type)
         .map((endBal) {
           final startBal = start.balances.firstWhere(
             (s) => s.account.id == endBal.account.id,
-            orElse: () => AccountBalance(account: endBal.account, debit: 0, credit: 0)
+            orElse: () =>
+                AccountBalance(account: endBal.account, debit: 0, credit: 0),
           );
           return AccountBalance(
             account: endBal.account,
@@ -105,7 +126,10 @@ class ReportingService {
         .toList();
   }
 
-  Future<BalanceSheetReport> getBalanceSheet(String companyId, DateTime asOf) async {
+  Future<BalanceSheetReport> getBalanceSheet(
+    String companyId,
+    DateTime asOf,
+  ) async {
     final trialBalance = await getTrialBalance(companyId, asOf);
 
     final assets = trialBalance.balances
@@ -128,7 +152,7 @@ class ReportingService {
     final expenses = trialBalance.balances
         .where((b) => b.account.accountType == AccountType.expense)
         .fold(0.0, (total, b) => total + b.balance);
-    
+
     final netProfit = income - costOfSales - expenses;
 
     return BalanceSheetReport(
@@ -138,5 +162,43 @@ class ReportingService {
       netProfitPeriod: netProfit,
       asOf: asOf,
     );
+  }
+
+  Future<List<Map<String, dynamic>>> getLedgerEntries(
+    String companyId,
+    String accountId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final entriesSnap = await _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('journalEntries')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .where('status', isEqualTo: JournalStatus.posted.name)
+        .get();
+
+    final List<Map<String, dynamic>> ledger = [];
+
+    for (var doc in entriesSnap.docs) {
+      final entry = JournalEntryModel.fromMap(doc.data(), doc.id);
+      for (var line in entry.lines) {
+        if (line.accountId == accountId) {
+          ledger.add({
+            'date': entry.date,
+            'description': entry.description,
+            'reference': entry.reference,
+            'debit': line.debit,
+            'credit': line.credit,
+          });
+        }
+      }
+    }
+
+    ledger.sort(
+      (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
+    );
+    return ledger;
   }
 }

@@ -36,7 +36,9 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
   }
 
   Future<void> _loadNextCode() async {
-    final code = await _supplierService.generateNextSupplierCode(widget.companyId);
+    final code = await _supplierService.generateNextSupplierCode(
+      widget.companyId,
+    );
     if (mounted) {
       setState(() => _generatedCode = code);
     }
@@ -52,12 +54,22 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
         companyId: widget.companyId,
         supplierCode: _generatedCode,
         supplierName: _nameController.text.trim(),
-        contactPerson: _contactController.text.trim().isEmpty ? null : _contactController.text.trim(),
+        contactPerson: _contactController.text.trim().isEmpty
+            ? null
+            : _contactController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-        address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-        country: _countryController.text.trim().isEmpty ? null : _countryController.text.trim(),
-        trnVatNumber: _trnController.text.trim().isEmpty ? null : _trnController.text.trim(),
+        phone: _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+        address: _addressController.text.trim().isEmpty
+            ? null
+            : _addressController.text.trim(),
+        country: _countryController.text.trim().isEmpty
+            ? null
+            : _countryController.text.trim(),
+        trnVatNumber: _trnController.text.trim().isEmpty
+            ? null
+            : _trnController.text.trim(),
         openingBalance: double.tryParse(_balanceController.text) ?? 0.0,
         openingBalanceType: _balanceType,
         createdAt: DateTime.now(),
@@ -68,7 +80,10 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -136,7 +151,11 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
                         ),
                         validator: (v) {
                           if (v!.isEmpty) return 'Required';
-                          if (!RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Invalid email';
+                          if (!RegExp(
+                            r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(v)) {
+                            return 'Invalid email';
+                          }
                           return null;
                         },
                       ),
@@ -213,7 +232,9 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
                           labelText: 'Opening Balance Amount',
                           border: OutlineInputBorder(),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -255,7 +276,10 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
               ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('Save Supplier'),
         ),

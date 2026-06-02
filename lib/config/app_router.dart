@@ -7,10 +7,5 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final appRouter = GoRouter(
   initialLocation: '/',
   navigatorKey: _rootNavigatorKey,
-  routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const AuthGate(),
-    ),
-  ],
+  routes: [GoRoute(path: '/', builder: (context, state) => const AuthGate())],
 );

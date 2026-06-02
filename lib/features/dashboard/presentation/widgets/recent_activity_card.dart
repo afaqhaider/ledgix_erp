@@ -50,7 +50,9 @@ class RecentActivityCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 if (onViewAll != null)
                   TextButton(
@@ -66,7 +68,9 @@ class RecentActivityCard extends StatelessWidget {
                 child: Center(
                   child: Text(
                     'No recent activity',
-                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
               )
@@ -95,18 +99,26 @@ class RecentActivityCard extends StatelessWidget {
                           children: [
                             Text(
                               item.title,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
                             ),
                             Text(
                               item.subtitle,
-                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       Text(
                         item.trailing,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   );

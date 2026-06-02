@@ -1,8 +1,4 @@
-enum PostingSourceType {
-  salesInvoice,
-  customerPayment,
-  supplierPayment,
-}
+enum PostingSourceType { salesInvoice, customerPayment, supplierPayment }
 
 class PostingRuleModel {
   final PostingSourceType sourceType;

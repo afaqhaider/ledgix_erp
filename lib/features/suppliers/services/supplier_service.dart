@@ -12,21 +12,22 @@ class SupplierService {
   }
 
   Stream<List<SupplierModel>> getSuppliers(String companyId) {
-    return _getSuppliersRef(companyId)
-        .orderBy('supplierCode')
-        .snapshots()
-        .map((snapshot) {
+    return _getSuppliersRef(companyId).orderBy('supplierCode').snapshots().map((
+      snapshot,
+    ) {
       return snapshot.docs.map((doc) {
-        return SupplierModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        return SupplierModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       }).toList();
     });
   }
 
   Future<String> generateNextSupplierCode(String companyId) async {
-    final snapshot = await _getSuppliersRef(companyId)
-        .orderBy('supplierCode', descending: true)
-        .limit(1)
-        .get();
+    final snapshot = await _getSuppliersRef(
+      companyId,
+    ).orderBy('supplierCode', descending: true).limit(1).get();
 
     if (snapshot.docs.isEmpty) {
       return 'SUP-0001';
@@ -48,6 +49,38 @@ class SupplierService {
   }
 
   Future<void> updateSupplier(SupplierModel supplier) async {
-    await _getSuppliersRef(supplier.companyId).doc(supplier.id).update(supplier.toMap());
+    await _getSuppliersRef(
+      supplier.companyId,
+    ).doc(supplier.id).update(supplier.toMap());
+  }
+
+  Future<void> deleteSupplier(String companyId, String supplierId) async {
+    // Check for transactions
+    final paymentSnapshot = await _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('supplierPayments')
+        .where('supplierId', isEqualTo: supplierId)
+        .limit(1)
+        .get();
+
+    if (paymentSnapshot.docs.isNotEmpty) {
+      throw Exception('Cannot delete supplier with existing payments.');
+    }
+
+    // Also check for purchase orders if they exist
+    final poSnapshot = await _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('purchaseOrders')
+        .where('supplierId', isEqualTo: supplierId)
+        .limit(1)
+        .get();
+
+    if (poSnapshot.docs.isNotEmpty) {
+      throw Exception('Cannot delete supplier with existing purchase orders.');
+    }
+
+    await _getSuppliersRef(companyId).doc(supplierId).delete();
   }
 }

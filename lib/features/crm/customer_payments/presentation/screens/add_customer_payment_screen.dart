@@ -15,7 +15,8 @@ class AddCustomerPaymentScreen extends StatefulWidget {
   const AddCustomerPaymentScreen({super.key, required this.user});
 
   @override
-  State<AddCustomerPaymentScreen> createState() => _AddCustomerPaymentScreenState();
+  State<AddCustomerPaymentScreen> createState() =>
+      _AddCustomerPaymentScreenState();
 }
 
 class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
@@ -24,7 +25,7 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
   final _customerService = CustomerService();
   final _invoiceService = InvoiceService();
   final _bankService = BankAccountService();
-  
+
   final _amountController = TextEditingController();
   final _referenceController = TextEditingController();
   final _notesController = TextEditingController();
@@ -44,7 +45,9 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _paymentService.generateNextNumber(widget.user.companyId!);
+    final number = await _paymentService.generateNextNumber(
+      widget.user.companyId!,
+    );
     if (mounted) {
       setState(() => _paymentNumber = number);
     }
@@ -53,11 +56,15 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a customer')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
       return;
     }
     if (_selectedBankAccount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a bank/cash account')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a bank/cash account')),
+      );
       return;
     }
 
@@ -74,9 +81,13 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
         bankAccountId: _selectedBankAccount!.id,
         paymentDate: _paymentDate,
         paymentMethod: _paymentMethod,
-        referenceNumber: _referenceController.text.trim().isEmpty ? null : _referenceController.text.trim(),
+        referenceNumber: _referenceController.text.trim().isEmpty
+            ? null
+            : _referenceController.text.trim(),
         amount: double.tryParse(_amountController.text) ?? 0.0,
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
         createdAt: DateTime.now(),
       );
 
@@ -84,7 +95,12 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -118,30 +134,45 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
-                              initialValue: _paymentNumber,
-                              readOnly: true,
-                              decoration: const InputDecoration(labelText: 'Payment Number', border: OutlineInputBorder()),
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Payment Number',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: Text(_paymentNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             flex: 2,
                             child: StreamBuilder<List<CustomerModel>>(
-                              stream: _customerService.getCustomers(widget.user.companyId!),
+                              stream: _customerService.getCustomers(
+                                widget.user.companyId!,
+                              ),
                               builder: (context, snapshot) {
                                 final customers = snapshot.data ?? [];
                                 return DropdownButtonFormField<CustomerModel>(
                                   initialValue: _selectedCustomer,
-                                  decoration: const InputDecoration(labelText: 'Select Customer', border: OutlineInputBorder()),
-                                  items: customers.map((c) => DropdownMenuItem(value: c, child: Text(c.name))).toList(),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Select Customer',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: customers
+                                      .map(
+                                        (c) => DropdownMenuItem(
+                                          value: c,
+                                          child: Text(c.name),
+                                        ),
+                                      )
+                                      .toList(),
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedCustomer = val;
                                       _selectedInvoice = null;
                                     });
                                   },
-                                  validator: (v) => v == null ? 'Required' : null,
+                                  validator: (v) =>
+                                      v == null ? 'Required' : null,
                                 );
                               },
                             ),
@@ -153,19 +184,36 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
                         children: [
                           Expanded(
                             child: StreamBuilder<List<InvoiceModel>>(
-                              stream: _invoiceService.getInvoices(widget.user.companyId!),
+                              stream: _invoiceService.getInvoices(
+                                widget.user.companyId!,
+                              ),
                               builder: (context, snapshot) {
                                 final invoices = (snapshot.data ?? [])
-                                    .where((inv) => inv.customerId == _selectedCustomer?.id && inv.status != InvoiceStatus.paid)
+                                    .where(
+                                      (inv) =>
+                                          inv.customerId ==
+                                              _selectedCustomer?.id &&
+                                          inv.status != InvoiceStatus.paid,
+                                    )
                                     .toList();
                                 return DropdownButtonFormField<InvoiceModel>(
                                   initialValue: _selectedInvoice,
-                                  decoration: const InputDecoration(labelText: 'Link to Invoice (Optional)', border: OutlineInputBorder()),
-                                  items: invoices.map((inv) => DropdownMenuItem(
-                                    value: inv,
-                                    child: Text('${inv.invoiceNumber} (${NumberFormat('#,##0.00').format(inv.balanceDue)})'),
-                                  )).toList(),
-                                  onChanged: (val) => setState(() => _selectedInvoice = val),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Link to Invoice (Optional)',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: invoices
+                                      .map(
+                                        (inv) => DropdownMenuItem(
+                                          value: inv,
+                                          child: Text(
+                                            '${inv.invoiceNumber} (${NumberFormat('#,##0.00').format(inv.balanceDue)})',
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setState(() => _selectedInvoice = val),
                                 );
                               },
                             ),
@@ -180,11 +228,18 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
                                   firstDate: DateTime(2000),
                                   lastDate: DateTime(2100),
                                 );
-                                if (date != null) setState(() => _paymentDate = date);
+                                if (date != null) {
+                                  setState(() => _paymentDate = date);
+                                }
                               },
                               child: InputDecorator(
-                                decoration: const InputDecoration(labelText: 'Payment Date', border: OutlineInputBorder()),
-                                child: Text(DateFormat('yyyy-MM-dd').format(_paymentDate)),
+                                decoration: const InputDecoration(
+                                  labelText: 'Payment Date',
+                                  border: OutlineInputBorder(),
+                                ),
+                                child: Text(
+                                  DateFormat('yyyy-MM-dd').format(_paymentDate),
+                                ),
                               ),
                             ),
                           ),
@@ -205,7 +260,11 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: _amountController,
-                              decoration: const InputDecoration(labelText: 'Amount', prefixText: '\$ ', border: OutlineInputBorder()),
+                              decoration: const InputDecoration(
+                                labelText: 'Amount',
+                                prefixText: '\$ ',
+                                border: OutlineInputBorder(),
+                              ),
                               keyboardType: TextInputType.number,
                               validator: (v) => v!.isEmpty ? 'Required' : null,
                             ),
@@ -213,15 +272,32 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: StreamBuilder<List<BankAccountModel>>(
-                              stream: _bankService.getBankAccounts(widget.user.companyId!),
+                              stream: _bankService.getBankAccounts(
+                                widget.user.companyId!,
+                              ),
                               builder: (context, snapshot) {
                                 final accounts = snapshot.data ?? [];
-                                return DropdownButtonFormField<BankAccountModel>(
+                                return DropdownButtonFormField<
+                                  BankAccountModel
+                                >(
                                   initialValue: _selectedBankAccount,
-                                  decoration: const InputDecoration(labelText: 'Deposit To (Bank/Cash)', border: OutlineInputBorder()),
-                                  items: accounts.map((a) => DropdownMenuItem(value: a, child: Text(a.accountName))).toList(),
-                                  onChanged: (val) => setState(() => _selectedBankAccount = val),
-                                  validator: (v) => v == null ? 'Required' : null,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Deposit To (Bank/Cash)',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: accounts
+                                      .map(
+                                        (a) => DropdownMenuItem(
+                                          value: a,
+                                          child: Text(a.accountName),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) => setState(
+                                    () => _selectedBankAccount = val,
+                                  ),
+                                  validator: (v) =>
+                                      v == null ? 'Required' : null,
                                 );
                               },
                             ),
@@ -232,18 +308,33 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<CustomerPaymentMethod>(
-                              initialValue: _paymentMethod,
-                              decoration: const InputDecoration(labelText: 'Payment Method', border: OutlineInputBorder()),
-                              items: CustomerPaymentMethod.values.map((m) => DropdownMenuItem(value: m, child: Text(m.name.toUpperCase()))).toList(),
-                              onChanged: (val) => setState(() => _paymentMethod = val!),
-                            ),
+                            child:
+                                DropdownButtonFormField<CustomerPaymentMethod>(
+                                  initialValue: _paymentMethod,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Payment Method',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: CustomerPaymentMethod.values
+                                      .map(
+                                        (m) => DropdownMenuItem(
+                                          value: m,
+                                          child: Text(m.name.toUpperCase()),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setState(() => _paymentMethod = val!),
+                                ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: TextFormField(
                               controller: _referenceController,
-                              decoration: const InputDecoration(labelText: 'Reference #', border: OutlineInputBorder()),
+                              decoration: const InputDecoration(
+                                labelText: 'Reference #',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
                         ],

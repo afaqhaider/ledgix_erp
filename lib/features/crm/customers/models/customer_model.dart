@@ -10,7 +10,7 @@ class CustomerModel {
   final String? taxNumber;
   final bool isActive;
   final DateTime createdAt;
-  
+
   // Portal Access fields
   final bool portalAccessEnabled;
   final List<String> portalUserIds;

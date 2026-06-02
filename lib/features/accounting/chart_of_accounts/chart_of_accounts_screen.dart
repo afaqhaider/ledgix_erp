@@ -5,6 +5,9 @@ import 'package:ledgixerp/core/auth/permission.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/add_account_dialog.dart';
+import 'package:ledgixerp/features/data_migration/presentation/widgets/import_export_modal.dart';
+import 'package:ledgixerp/features/data_migration/presentation/widgets/export_modal.dart';
+import 'package:ledgixerp/features/data_migration/models/migration_models.dart';
 
 class ChartOfAccountsScreen extends StatefulWidget {
   final AppUser user;
@@ -20,25 +23,38 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final canManage = widget.user.role.hasPermission(AppPermission.manageAccounting);
+    final canManage = widget.user.role.hasPermission(
+      AppPermission.manageAccounting,
+    );
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chart of Accounts'),
         actions: [
-          if (canManage)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: ElevatedButton.icon(
-                onPressed: () => _showAddAccountDialog(context),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Account'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: Colors.white,
-                ),
+          if (canManage) ...[
+            OutlinedButton.icon(
+              onPressed: () => _showImportModal(context),
+              icon: const Icon(Icons.file_upload_outlined),
+              label: const Text('Import'),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: () => _showExportModal(context),
+              icon: const Icon(Icons.file_download_outlined),
+              label: const Text('Export'),
+            ),
+            const SizedBox(width: 16),
+            ElevatedButton.icon(
+              onPressed: () => _showAddAccountDialog(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Account'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
               ),
             ),
+          ],
+          const SizedBox(width: 16),
         ],
       ),
       body: StreamBuilder<List<AccountModel>>(
@@ -59,17 +75,33 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.account_balance_wallet_outlined, size: 64, color: Colors.grey[400]),
+                  Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No accounts found',
-                    style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
                   ),
                   if (canManage) ...[
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () => _showAddAccountDialog(context),
                       child: const Text('Add Your First Account'),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () async {
+                        setState(() {}); // Show loading if needed
+                        await _accountService.seedDefaultAccounts(
+                          widget.user.companyId!,
+                        );
+                      },
+                      child: const Text('Seed Default Chart of Accounts'),
                     ),
                   ],
                 ],
@@ -86,12 +118,42 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                   horizontalMargin: 24,
                   columnSpacing: 40,
                   columns: const [
-                    DataColumn(label: Text('Code', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Opening Balance', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(
+                      label: Text(
+                        'Code',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Name',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Type',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Opening Balance',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Status',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Actions',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ],
                   rows: accounts.map((account) {
                     return DataRow(
@@ -100,9 +162,14 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                         DataCell(Text(account.accountName)),
                         DataCell(
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: _getTypeColor(account.accountType).withValues(alpha: 0.1),
+                              color: _getTypeColor(
+                                account.accountType,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -123,7 +190,9 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                         ),
                         DataCell(
                           Icon(
-                            account.isActive ? Icons.check_circle : Icons.cancel,
+                            account.isActive
+                                ? Icons.check_circle
+                                : Icons.cancel,
                             color: account.isActive ? Colors.green : Colors.red,
                             size: 20,
                           ),
@@ -148,12 +217,18 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
 
   Color _getTypeColor(AccountType type) {
     switch (type) {
-      case AccountType.asset: return Colors.blue;
-      case AccountType.liability: return Colors.orange;
-      case AccountType.equity: return Colors.purple;
-      case AccountType.income: return Colors.green;
-      case AccountType.costOfSales: return Colors.deepOrange;
-      case AccountType.expense: return Colors.red;
+      case AccountType.asset:
+        return Colors.blue;
+      case AccountType.liability:
+        return Colors.orange;
+      case AccountType.equity:
+        return Colors.purple;
+      case AccountType.income:
+        return Colors.green;
+      case AccountType.costOfSales:
+        return Colors.deepOrange;
+      case AccountType.expense:
+        return Colors.red;
     }
   }
 
@@ -161,6 +236,23 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
     showDialog(
       context: context,
       builder: (context) => AddAccountDialog(companyId: widget.user.companyId!),
+    );
+  }
+
+  void _showImportModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const ImportExportModal(
+        initialModule: MigrationModule.chartOfAccounts,
+      ),
+    );
+  }
+
+  void _showExportModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) =>
+          const ExportModal(initialModule: MigrationModule.chartOfAccounts),
     );
   }
 }

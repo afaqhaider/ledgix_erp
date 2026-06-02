@@ -21,7 +21,7 @@ class KPICard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -49,7 +49,9 @@ class KPICard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        isTrendUp == true ? Icons.trending_up : Icons.trending_down,
+                        isTrendUp == true
+                            ? Icons.trending_up
+                            : Icons.trending_down,
                         color: isTrendUp == true ? Colors.green : Colors.red,
                         size: 16,
                       ),

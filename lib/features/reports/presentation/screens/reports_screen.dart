@@ -12,9 +12,7 @@ class ReportsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Financial Reports'),
-      ),
+      appBar: AppBar(title: const Text('Financial Reports')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -24,8 +22,8 @@ class ReportsScreen extends StatelessWidget {
             'View all account balances to ensure the books are balanced.',
             Icons.account_balance,
             () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (_) => TrialBalanceScreen(user: user))
+              context,
+              MaterialPageRoute(builder: (_) => TrialBalanceScreen(user: user)),
             ),
           ),
           const SizedBox(height: 16),
@@ -35,8 +33,8 @@ class ReportsScreen extends StatelessWidget {
             'Analyze your revenue, costs, and expenses over a period.',
             Icons.trending_up,
             () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (_) => ProfitLossScreen(user: user))
+              context,
+              MaterialPageRoute(builder: (_) => ProfitLossScreen(user: user)),
             ),
           ),
           const SizedBox(height: 16),
@@ -46,8 +44,8 @@ class ReportsScreen extends StatelessWidget {
             'A snapshot of your assets, liabilities, and equity.',
             Icons.pie_chart,
             () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (_) => BalanceSheetScreen(user: user))
+              context,
+              MaterialPageRoute(builder: (_) => BalanceSheetScreen(user: user)),
             ),
           ),
           const SizedBox(height: 16),
@@ -57,8 +55,10 @@ class ReportsScreen extends StatelessWidget {
             'Detailed drill-down for any specific account.',
             Icons.list_alt,
             () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (_) => GeneralLedgerScreen(user: user))
+              context,
+              MaterialPageRoute(
+                builder: (_) => GeneralLedgerScreen(user: user),
+              ),
             ),
           ),
         ],
@@ -67,11 +67,11 @@ class ReportsScreen extends StatelessWidget {
   }
 
   Widget _buildReportCard(
-    BuildContext context, 
-    String title, 
-    String subtitle, 
-    IconData icon, 
-    VoidCallback onTap
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    VoidCallback onTap,
   ) {
     return Card(
       child: ListTile(

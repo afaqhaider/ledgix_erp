@@ -31,8 +31,8 @@ class JournalLineModel {
       accountId: map['accountId'] ?? '',
       accountName: map['accountName'] ?? '',
       accountCode: map['accountCode'] ?? '',
-      debit: (map['debit'] as num).toDouble(),
-      credit: (map['credit'] as num).toDouble(),
+      debit: (map['debit'] as num?)?.toDouble() ?? 0.0,
+      credit: (map['credit'] as num?)?.toDouble() ?? 0.0,
       memo: map['memo'],
     );
   }

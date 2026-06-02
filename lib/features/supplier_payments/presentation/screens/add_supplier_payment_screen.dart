@@ -15,7 +15,8 @@ class AddSupplierPaymentScreen extends StatefulWidget {
   const AddSupplierPaymentScreen({super.key, required this.user});
 
   @override
-  State<AddSupplierPaymentScreen> createState() => _AddSupplierPaymentScreenState();
+  State<AddSupplierPaymentScreen> createState() =>
+      _AddSupplierPaymentScreenState();
 }
 
 class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
@@ -24,7 +25,7 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
   final _supplierService = SupplierService();
   final _poService = PurchaseOrderService();
   final _bankService = BankAccountService();
-  
+
   final _amountController = TextEditingController();
   final _referenceController = TextEditingController();
   final _notesController = TextEditingController();
@@ -44,7 +45,9 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _paymentService.generateNextPaymentNumber(widget.user.companyId!);
+    final number = await _paymentService.generateNextPaymentNumber(
+      widget.user.companyId!,
+    );
     if (mounted) {
       setState(() => _paymentNumber = number);
     }
@@ -53,9 +56,9 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSupplier == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a supplier')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a supplier')));
       return;
     }
     if (_selectedBankAccount == null) {
@@ -78,9 +81,13 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
         bankAccountId: _selectedBankAccount!.id,
         paymentDate: _paymentDate,
         paymentMethod: _paymentMethod,
-        referenceNumber: _referenceController.text.trim().isEmpty ? null : _referenceController.text.trim(),
+        referenceNumber: _referenceController.text.trim().isEmpty
+            ? null
+            : _referenceController.text.trim(),
         amount: double.tryParse(_amountController.text) ?? 0.0,
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
         createdAt: DateTime.now(),
       );
 
@@ -89,7 +96,10 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -131,20 +141,21 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
-                              initialValue: _paymentNumber,
-                              readOnly: true,
+                            child: InputDecorator(
                               decoration: const InputDecoration(
                                 labelText: 'Payment Number',
                                 border: OutlineInputBorder(),
                               ),
+                              child: Text(_paymentNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             flex: 2,
                             child: StreamBuilder<List<SupplierModel>>(
-                              stream: _supplierService.getSuppliers(widget.user.companyId!),
+                              stream: _supplierService.getSuppliers(
+                                widget.user.companyId!,
+                              ),
                               builder: (context, snapshot) {
                                 final suppliers = snapshot.data ?? [];
                                 return DropdownButtonFormField<SupplierModel>(
@@ -154,15 +165,20 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                                     border: OutlineInputBorder(),
                                   ),
                                   items: suppliers.map((s) {
-                                    return DropdownMenuItem(value: s, child: Text(s.supplierName));
+                                    return DropdownMenuItem(
+                                      value: s,
+                                      child: Text(s.supplierName),
+                                    );
                                   }).toList(),
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedSupplier = val;
-                                      _selectedPO = null; // Reset PO when supplier changes
+                                      _selectedPO =
+                                          null; // Reset PO when supplier changes
                                     });
                                   },
-                                  validator: (v) => v == null ? 'Required' : null,
+                                  validator: (v) =>
+                                      v == null ? 'Required' : null,
                                 );
                               },
                             ),
@@ -179,7 +195,8 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                                       opacity: 0.5,
                                       child: TextField(
                                         decoration: InputDecoration(
-                                          labelText: 'Link to Purchase Order (Optional)',
+                                          labelText:
+                                              'Link to Purchase Order (Optional)',
                                           border: OutlineInputBorder(),
                                           hintText: 'Select supplier first',
                                         ),
@@ -187,25 +204,37 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                                     ),
                                   )
                                 : StreamBuilder<List<PurchaseOrderModel>>(
-                                    stream: _poService.getPurchaseOrders(widget.user.companyId!),
+                                    stream: _poService.getPurchaseOrders(
+                                      widget.user.companyId!,
+                                    ),
                                     builder: (context, snapshot) {
                                       final allPOs = snapshot.data ?? [];
                                       final supplierPOs = allPOs
-                                          .where((po) => po.supplierId == _selectedSupplier!.id)
+                                          .where(
+                                            (po) =>
+                                                po.supplierId ==
+                                                _selectedSupplier!.id,
+                                          )
                                           .toList();
-                                      return DropdownButtonFormField<PurchaseOrderModel>(
+                                      return DropdownButtonFormField<
+                                        PurchaseOrderModel
+                                      >(
                                         initialValue: _selectedPO,
                                         decoration: const InputDecoration(
-                                          labelText: 'Link to Purchase Order (Optional)',
+                                          labelText:
+                                              'Link to Purchase Order (Optional)',
                                           border: OutlineInputBorder(),
                                         ),
                                         items: supplierPOs.map((po) {
                                           return DropdownMenuItem(
                                             value: po,
-                                            child: Text('${po.poNumber} (${NumberFormat('#,##0.00').format(po.totalAmount)})'),
+                                            child: Text(
+                                              '${po.poNumber} (${NumberFormat('#,##0.00').format(po.totalAmount)})',
+                                            ),
                                           );
                                         }).toList(),
-                                        onChanged: (val) => setState(() => _selectedPO = val),
+                                        onChanged: (val) =>
+                                            setState(() => _selectedPO = val),
                                       );
                                     },
                                   ),
@@ -220,14 +249,18 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                                   firstDate: DateTime(2000),
                                   lastDate: DateTime(2100),
                                 );
-                                if (date != null) setState(() => _paymentDate = date);
+                                if (date != null) {
+                                  setState(() => _paymentDate = date);
+                                }
                               },
                               child: InputDecorator(
                                 decoration: const InputDecoration(
                                   labelText: 'Payment Date',
                                   border: OutlineInputBorder(),
                                 ),
-                                child: Text(DateFormat('yyyy-MM-dd').format(_paymentDate)),
+                                child: Text(
+                                  DateFormat('yyyy-MM-dd').format(_paymentDate),
+                                ),
                               ),
                             ),
                           ),
@@ -244,7 +277,13 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Payment Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Payment Details',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -256,10 +295,15 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                                 prefixText: '\$ ',
                                 border: OutlineInputBorder(),
                               ),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               validator: (v) {
                                 if (v!.isEmpty) return 'Required';
-                                if (double.tryParse(v) == null) return 'Invalid amount';
+                                if (double.tryParse(v) == null) {
+                                  return 'Invalid amount';
+                                }
                                 return null;
                               },
                             ),
@@ -267,21 +311,32 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: StreamBuilder<List<BankAccountModel>>(
-                              stream: _bankService.getBankAccounts(widget.user.companyId!),
+                              stream: _bankService.getBankAccounts(
+                                widget.user.companyId!,
+                              ),
                               builder: (context, snapshot) {
                                 final accounts = snapshot.data ?? [];
-                                return DropdownButtonFormField<BankAccountModel>(
+                                return DropdownButtonFormField<
+                                  BankAccountModel
+                                >(
                                   initialValue: _selectedBankAccount,
                                   decoration: const InputDecoration(
                                     labelText: 'Paid From (Bank/Cash)',
                                     border: OutlineInputBorder(),
                                   ),
-                                  items: accounts.map((a) => DropdownMenuItem(
-                                    value: a,
-                                    child: Text(a.accountName),
-                                  )).toList(),
-                                  onChanged: (val) => setState(() => _selectedBankAccount = val),
-                                  validator: (v) => v == null ? 'Required' : null,
+                                  items: accounts
+                                      .map(
+                                        (a) => DropdownMenuItem(
+                                          value: a,
+                                          child: Text(a.accountName),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) => setState(
+                                    () => _selectedBankAccount = val,
+                                  ),
+                                  validator: (v) =>
+                                      v == null ? 'Required' : null,
                                 );
                               },
                             ),
@@ -300,7 +355,8 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                                   child: Text(method.name.toUpperCase()),
                                 );
                               }).toList(),
-                              onChanged: (val) => setState(() => _paymentMethod = val!),
+                              onChanged: (val) =>
+                                  setState(() => _paymentMethod = val!),
                             ),
                           ),
                         ],

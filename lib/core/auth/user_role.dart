@@ -51,11 +51,10 @@ enum UserRole {
           AppPermission.viewReports,
         };
       case UserRole.staff:
-        return {
-          AppPermission.viewDashboard,
-        };
+        return {AppPermission.viewDashboard};
     }
   }
 
-  bool hasPermission(AppPermission permission) => permissions.contains(permission);
+  bool hasPermission(AppPermission permission) =>
+      permissions.contains(permission);
 }

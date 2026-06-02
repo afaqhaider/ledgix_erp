@@ -13,7 +13,7 @@ class JournalEntryModel {
   final JournalStatus status;
   final String createdBy;
   final DateTime createdAt;
-  
+
   // Source reference fields
   final String? sourceType;
   final String? sourceId;

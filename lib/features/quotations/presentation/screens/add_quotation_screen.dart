@@ -25,7 +25,7 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   CustomerModel? _selectedCustomer;
   DateTime _quoDate = DateTime.now();
   DateTime _validUntil = DateTime.now().add(const Duration(days: 15));
-  
+
   final List<QuotationLineItemModel> _items = [];
   bool _isLoading = false;
 
@@ -37,7 +37,9 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _quoService.generateNextQuotationNumber(widget.user.companyId!);
+    final number = await _quoService.generateNextQuotationNumber(
+      widget.user.companyId!,
+    );
     if (mounted) {
       setState(() => _quoNumber = number);
     }
@@ -45,15 +47,17 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
 
   void _addItem() {
     setState(() {
-      _items.add(QuotationLineItemModel(
-        description: '',
-        quantity: 1,
-        unitPrice: 0,
-        vatRate: 5,
-        lineSubtotal: 0,
-        lineVat: 0,
-        lineTotal: 0,
-      ));
+      _items.add(
+        QuotationLineItemModel(
+          description: '',
+          quantity: 1,
+          unitPrice: 0,
+          vatRate: 5,
+          lineSubtotal: 0,
+          lineVat: 0,
+          lineTotal: 0,
+        ),
+      );
     });
   }
 
@@ -63,15 +67,21 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     }
   }
 
-  void _updateItem(int index, {String? desc, double? qty, double? price, double? vat}) {
+  void _updateItem(
+    int index, {
+    String? desc,
+    double? qty,
+    double? price,
+    double? vat,
+  }) {
     final item = _items[index];
     final newQty = qty ?? item.quantity;
     final newPrice = price ?? item.unitPrice;
     final newVatRate = vat ?? item.vatRate;
-    
+
     final subtotal = newQty * newPrice;
     final vatAmt = subtotal * (newVatRate / 100);
-    
+
     setState(() {
       _items[index] = QuotationLineItemModel(
         description: desc ?? item.description,
@@ -85,16 +95,17 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     });
   }
 
-  double get _totalSubtotal => _items.fold(0, (sum, item) => sum + item.lineSubtotal);
+  double get _totalSubtotal =>
+      _items.fold(0, (sum, item) => sum + item.lineSubtotal);
   double get _totalVat => _items.fold(0, (sum, item) => sum + item.lineVat);
   double get _totalAmount => _totalSubtotal + _totalVat;
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a customer')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
       return;
     }
 
@@ -112,8 +123,12 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
         subtotal: _totalSubtotal,
         vatAmount: _totalVat,
         totalAmount: _totalAmount,
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        termsAndConditions: _termsController.text.trim().isEmpty ? null : _termsController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+        termsAndConditions: _termsController.text.trim().isEmpty
+            ? null
+            : _termsController.text.trim(),
         createdAt: DateTime.now(),
       );
 
@@ -122,7 +137,10 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -164,20 +182,21 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
-                              initialValue: _quoNumber,
-                              readOnly: true,
+                            child: InputDecorator(
                               decoration: const InputDecoration(
                                 labelText: 'Quotation Number',
                                 border: OutlineInputBorder(),
                               ),
+                              child: Text(_quoNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             flex: 2,
                             child: StreamBuilder<List<CustomerModel>>(
-                              stream: _customerService.getCustomers(widget.user.companyId!),
+                              stream: _customerService.getCustomers(
+                                widget.user.companyId!,
+                              ),
                               builder: (context, snapshot) {
                                 final customers = snapshot.data ?? [];
                                 return DropdownButtonFormField<CustomerModel>(
@@ -187,10 +206,15 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                                     border: OutlineInputBorder(),
                                   ),
                                   items: customers.map((c) {
-                                    return DropdownMenuItem(value: c, child: Text(c.name));
+                                    return DropdownMenuItem(
+                                      value: c,
+                                      child: Text(c.name),
+                                    );
                                   }).toList(),
-                                  onChanged: (val) => setState(() => _selectedCustomer = val),
-                                  validator: (v) => v == null ? 'Required' : null,
+                                  onChanged: (val) =>
+                                      setState(() => _selectedCustomer = val),
+                                  validator: (v) =>
+                                      v == null ? 'Required' : null,
                                 );
                               },
                             ),
@@ -212,7 +236,8 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                             child: _buildDatePicker(
                               label: 'Valid Until',
                               selectedDate: _validUntil,
-                              onTap: (date) => setState(() => _validUntil = date),
+                              onTap: (date) =>
+                                  setState(() => _validUntil = date),
                             ),
                           ),
                         ],
@@ -222,7 +247,10 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              const Text('Quotation Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Quotation Items',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
               _buildItemsTable(),
               const SizedBox(height: 16),
@@ -269,7 +297,11 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     );
   }
 
-  Widget _buildDatePicker({required String label, required DateTime selectedDate, required Function(DateTime) onTap}) {
+  Widget _buildDatePicker({
+    required String label,
+    required DateTime selectedDate,
+    required Function(DateTime) onTap,
+  }) {
     return InkWell(
       onTap: () async {
         final date = await showDatePicker(
@@ -281,7 +313,10 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
         if (date != null) onTap(date);
       },
       child: InputDecorator(
-        decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
         child: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
       ),
     );
@@ -300,11 +335,39 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
       children: [
         const TableRow(
           children: [
-            Padding(padding: EdgeInsets.all(8), child: Text('Description', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Unit Price', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('VAT%', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold))),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Description',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Unit Price',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'VAT%',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Total',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
             Padding(padding: EdgeInsets.all(8), child: Text('')),
           ],
         ),
@@ -317,7 +380,9 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.description,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   onChanged: (v) => _updateItem(index, desc: v),
                   validator: (v) => v!.isEmpty ? 'Required' : null,
                 ),
@@ -326,32 +391,44 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.quantity.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, qty: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, qty: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.unitPrice.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, price: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, price: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.vatRate.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, vat: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, vat: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text(NumberFormat('#,##0.00').format(item.lineTotal), textAlign: TextAlign.right),
+                child: Text(
+                  NumberFormat('#,##0.00').format(item.lineTotal),
+                  textAlign: TextAlign.right,
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -388,10 +465,18 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
         Text(
           NumberFormat('#,##0.00').format(value),
-          style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 14),
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: isBold ? 18 : 14,
+          ),
         ),
       ],
     );

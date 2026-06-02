@@ -114,7 +114,8 @@ class PurchaseOrderModel {
         (e) => e.name == map['status'],
         orElse: () => POStatus.draft,
       ),
-      items: (map['items'] as List<dynamic>?)
+      items:
+          (map['items'] as List<dynamic>?)
               ?.map((i) => POLineItemModel.fromMap(i as Map<String, dynamic>))
               .toList() ??
           [],

@@ -16,7 +16,7 @@ class DashboardChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Ensure maxVal is at least 1.0 to avoid division by zero (NaN)
     final maxValue = data.isEmpty ? 1.0 : data.reduce((a, b) => a > b ? a : b);
     final maxVal = math.max(1.0, maxValue);
@@ -34,7 +34,9 @@ class DashboardChart extends StatelessWidget {
           children: [
             Text(
               title,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -45,8 +47,10 @@ class DashboardChart extends StatelessWidget {
                 children: List.generate(data.length, (index) {
                   final heightFactor = data[index] / maxVal;
                   // Guard against NaN just in case, though maxVal >= 1.0 handles it
-                  final barHeight = (140 * (heightFactor.isNaN ? 0.0 : heightFactor)).toDouble();
-                  
+                  final barHeight =
+                      (140 * (heightFactor.isNaN ? 0.0 : heightFactor))
+                          .toDouble();
+
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -68,7 +72,9 @@ class DashboardChart extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(
                         labels[index],
-                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   );

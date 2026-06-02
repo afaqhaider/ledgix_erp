@@ -22,10 +22,17 @@ import 'package:ledgixerp/features/reports/presentation/screens/reports_screen.d
 import 'package:ledgixerp/features/reports/presentation/screens/trial_balance_screen.dart';
 import 'package:ledgixerp/features/reports/presentation/screens/profit_loss_screen.dart';
 import 'package:ledgixerp/features/inventory/presentation/screens/inventory_screen.dart';
+import 'package:ledgixerp/features/operations/presentation/screens/jobs_screen.dart';
+import 'package:ledgixerp/features/operations/presentation/screens/tasks_screen.dart';
+import 'package:ledgixerp/features/operations/presentation/screens/shifts_screen.dart';
 import 'package:ledgixerp/features/notifications/presentation/screens/notification_center_screen.dart';
 import 'package:ledgixerp/features/notifications/services/notification_service.dart';
 import 'package:ledgixerp/features/audit/presentation/screens/audit_logs_screen.dart';
 import 'package:ledgixerp/core/audit/audit_service.dart';
+import 'package:ledgixerp/features/company/presentation/screens/company_settings_screen.dart';
+import 'package:ledgixerp/features/settings/presentation/screens/financial_settings_screen.dart';
+import 'package:ledgixerp/features/settings/presentation/screens/data_management_screen.dart';
+import 'package:ledgixerp/features/users/presentation/screens/users_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final AppUser user;
@@ -60,11 +67,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: const Icon(Icons.notifications_none),
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => NotificationCenterScreen(user: widget.user)),
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          NotificationCenterScreen(user: widget.user),
+                    ),
                   ),
                 ),
               );
-            }
+            },
           ),
           const VerticalDivider(width: 1, indent: 12, endIndent: 12),
           Padding(
@@ -89,17 +99,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   value: 'profile',
                   child: Text('Profile Settings'),
                 ),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Text('Logout'),
-                ),
+                const PopupMenuItem(value: 'logout', child: Text('Logout')),
               ],
               child: Row(
                 children: [
                   const CircleAvatar(
                     radius: 16,
                     backgroundColor: Color(0xFFE2E8F0),
-                    child: Icon(Icons.person, size: 20, color: Color(0xFF64748B)),
+                    child: Icon(
+                      Icons.person,
+                      size: 20,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Column(
@@ -115,7 +126,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       Text(
                         widget.user.role.name.toUpperCase(),
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
                       ),
                     ],
                   ),
@@ -180,6 +194,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return PurchaseOrdersScreen(user: widget.user);
       case 'Supplier Payments':
         return SupplierPaymentsScreen(user: widget.user);
+      case 'Jobs':
+        return JobsScreen(user: widget.user);
+      case 'Tasks':
+        return TasksScreen(user: widget.user);
+      case 'Shifts':
+        return ShiftsScreen(user: widget.user);
       case 'Quotations':
         return QuotationsScreen(user: widget.user);
       case 'Sales Invoices':
@@ -194,6 +214,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return ProfitLossScreen(user: widget.user);
       case 'Audit Logs':
         return AuditLogsScreen(user: widget.user);
+      case 'Company Settings':
+        return CompanySettingsScreen(user: widget.user);
+      case 'Financial Settings':
+        return FinancialSettingsScreen(user: widget.user);
+      case 'Data Management':
+        return DataManagementScreen(user: widget.user);
+      case 'User Management':
+        return UsersScreen(user: widget.user);
       default:
         return Center(
           child: Column(
@@ -246,50 +274,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               const SizedBox(height: 32),
-              
+
               // KPI Section
-              LayoutBuilder(builder: (context, constraints) {
-                int count = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 800 ? 2 : 1);
-                return GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: count,
-                  crossAxisSpacing: 24,
-                  mainAxisSpacing: 24,
-                  childAspectRatio: 1.8,
-                  children: [
-                    KPICard(
-                      title: 'Total Revenue',
-                      value: NumberFormat.currency(symbol: '\$').format(stats.totalRevenue),
-                      icon: Icons.attach_money_rounded,
-                      color: Colors.blue,
-                      trend: 'Live',
-                      isTrendUp: true,
-                    ),
-                    KPICard(
-                      title: 'Total Expenses',
-                      value: NumberFormat.currency(symbol: '\$').format(stats.totalExpenses),
-                      icon: Icons.shopping_bag_rounded,
-                      color: Colors.orange,
-                    ),
-                    KPICard(
-                      title: 'Net Profit',
-                      value: NumberFormat.currency(symbol: '\$').format(stats.totalProfit),
-                      icon: Icons.trending_up_rounded,
-                      color: Colors.green,
-                      isTrendUp: stats.totalProfit > 0,
-                    ),
-                    KPICard(
-                      title: 'Pending Invoices',
-                      value: stats.pendingInvoicesCount.toString(),
-                      icon: Icons.receipt_long_rounded,
-                      color: Colors.purple,
-                      trend: '${stats.overdueInvoicesCount} Overdue',
-                      isTrendUp: false,
-                    ),
-                  ],
-                );
-              }),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  int count = constraints.maxWidth > 1200
+                      ? 4
+                      : (constraints.maxWidth > 800 ? 2 : 1);
+                  return GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: count,
+                    crossAxisSpacing: 24,
+                    mainAxisSpacing: 24,
+                    childAspectRatio: 1.8,
+                    children: [
+                      KPICard(
+                        title: 'Total Revenue',
+                        value: NumberFormat.currency(
+                          symbol: '\$',
+                        ).format(stats.totalRevenue),
+                        icon: Icons.attach_money_rounded,
+                        color: Colors.blue,
+                        trend: 'Live',
+                        isTrendUp: true,
+                      ),
+                      KPICard(
+                        title: 'Total Expenses',
+                        value: NumberFormat.currency(
+                          symbol: '\$',
+                        ).format(stats.totalExpenses),
+                        icon: Icons.shopping_bag_rounded,
+                        color: Colors.orange,
+                      ),
+                      KPICard(
+                        title: 'Net Profit',
+                        value: NumberFormat.currency(
+                          symbol: '\$',
+                        ).format(stats.totalProfit),
+                        icon: Icons.trending_up_rounded,
+                        color: Colors.green,
+                        isTrendUp: stats.totalProfit > 0,
+                      ),
+                      KPICard(
+                        title: 'Pending Invoices',
+                        value: stats.pendingInvoicesCount.toString(),
+                        icon: Icons.receipt_long_rounded,
+                        color: Colors.purple,
+                        trend: '${stats.overdueInvoicesCount} Overdue',
+                        isTrendUp: false,
+                      ),
+                    ],
+                  );
+                },
+              ),
 
               const SizedBox(height: 32),
 
@@ -303,7 +341,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         DashboardChart(
                           title: 'Operational Trends',
-                          data: [stats.totalRevenue, stats.totalExpenses, stats.totalProfit],
+                          data: [
+                            stats.totalRevenue,
+                            stats.totalExpenses,
+                            stats.totalProfit,
+                          ],
                           labels: ['Revenue', 'Expenses', 'Profit'],
                         ),
                         const SizedBox(height: 24),
@@ -313,10 +355,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(width: 24),
                   if (MediaQuery.of(context).size.width > 1200)
-                    Expanded(
-                      flex: 1,
-                      child: _buildOperationalSidebar(stats),
-                    ),
+                    Expanded(flex: 1, child: _buildOperationalSidebar(stats)),
                 ],
               ),
             ],
@@ -348,7 +387,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickActionCard(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildQuickActionCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Card(
       child: ListTile(
         leading: Icon(icon, color: color),
@@ -361,46 +406,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRecentActivityGrid(String companyId) {
-    return LayoutBuilder(builder: (context, constraints) {
-      int count = constraints.maxWidth > 800 ? 2 : 1;
-      return GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: count,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
-        childAspectRatio: 1.2,
-        children: [
-          StreamBuilder(
-            stream: _dashboardService.getRecentCustomerPayments(companyId),
-            builder: (context, snapshot) {
-              final items = (snapshot.data ?? []).map((p) => RecentActivityItem(
-                title: p.customerName,
-                subtitle: p.paymentNumber,
-                trailing: NumberFormat.simpleCurrency().format(p.amount),
-                icon: Icons.payment_rounded,
-                iconColor: Colors.green,
-                date: p.paymentDate,
-              )).toList();
-              return RecentActivityCard(title: 'Recent Customer Payments', items: items);
-            },
-          ),
-          StreamBuilder(
-            stream: _dashboardService.getLatestQuotations(companyId),
-            builder: (context, snapshot) {
-              final items = (snapshot.data ?? []).map((q) => RecentActivityItem(
-                title: q.customerName,
-                subtitle: q.quotationNumber,
-                trailing: NumberFormat.simpleCurrency().format(q.totalAmount),
-                icon: Icons.description_rounded,
-                iconColor: Colors.blue,
-                date: q.createdAt,
-              )).toList();
-              return RecentActivityCard(title: 'Latest Quotations', items: items);
-            },
-          ),
-        ],
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        int count = constraints.maxWidth > 800 ? 2 : 1;
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: count,
+          crossAxisSpacing: 24,
+          mainAxisSpacing: 24,
+          childAspectRatio: 1.2,
+          children: [
+            StreamBuilder(
+              stream: _dashboardService.getRecentCustomerPayments(companyId),
+              builder: (context, snapshot) {
+                final items = (snapshot.data ?? [])
+                    .map(
+                      (p) => RecentActivityItem(
+                        title: p.customerName,
+                        subtitle: p.paymentNumber,
+                        trailing: NumberFormat.simpleCurrency().format(
+                          p.amount,
+                        ),
+                        icon: Icons.payment_rounded,
+                        iconColor: Colors.green,
+                        date: p.paymentDate,
+                      ),
+                    )
+                    .toList();
+                return RecentActivityCard(
+                  title: 'Recent Customer Payments',
+                  items: items,
+                );
+              },
+            ),
+            StreamBuilder(
+              stream: _dashboardService.getLatestQuotations(companyId),
+              builder: (context, snapshot) {
+                final items = (snapshot.data ?? [])
+                    .map(
+                      (q) => RecentActivityItem(
+                        title: q.customerName,
+                        subtitle: q.quotationNumber,
+                        trailing: NumberFormat.simpleCurrency().format(
+                          q.totalAmount,
+                        ),
+                        icon: Icons.description_rounded,
+                        iconColor: Colors.blue,
+                        date: q.createdAt,
+                      ),
+                    )
+                    .toList();
+                return RecentActivityCard(
+                  title: 'Latest Quotations',
+                  items: items,
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }

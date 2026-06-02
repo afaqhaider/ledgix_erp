@@ -7,8 +7,10 @@ class AuditLogModel {
   final String companyId;
   final String userId;
   final String userName;
-  final String actionType; // create, edit, delete, approve, reject, post, login, logout
-  final String module; // customers, suppliers, invoices, quotations, payments, journalEntries, chartOfAccounts, approvals, settings
+  final String
+  actionType; // create, edit, delete, approve, reject, post, login, logout
+  final String
+  module; // customers, suppliers, invoices, quotations, payments, journalEntries, chartOfAccounts, approvals, settings
   final String documentId;
   final String? documentNumber;
   final String description;

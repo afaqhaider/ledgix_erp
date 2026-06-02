@@ -17,7 +17,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   final _codeController = TextEditingController();
   final _nameController = TextEditingController();
   final _balanceController = TextEditingController(text: '0.00');
-  
+
   AccountType _selectedType = AccountType.asset;
   BalanceType _balanceType = BalanceType.debit;
   DateTime _openingDate = DateTime.now();
@@ -57,7 +57,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -137,7 +140,9 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                           labelText: 'Amount',
                           border: OutlineInputBorder(),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -202,7 +207,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('Save Account'),
         ),

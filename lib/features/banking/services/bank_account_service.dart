@@ -12,12 +12,14 @@ class BankAccountService {
   }
 
   Stream<List<BankAccountModel>> getBankAccounts(String companyId) {
-    return _getRef(companyId)
-        .orderBy('accountName')
-        .snapshots()
-        .map((snapshot) {
+    return _getRef(companyId).orderBy('accountName').snapshots().map((
+      snapshot,
+    ) {
       return snapshot.docs.map((doc) {
-        return BankAccountModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        return BankAccountModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       }).toList();
     });
   }

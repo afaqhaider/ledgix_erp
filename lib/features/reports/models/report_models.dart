@@ -12,7 +12,7 @@ class AccountBalance {
   });
 
   double get balance {
-    if (account.accountType == AccountType.asset || 
+    if (account.accountType == AccountType.asset ||
         account.accountType == AccountType.expense ||
         account.accountType == AccountType.costOfSales) {
       return debit - credit;
@@ -48,7 +48,8 @@ class ProfitLossReport {
   });
 
   double get totalIncome => income.fold(0, (sum, b) => sum + b.balance);
-  double get totalCostOfSales => costOfSales.fold(0, (sum, b) => sum + b.balance);
+  double get totalCostOfSales =>
+      costOfSales.fold(0, (sum, b) => sum + b.balance);
   double get grossProfit => totalIncome - totalCostOfSales;
   double get totalExpenses => expenses.fold(0, (sum, b) => sum + b.balance);
   double get netProfit => grossProfit - totalExpenses;
@@ -70,7 +71,9 @@ class BalanceSheetReport {
   });
 
   double get totalAssets => assets.fold(0.0, (sum, b) => sum + b.balance);
-  double get totalLiabilities => liabilities.fold(0.0, (sum, b) => sum + b.balance);
-  double get totalEquity => equity.fold(0.0, (sum, b) => sum + b.balance) + netProfitPeriod;
+  double get totalLiabilities =>
+      liabilities.fold(0.0, (sum, b) => sum + b.balance);
+  double get totalEquity =>
+      equity.fold(0.0, (sum, b) => sum + b.balance) + netProfitPeriod;
   double get totalLiabilitiesAndEquity => totalLiabilities + totalEquity;
 }

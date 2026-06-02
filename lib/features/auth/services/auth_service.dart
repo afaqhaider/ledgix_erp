@@ -30,10 +30,8 @@ class AuthService {
     required String companyName,
   }) async {
     try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       // Save additional user data to Firestore
       await _firestore.collection('users').doc(userCredential.user!.uid).set({

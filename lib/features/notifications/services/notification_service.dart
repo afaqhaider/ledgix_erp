@@ -5,16 +5,26 @@ class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   CollectionReference _getNotificationsRef(String userId) {
-    return _firestore.collection('users').doc(userId).collection('notifications');
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('notifications');
   }
 
   Stream<List<NotificationModel>> getNotifications(String userId) {
     return _getNotificationsRef(userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => NotificationModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (doc) => NotificationModel.fromMap(
+                  doc.data() as Map<String, dynamic>,
+                  doc.id,
+                ),
+              )
+              .toList(),
+        );
   }
 
   Stream<int> getUnreadCount(String userId) {
@@ -25,11 +35,15 @@ class NotificationService {
   }
 
   Future<void> markAsRead(String userId, String notificationId) async {
-    await _getNotificationsRef(userId).doc(notificationId).update({'isRead': true});
+    await _getNotificationsRef(
+      userId,
+    ).doc(notificationId).update({'isRead': true});
   }
 
   Future<void> markAllAsRead(String userId) async {
-    final snapshot = await _getNotificationsRef(userId).where('isRead', isEqualTo: false).get();
+    final snapshot = await _getNotificationsRef(
+      userId,
+    ).where('isRead', isEqualTo: false).get();
     final batch = _firestore.batch();
     for (var doc in snapshot.docs) {
       batch.update(doc.reference, {'isRead': true});
@@ -57,7 +71,7 @@ class NotificationService {
       relatedDocType: relatedDocType,
       createdAt: DateTime.now(),
     );
-    
+
     await _getNotificationsRef(userId).add(notification.toMap());
   }
 }

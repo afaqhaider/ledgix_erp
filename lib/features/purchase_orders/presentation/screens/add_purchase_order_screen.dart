@@ -24,7 +24,7 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
   SupplierModel? _selectedSupplier;
   DateTime _poDate = DateTime.now();
   DateTime _deliveryDate = DateTime.now().add(const Duration(days: 7));
-  
+
   final List<POLineItemModel> _items = [];
   bool _isLoading = false;
 
@@ -36,7 +36,9 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _poService.generateNextPONumber(widget.user.companyId!);
+    final number = await _poService.generateNextPONumber(
+      widget.user.companyId!,
+    );
     if (mounted) {
       setState(() => _poNumber = number);
     }
@@ -44,15 +46,17 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
 
   void _addItem() {
     setState(() {
-      _items.add(POLineItemModel(
-        description: '',
-        quantity: 1,
-        unitPrice: 0,
-        vatRate: 5,
-        lineSubtotal: 0,
-        lineVat: 0,
-        lineTotal: 0,
-      ));
+      _items.add(
+        POLineItemModel(
+          description: '',
+          quantity: 1,
+          unitPrice: 0,
+          vatRate: 5,
+          lineSubtotal: 0,
+          lineVat: 0,
+          lineTotal: 0,
+        ),
+      );
     });
   }
 
@@ -62,15 +66,21 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
     }
   }
 
-  void _updateItem(int index, {String? desc, double? qty, double? price, double? vat}) {
+  void _updateItem(
+    int index, {
+    String? desc,
+    double? qty,
+    double? price,
+    double? vat,
+  }) {
     final item = _items[index];
     final newQty = qty ?? item.quantity;
     final newPrice = price ?? item.unitPrice;
     final newVatRate = vat ?? item.vatRate;
-    
+
     final subtotal = newQty * newPrice;
     final vatAmt = subtotal * (newVatRate / 100);
-    
+
     setState(() {
       _items[index] = POLineItemModel(
         description: desc ?? item.description,
@@ -84,16 +94,17 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
     });
   }
 
-  double get _totalSubtotal => _items.fold(0, (sum, item) => sum + item.lineSubtotal);
+  double get _totalSubtotal =>
+      _items.fold(0, (sum, item) => sum + item.lineSubtotal);
   double get _totalVat => _items.fold(0, (sum, item) => sum + item.lineVat);
   double get _totalAmount => _totalSubtotal + _totalVat;
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSupplier == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a supplier')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a supplier')));
       return;
     }
 
@@ -111,7 +122,9 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
         subtotal: _totalSubtotal,
         vatAmount: _totalVat,
         totalAmount: _totalAmount,
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
         createdAt: DateTime.now(),
       );
 
@@ -120,7 +133,10 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -162,20 +178,21 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
-                              initialValue: _poNumber,
-                              readOnly: true,
+                            child: InputDecorator(
                               decoration: const InputDecoration(
                                 labelText: 'PO Number',
                                 border: OutlineInputBorder(),
                               ),
+                              child: Text(_poNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             flex: 2,
                             child: StreamBuilder<List<SupplierModel>>(
-                              stream: _supplierService.getSuppliers(widget.user.companyId!),
+                              stream: _supplierService.getSuppliers(
+                                widget.user.companyId!,
+                              ),
                               builder: (context, snapshot) {
                                 final suppliers = snapshot.data ?? [];
                                 return DropdownButtonFormField<SupplierModel>(
@@ -185,10 +202,15 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                                     border: OutlineInputBorder(),
                                   ),
                                   items: suppliers.map((s) {
-                                    return DropdownMenuItem(value: s, child: Text(s.supplierName));
+                                    return DropdownMenuItem(
+                                      value: s,
+                                      child: Text(s.supplierName),
+                                    );
                                   }).toList(),
-                                  onChanged: (val) => setState(() => _selectedSupplier = val),
-                                  validator: (v) => v == null ? 'Required' : null,
+                                  onChanged: (val) =>
+                                      setState(() => _selectedSupplier = val),
+                                  validator: (v) =>
+                                      v == null ? 'Required' : null,
                                 );
                               },
                             ),
@@ -210,7 +232,8 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                             child: _buildDatePicker(
                               label: 'Expected Delivery Date',
                               selectedDate: _deliveryDate,
-                              onTap: (date) => setState(() => _deliveryDate = date),
+                              onTap: (date) =>
+                                  setState(() => _deliveryDate = date),
                             ),
                           ),
                         ],
@@ -220,7 +243,10 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              const Text('PO Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'PO Items',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
               _buildItemsTable(),
               const SizedBox(height: 16),
@@ -254,7 +280,11 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
     );
   }
 
-  Widget _buildDatePicker({required String label, required DateTime selectedDate, required Function(DateTime) onTap}) {
+  Widget _buildDatePicker({
+    required String label,
+    required DateTime selectedDate,
+    required Function(DateTime) onTap,
+  }) {
     return InkWell(
       onTap: () async {
         final date = await showDatePicker(
@@ -266,7 +296,10 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
         if (date != null) onTap(date);
       },
       child: InputDecorator(
-        decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
         child: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
       ),
     );
@@ -285,11 +318,39 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
       children: [
         const TableRow(
           children: [
-            Padding(padding: EdgeInsets.all(8), child: Text('Description', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Unit Price', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('VAT%', style: TextStyle(fontWeight: FontWeight.bold))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold))),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Description',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Unit Price',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'VAT%',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Total',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
             Padding(padding: EdgeInsets.all(8), child: Text('')),
           ],
         ),
@@ -302,7 +363,9 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.description,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   onChanged: (v) => _updateItem(index, desc: v),
                   validator: (v) => v!.isEmpty ? 'Required' : null,
                 ),
@@ -311,32 +374,44 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.quantity.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, qty: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, qty: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.unitPrice.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, price: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, price: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.vatRate.toString(),
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, vat: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, vat: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text(NumberFormat('#,##0.00').format(item.lineTotal), textAlign: TextAlign.right),
+                child: Text(
+                  NumberFormat('#,##0.00').format(item.lineTotal),
+                  textAlign: TextAlign.right,
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -373,10 +448,18 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
         Text(
           NumberFormat('#,##0.00').format(value),
-          style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 14),
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: isBold ? 18 : 14,
+          ),
         ),
       ],
     );

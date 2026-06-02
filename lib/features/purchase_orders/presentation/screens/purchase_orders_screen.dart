@@ -39,7 +39,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       );
 
       await _approvalService.submitForApproval(request);
-      
+
       await FirebaseFirestore.instance
           .collection('companies')
           .doc(widget.user.companyId)
@@ -54,7 +54,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -62,7 +64,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final canManage = widget.user.role.hasPermission(AppPermission.manageSuppliers);
+    final canManage = widget.user.role.hasPermission(
+      AppPermission.manageSuppliers,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -76,7 +80,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddPurchaseOrderScreen(user: widget.user),
+                      builder: (context) =>
+                          AddPurchaseOrderScreen(user: widget.user),
                     ),
                   );
                 },
@@ -108,11 +113,17 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey[400]),
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No purchase orders found',
-                    style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
                   ),
                 ],
               ),
@@ -126,26 +137,70 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 horizontalMargin: 24,
                 columnSpacing: 32,
                 columns: const [
-                  DataColumn(label: Text('PO #', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Supplier', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Approval', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(
+                    label: Text(
+                      'PO #',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Supplier',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Date',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Total',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Status',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Approval',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Actions',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
                 rows: pos.map((po) {
                   return DataRow(
                     cells: [
                       DataCell(Text(po.poNumber)),
                       DataCell(Text(po.supplierName)),
-                      DataCell(Text(DateFormat('dd MMM yyyy').format(po.poDate))),
-                      DataCell(Text(NumberFormat('#,##0.00').format(po.totalAmount))),
+                      DataCell(
+                        Text(DateFormat('dd MMM yyyy').format(po.poDate)),
+                      ),
+                      DataCell(
+                        Text(NumberFormat('#,##0.00').format(po.totalAmount)),
+                      ),
                       DataCell(
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(po.status).withValues(alpha: 0.1),
+                            color: _getStatusColor(
+                              po.status,
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -159,26 +214,36 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         ),
                       ),
                       DataCell(
-                        po.approvalStatus == null 
-                          ? TextButton(
-                              onPressed: () => _submitForApproval(po),
-                              child: const Text('Submit', style: TextStyle(fontSize: 12)),
-                            )
-                          : Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getApprovalStatusColor(po.approvalStatus!).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                po.approvalStatus!.toUpperCase(),
-                                style: TextStyle(
-                                  color: _getApprovalStatusColor(po.approvalStatus!),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                        po.approvalStatus == null
+                            ? TextButton(
+                                onPressed: () => _submitForApproval(po),
+                                child: const Text(
+                                  'Submit',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getApprovalStatusColor(
+                                    po.approvalStatus!,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  po.approvalStatus!.toUpperCase(),
+                                  style: TextStyle(
+                                    color: _getApprovalStatusColor(
+                                      po.approvalStatus!,
+                                    ),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
                       ),
                       DataCell(
                         Row(
@@ -204,30 +269,41 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
   Color _getApprovalStatusColor(String status) {
     switch (status) {
-      case 'approved': return Colors.green;
-      case 'pending': return Colors.orange;
-      case 'rejected': return Colors.red;
-      default: return Colors.grey;
+      case 'approved':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
   Color _getStatusColor(POStatus status) {
     switch (status) {
-      case POStatus.draft: return Colors.grey;
-      case POStatus.sent: return Colors.blue;
-      case POStatus.partiallyReceived: return Colors.orange;
-      case POStatus.received: return Colors.green;
-      case POStatus.cancelled: return Colors.red;
+      case POStatus.draft:
+        return Colors.grey;
+      case POStatus.sent:
+        return Colors.blue;
+      case POStatus.partiallyReceived:
+        return Colors.orange;
+      case POStatus.received:
+        return Colors.green;
+      case POStatus.cancelled:
+        return Colors.red;
     }
   }
 
   Future<void> _printPO(PurchaseOrderModel po) async {
     try {
-      final company = await _companyService.getCompany(widget.user.companyId!);
+      final company = await _companyService
+          .getCompany(widget.user.companyId!)
+          .first;
       if (company == null) throw 'Company not found';
-      
+
       final pdfBytes = await POPdfService.generatePO(po, company);
-      
+
       await Printing.layoutPdf(
         onLayout: (format) async => pdfBytes,
         name: 'PO_${po.poNumber}',
@@ -235,7 +311,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating PDF: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }

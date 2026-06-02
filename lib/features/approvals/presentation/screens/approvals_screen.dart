@@ -20,9 +20,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Approvals Workflow'),
-      ),
+      appBar: AppBar(title: const Text('Approvals Workflow')),
       body: StreamBuilder<List<ApprovalRequestModel>>(
         stream: _approvalService.getPendingApprovals(widget.user.companyId!),
         builder: (context, snapshot) {
@@ -37,11 +35,17 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.fact_check_outlined, size: 64, color: Colors.grey[400]),
+                  Icon(
+                    Icons.fact_check_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No pending approvals',
-                    style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
                   ),
                 ],
               ),
@@ -64,9 +68,14 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.1,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -79,7 +88,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                             ),
                           ),
                           Text(
-                            DateFormat('dd MMM yyyy, hh:mm a').format(req.requestedAt),
+                            DateFormat(
+                              'dd MMM yyyy, hh:mm a',
+                            ).format(req.requestedAt),
                             style: theme.textTheme.bodySmall,
                           ),
                         ],
@@ -87,7 +98,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                       const SizedBox(height: 12),
                       Text(
                         'Request for ${req.sourceNumber}',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text('Requested by: ${req.requestedByUserName}'),
                       const SizedBox(height: 16),
@@ -95,13 +108,17 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
-                            onPressed: () => _actionRequest(req, ApprovalStatus.rejected),
-                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            onPressed: () =>
+                                _actionRequest(req, ApprovalStatus.rejected),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
                             child: const Text('Reject'),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
-                            onPressed: () => _actionRequest(req, ApprovalStatus.approved),
+                            onPressed: () =>
+                                _actionRequest(req, ApprovalStatus.approved),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
@@ -121,16 +138,25 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     );
   }
 
-  Future<void> _actionRequest(ApprovalRequestModel req, ApprovalStatus status) async {
+  Future<void> _actionRequest(
+    ApprovalRequestModel req,
+    ApprovalStatus status,
+  ) async {
     final notesController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(status == ApprovalStatus.approved ? 'Approve Request' : 'Reject Request'),
+        title: Text(
+          status == ApprovalStatus.approved
+              ? 'Approve Request'
+              : 'Reject Request',
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Are you sure you want to ${status.name} this request for ${req.sourceNumber}?'),
+            Text(
+              'Are you sure you want to ${status.name} this request for ${req.sourceNumber}?',
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: notesController,
@@ -143,13 +169,20 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: status == ApprovalStatus.approved ? Colors.green : Colors.red,
+              backgroundColor: status == ApprovalStatus.approved
+                  ? Colors.green
+                  : Colors.red,
             ),
-            child: Text(status == ApprovalStatus.approved ? 'Approve' : 'Reject'),
+            child: Text(
+              status == ApprovalStatus.approved ? 'Approve' : 'Reject',
+            ),
           ),
         ],
       ),
@@ -166,7 +199,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           sourceType: req.sourceType,
           sourceId: req.sourceId,
           sourceNumber: req.sourceNumber,
-          notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+          notes: notesController.text.trim().isEmpty
+              ? null
+              : notesController.text.trim(),
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -176,7 +211,10 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }

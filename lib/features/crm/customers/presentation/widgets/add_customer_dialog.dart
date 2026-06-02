@@ -32,9 +32,15 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         companyId: widget.companyId,
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-        address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-        taxNumber: _taxController.text.trim().isEmpty ? null : _taxController.text.trim(),
+        phone: _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+        address: _addressController.text.trim().isEmpty
+            ? null
+            : _addressController.text.trim(),
+        taxNumber: _taxController.text.trim().isEmpty
+            ? null
+            : _taxController.text.trim(),
         createdAt: DateTime.now(),
       );
 
@@ -43,7 +49,10 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -82,7 +91,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                   ),
                   validator: (v) {
                     if (v!.isEmpty) return 'Required';
-                    if (!RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Invalid email';
+                    if (!RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
+                      return 'Invalid email';
+                    }
                     return null;
                   },
                 ),
@@ -134,7 +145,10 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
               ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('Save Customer'),
         ),

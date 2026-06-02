@@ -7,12 +7,18 @@ import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting
 import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
 
 class InvoiceDetailScreen extends StatefulWidget {
   final InvoiceModel invoice;
   final AppUser user;
 
-  const InvoiceDetailScreen({super.key, required this.invoice, required this.user});
+  const InvoiceDetailScreen({
+    super.key,
+    required this.invoice,
+    required this.user,
+  });
 
   @override
   State<InvoiceDetailScreen> createState() => _InvoiceDetailScreenState();
@@ -21,13 +27,22 @@ class InvoiceDetailScreen extends StatefulWidget {
 class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   final _postingService = AccountingPostingService();
   final _approvalService = ApprovalService();
+  final _companyService = CompanyService();
   bool _isPosting = false;
   late InvoiceModel _currentInvoice;
+  CompanyModel? _company;
 
   @override
   void initState() {
     super.initState();
     _currentInvoice = widget.invoice;
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).first.then((company) {
+      if (mounted) setState(() => _company = company);
+    });
   }
 
   Future<void> _submitForApproval() async {
@@ -45,7 +60,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       );
 
       await _approvalService.submitForApproval(request);
-      
+
       // Update invoice locally/Firestore
       // For simplicity, we assume Firestore syncs or we refresh.
       // Let's update Firestore status for the invoice
@@ -57,7 +72,10 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           .update({'approvalStatus': 'pending'});
 
       setState(() {
-        _currentInvoice = InvoiceModel.fromMap(_currentInvoice.toMap()..['approvalStatus'] = 'pending', _currentInvoice.id);
+        _currentInvoice = InvoiceModel.fromMap(
+          _currentInvoice.toMap()..['approvalStatus'] = 'pending',
+          _currentInvoice.id,
+        );
       });
 
       if (mounted) {
@@ -67,7 +85,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isPosting = false);
@@ -77,7 +97,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   Future<void> _postToAccounting() async {
     setState(() => _isPosting = true);
     try {
-      await _postingService.postSalesInvoice(widget.user.companyId!, _currentInvoice, widget.user);
+      await _postingService.postSalesInvoice(
+        widget.user.companyId!,
+        _currentInvoice,
+        widget.user,
+      );
       setState(() {
         _currentInvoice = InvoiceModel(
           id: _currentInvoice.id,
@@ -99,13 +123,19 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invoice posted to accounting successfully'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Invoice posted to accounting successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -117,23 +147,34 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final invoice = _currentInvoice;
-    final primaryColor = invoice.primaryBrandColor != null 
-        ? Color(int.parse(invoice.primaryBrandColor!.replaceFirst('#', '0xFF')))
-        : theme.colorScheme.primary;
+    
+    final primaryColor = _company != null
+        ? Color(int.parse(_company!.primaryBrandColor.replaceFirst('#', '0xFF')))
+        : (invoice.primaryBrandColor != null
+            ? Color(int.parse(invoice.primaryBrandColor!.replaceFirst('#', '0xFF')))
+            : theme.colorScheme.primary);
 
     return Scaffold(
       appBar: AppBar(
         title: Text('Invoice ${invoice.invoiceNumber}'),
         actions: [
           if (!invoice.isPosted) ...[
-            if (invoice.approvalStatus == 'approved' || widget.user.role.hasPermission(AppPermission.manageAccounting))
+            if (invoice.approvalStatus == 'approved' ||
+                widget.user.role.hasPermission(AppPermission.manageAccounting))
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: ElevatedButton.icon(
                   onPressed: _isPosting ? null : _postToAccounting,
-                  icon: _isPosting 
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.account_balance),
+                  icon: _isPosting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.account_balance),
                   label: const Text('Post to Accounting'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
@@ -141,7 +182,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   ),
                 ),
               )
-            else if (invoice.approvalStatus == null || invoice.approvalStatus == 'rejected')
+            else if (invoice.approvalStatus == null ||
+                invoice.approvalStatus == 'rejected')
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: ElevatedButton.icon(
@@ -159,16 +201,21 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   invoice.approvalStatus!.toUpperCase(),
                   style: const TextStyle(color: Colors.white, fontSize: 10),
                 ),
-                backgroundColor: invoice.approvalStatus == 'approved' 
-                  ? Colors.green 
-                  : (invoice.approvalStatus == 'pending' ? Colors.orange : Colors.red),
+                backgroundColor: invoice.approvalStatus == 'approved'
+                    ? Colors.green
+                    : (invoice.approvalStatus == 'pending'
+                          ? Colors.orange
+                          : Colors.red),
               ),
             ),
           if (invoice.isPosted)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),
               child: Chip(
-                label: Text('POSTED', style: TextStyle(color: Colors.white, fontSize: 10)),
+                label: Text(
+                  'POSTED',
+                  style: TextStyle(color: Colors.white, fontSize: 10),
+                ),
                 backgroundColor: Colors.blue,
               ),
             ),
@@ -193,7 +240,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           margin: const EdgeInsets.all(32),
           child: Card(
             elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(0),
+            ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(48),
               child: Column(
@@ -206,15 +255,25 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (invoice.companyLogoUrl != null)
-                            Image.network(invoice.companyLogoUrl!, height: 60)
+                          if (_company?.companyLogoUrl != null || invoice.companyLogoUrl != null)
+                            Image.network(_company?.companyLogoUrl ?? invoice.companyLogoUrl!, height: 60)
                           else
-                            Icon(Icons.account_balance_wallet, size: 60, color: primaryColor),
+                            Icon(
+                              Icons.account_balance_wallet,
+                              size: 60,
+                              color: primaryColor,
+                            ),
                           const SizedBox(height: 16),
                           Text(
-                            'LedGix ERP', // Default if company name not in invoice model yet
-                            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                            _company?.companyLegalName ?? 'LedGix ERP',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
+                          if (_company?.address != null)
+                            Text(_company!.address!, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          if (_company?.trnVatNumber != null)
+                            Text('TRN: ${_company!.trnVatNumber}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                         ],
                       ),
                       Column(
@@ -238,7 +297,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 48),
-                  
+
                   // Billing Info
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,11 +306,18 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('BILL TO', style: theme.textTheme.labelLarge?.copyWith(color: Colors.grey)),
+                            Text(
+                              'BILL TO',
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               invoice.customerName,
-                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             // In a real app, you'd fetch customer address here
                           ],
@@ -261,9 +327,20 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            _buildInfoRow('Invoice Date', DateFormat('dd MMM yyyy').format(invoice.invoiceDate)),
-                            _buildInfoRow('Due Date', DateFormat('dd MMM yyyy').format(invoice.dueDate)),
-                            _buildInfoRow('Status', invoice.status.name.toUpperCase()),
+                            _buildInfoRow(
+                              'Invoice Date',
+                              DateFormat(
+                                'dd MMM yyyy',
+                              ).format(invoice.invoiceDate),
+                            ),
+                            _buildInfoRow(
+                              'Due Date',
+                              DateFormat('dd MMM yyyy').format(invoice.dueDate),
+                            ),
+                            _buildInfoRow(
+                              'Status',
+                              invoice.status.name.toUpperCase(),
+                            ),
                           ],
                         ),
                       ),
@@ -282,45 +359,68 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     children: [
                       TableRow(
                         decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(color: primaryColor, width: 2)),
+                          border: Border(
+                            bottom: BorderSide(color: primaryColor, width: 2),
+                          ),
                         ),
                         children: [
                           _buildHeaderCell('Description'),
                           _buildHeaderCell('Qty'),
-                          _buildHeaderCell('Unit Price', textAlign: TextAlign.right),
+                          _buildHeaderCell(
+                            'Unit Price',
+                            textAlign: TextAlign.right,
+                          ),
                           _buildHeaderCell('Total', textAlign: TextAlign.right),
                         ],
                       ),
-                      ...invoice.items.map((item) => TableRow(
-                        decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                      ...invoice.items.map(
+                        (item) => TableRow(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: Colors.grey.shade200),
+                            ),
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              child: Text(item.description),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              child: Text(item.quantity.toString()),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              child: Text(
+                                NumberFormat('#,##0.00').format(item.unitPrice),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              child: Text(
+                                NumberFormat('#,##0.00').format(item.lineTotal),
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                            child: Text(item.description),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                            child: Text(item.quantity.toString()),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                            child: Text(
-                              NumberFormat('#,##0.00').format(item.unitPrice),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                            child: Text(
-                              NumberFormat('#,##0.00').format(item.lineTotal),
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      )),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 32),
@@ -336,23 +436,26 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                           _buildTotalRow('VAT Amount', invoice.vatAmount),
                           const Divider(height: 24),
                           _buildTotalRow(
-                            'Total', 
-                            invoice.totalAmount, 
-                            isBold: true, 
+                            'Total',
+                            invoice.totalAmount,
+                            isBold: true,
                             color: primaryColor,
                           ),
                         ],
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 64),
                   const Divider(),
                   const SizedBox(height: 16),
                   const Center(
                     child: Text(
                       'Thank you for your business!',
-                      style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                 ],
@@ -371,8 +474,14 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         text: TextSpan(
           style: const TextStyle(color: Colors.black, fontSize: 13),
           children: [
-            TextSpan(text: '$label: ', style: const TextStyle(color: Colors.grey)),
-            TextSpan(text: value, style: const TextStyle(fontWeight: FontWeight.bold)),
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(color: Colors.grey),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),
@@ -390,7 +499,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
   }
 
-  Widget _buildTotalRow(String label, double value, {bool isBold = false, Color? color}) {
+  Widget _buildTotalRow(
+    String label,
+    double value, {
+    bool isBold = false,
+    Color? color,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
