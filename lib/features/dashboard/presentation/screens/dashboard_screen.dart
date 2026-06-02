@@ -3,6 +3,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:ledgixerp/widgets/sidebar_navigation.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/chart_of_accounts_screen.dart';
+import 'package:ledgixerp/core/auth/permission.dart';
 
 class DashboardScreen extends StatefulWidget {
   final AppUser user;
@@ -20,9 +22,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final theme = Theme.of(context);
     final isMobile = MediaQuery.of(context).size.width < 900;
 
+    // Determine the visible items to map the index to the correct screen
+    final visibleItems = SidebarNavigation.allItems
+        .where((item) => widget.user.role.hasPermission(item.permission))
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Overview'),
+        title: Text(_getPageTitle(visibleItems)),
         actions: [
           IconButton(icon: const Icon(Icons.search), onPressed: () {}),
           IconButton(
@@ -104,50 +111,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(
             child: Container(
               color: theme.colorScheme.surface,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Dashboard Overview',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.download, size: 18),
-                          label: const Text('Export Report'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    _buildStatGrid(context),
-                    const SizedBox(height: 32),
-                    _buildChartsSection(context),
-                    const SizedBox(height: 32),
-                    _buildRecentSection(context),
-                  ],
-                ),
-              ),
+              child: _buildBody(visibleItems),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  String _getPageTitle(List<SidebarItem> visibleItems) {
+    if (_selectedIndex >= visibleItems.length) return 'LedGix ERP';
+    return visibleItems[_selectedIndex].label;
+  }
+
+  Widget _buildBody(List<SidebarItem> visibleItems) {
+    if (_selectedIndex >= visibleItems.length) return const Center(child: Text('Page not found'));
+
+    final selectedPermission = visibleItems[_selectedIndex].permission;
+
+    switch (selectedPermission) {
+      case AppPermission.viewDashboard:
+        return _buildDashboardOverview();
+      case AppPermission.viewAccounting:
+        return ChartOfAccountsScreen(user: widget.user);
+      default:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(visibleItems[_selectedIndex].icon, size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text(
+                '${visibleItems[_selectedIndex].label} Module Coming Soon',
+                style: const TextStyle(color: Colors.grey, fontSize: 18),
+              ),
+            ],
+          ),
+        );
+    }
+  }
+
+  Widget _buildDashboardOverview() {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Dashboard Overview',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.download, size: 18),
+                label: const Text('Export Report'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          _buildStatGrid(context),
+          const SizedBox(height: 32),
+          _buildChartsSection(context),
+          const SizedBox(height: 32),
+          _buildRecentSection(context),
         ],
       ),
     );

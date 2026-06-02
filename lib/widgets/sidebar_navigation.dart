@@ -28,7 +28,7 @@ class SidebarNavigation extends StatelessWidget {
     required this.onDestinationSelected,
   });
 
-  static const List<SidebarItem> _allItems = [
+  static const List<SidebarItem> allItems = [
     SidebarItem(
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
@@ -84,7 +84,7 @@ class SidebarNavigation extends StatelessWidget {
     final theme = Theme.of(context);
     final isExtended = MediaQuery.of(context).size.width > 1200;
 
-    final visibleItems = _allItems.where((item) => role.hasPermission(item.permission)).toList();
+    final visibleItems = allItems.where((item) => role.hasPermission(item.permission)).toList();
 
     return NavigationRail(
       extended: isExtended,
