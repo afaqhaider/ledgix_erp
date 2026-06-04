@@ -6,8 +6,13 @@ import '../../services/migration_config.dart';
 
 class ImportExportModal extends StatefulWidget {
   final MigrationModule initialModule;
+  final String companyId;
 
-  const ImportExportModal({super.key, required this.initialModule});
+  const ImportExportModal({
+    super.key,
+    required this.initialModule,
+    required this.companyId,
+  });
 
   @override
   State<ImportExportModal> createState() => _ImportExportModalState();
@@ -50,18 +55,26 @@ class _ImportExportModalState extends State<ImportExportModal> {
           final defs = MigrationConfig.getFields(selectedModule);
           _mapping = _service.autoMapFields(_rawHeaders.first, defs);
           _processData();
-          setState(() {
-            _step = 1;
-          });
+          if (mounted) {
+            setState(() {
+              _step = 1;
+            });
+          }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('File is empty or could not be parsed.')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('File is empty or could not be parsed.'),
+              ),
+            );
+          }
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+        }
       } finally {
         setState(() => _isLoading = false);
       }
@@ -157,10 +170,17 @@ class _ImportExportModalState extends State<ImportExportModal> {
             decoration: const InputDecoration(
               labelText: 'Select Module',
               border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.category_outlined),
             ),
-            items: MigrationModule.values.map((m) {
-              return DropdownMenuItem(value: m, child: Text(m.label));
-            }).toList(),
+            items:
+                [
+                  MigrationModule.customers,
+                  MigrationModule.suppliers,
+                  MigrationModule.chartOfAccounts,
+                  MigrationModule.inventory,
+                ].map((m) {
+                  return DropdownMenuItem(value: m, child: Text(m.label));
+                }).toList(),
             onChanged: (val) {
               if (val != null) setState(() => selectedModule = val);
             },
@@ -250,16 +270,24 @@ class _ImportExportModalState extends State<ImportExportModal> {
                         final val = row.data[d.key];
                         final error = row.errors[d.key];
                         return DataCell(
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: error != null
-                                ? BoxDecoration(
-                                    color: theme.colorScheme.errorContainer
-                                        .withValues(alpha: 0.3),
-                                    borderRadius: BorderRadius.circular(4),
-                                  )
-                                : null,
-                            child: Text(val?.toString() ?? '-'),
+                          InkWell(
+                            onTap: () => _editCell(row, d),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: error != null
+                                  ? BoxDecoration(
+                                      color: theme.colorScheme.errorContainer
+                                          .withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(4),
+                                    )
+                                  : null,
+                              child: Text(
+                                val?.toString() ?? '-',
+                                style: TextStyle(
+                                  color: error != null ? Colors.red : null,
+                                ),
+                              ),
+                            ),
                           ),
                         );
                       }),
@@ -284,6 +312,47 @@ class _ImportExportModalState extends State<ImportExportModal> {
           ),
         ),
       ],
+    );
+  }
+
+  void _editCell(ImportRow row, FieldDefinition field) {
+    final controller = TextEditingController(
+      text: row.data[field.key]?.toString() ?? '',
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit ${field.label}'),
+        content: TextFormField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: field.label,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                row.data[field.key] = controller.text;
+                // Re-validate row
+                if (field.isRequired && controller.text.isEmpty) {
+                  row.errors[field.key] = '${field.label} is required';
+                } else {
+                  row.errors.remove(field.key);
+                }
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -325,13 +394,78 @@ class _ImportExportModalState extends State<ImportExportModal> {
             ),
           const Spacer(),
           TextButton.icon(
-            onPressed: () {
-              // TODO: Manual mapping dialog
-            },
+            onPressed: () => _showMappingDialog(theme, defs),
             icon: const Icon(Icons.map),
             label: const Text('Adjust Mapping'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showMappingDialog(ThemeData theme, List<FieldDefinition> defs) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setMapState) => AlertDialog(
+          title: const Text('Map Columns to Fields'),
+          content: SizedBox(
+            width: 400,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: defs.map((d) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _mapping[d.key],
+                      decoration: InputDecoration(
+                        labelText: d.label + (d.isRequired ? ' *' : ''),
+                        border: const OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem<int>(
+                          value: null,
+                          child: Text('Not Mapped'),
+                        ),
+                        ...List.generate(_rawHeaders.first.length, (i) {
+                          return DropdownMenuItem<int>(
+                            value: i,
+                            child: Text(_rawHeaders.first[i].toString()),
+                          );
+                        }),
+                      ],
+                      onChanged: (val) {
+                        setMapState(() {
+                          if (val == null) {
+                            _mapping.remove(d.key);
+                          } else {
+                            _mapping[d.key] = val;
+                          }
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _processData();
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Apply & Re-process'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -356,6 +490,8 @@ class _ImportExportModalState extends State<ImportExportModal> {
   }
 
   Widget _buildFooter(ThemeData theme) {
+    final bool hasErrors = _processedRows.any((r) => !r.isValid);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -374,9 +510,9 @@ class _ImportExportModalState extends State<ImportExportModal> {
             const SizedBox(width: 12),
           ],
           ElevatedButton(
-            onPressed: _step == 0
-                ? null
-                : (_processedRows.isEmpty ? null : _performImport),
+            onPressed: (_step == 1 && _processedRows.isNotEmpty && !hasErrors)
+                ? _performImport
+                : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: theme.colorScheme.onPrimary,
@@ -389,11 +525,38 @@ class _ImportExportModalState extends State<ImportExportModal> {
     );
   }
 
-  void _performImport() {
-    // TODO: Implement actual data saving to Firebase
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Import started in background...')),
-    );
+  void _performImport() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await _service.performBatchImport(
+        selectedModule,
+        _processedRows,
+        widget.companyId,
+      );
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Successfully imported ${_processedRows.length} ${selectedModule.label}',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import Failed: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 }

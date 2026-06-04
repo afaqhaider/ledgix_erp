@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
+import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import '../../settings/services/financial_settings_service.dart';
 
 class InvoiceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _settingsService = FinancialSettingsService();
+  final _inventoryService = InventoryService();
 
   CollectionReference _getInvoicesRef(String companyId) {
     return _firestore
@@ -24,16 +26,67 @@ class InvoiceService {
   }
 
   Future<String> generateNextInvoiceNumber(String companyId) async {
-    return await _settingsService.generateNextDocumentNumber(companyId, 'invoice');
+    return await _settingsService.previewNextDocumentNumber(
+      companyId,
+      'invoice',
+    );
   }
 
   Future<void> addInvoice(InvoiceModel invoice) async {
     // Check if period is locked
-    if (await _settingsService.isPeriodLocked(invoice.companyId, invoice.invoiceDate)) {
+    if (await _settingsService.isPeriodLocked(
+      invoice.companyId,
+      invoice.invoiceDate,
+    )) {
       throw Exception('Accounting period for this date is locked.');
     }
 
-    await _getInvoicesRef(invoice.companyId).doc().set(invoice.toMap());
+    await _firestore.runTransaction((transaction) async {
+      // 1. Generate the actual document number and increment counter within transaction
+      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
+        invoice.companyId,
+        'invoice',
+        transaction: transaction,
+      );
+
+      final docRef = _getInvoicesRef(invoice.companyId).doc();
+      
+      final invoiceToSave = invoice.copyWith(
+        id: docRef.id,
+        invoiceNumber: finalNumber,
+      );
+
+      // 2. Save the invoice
+      transaction.set(docRef, invoiceToSave.toMap());
+    });
+  }
+
+  Future<void> postInvoice(String companyId, String invoiceId) async {
+    final doc = await _getInvoicesRef(companyId).doc(invoiceId).get();
+    if (!doc.exists) throw Exception('Invoice not found');
+
+    final invoice = InvoiceModel.fromMap(
+      doc.data() as Map<String, dynamic>,
+      doc.id,
+    );
+    if (invoice.isPosted) throw Exception('Invoice already posted');
+
+    // 1. Process Inventory Updates and Calculate COGS
+    for (var item in invoice.items) {
+      if (item.productId != null && item.productId!.isNotEmpty) {
+        await _inventoryService.recordSale(
+          companyId: companyId,
+          productId: item.productId!,
+          quantity: item.quantity,
+        );
+      }
+    }
+
+    // 2. Mark Invoice as Posted
+    await _getInvoicesRef(companyId).doc(invoiceId).update({
+      'isPosted': true,
+      'approvalStatus': 'approved', // Automatically approve on post for now
+    });
   }
 
   Future<void> updateInvoiceStatus(
@@ -50,9 +103,14 @@ class InvoiceService {
     final doc = await _getInvoicesRef(companyId).doc(invoiceId).get();
     if (!doc.exists) return;
 
-    final invoice = InvoiceModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    final invoice = InvoiceModel.fromMap(
+      doc.data() as Map<String, dynamic>,
+      doc.id,
+    );
     if (invoice.isPosted) {
-      throw Exception('Cannot delete a posted invoice. Reverse the entry via Journal if needed.');
+      throw Exception(
+        'Cannot delete a posted invoice. Reverse the entry via Journal if needed.',
+      );
     }
 
     // Check if any payments are linked to this invoice
@@ -65,7 +123,9 @@ class InvoiceService {
         .get();
 
     if (paymentsSnap.docs.isNotEmpty) {
-      throw Exception('Cannot delete invoice with existing payments. Delete payments first.');
+      throw Exception(
+        'Cannot delete invoice with existing payments. Delete payments first.',
+      );
     }
 
     await _getInvoicesRef(companyId).doc(invoiceId).delete();

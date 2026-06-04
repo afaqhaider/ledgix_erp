@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/core/auth/user_role.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/features/auth/services/auth_service.dart';
 
 class NavigationItem {
   final IconData icon;
   final String label;
   final AppPermission permission;
+  final List<NavigationItem>? subItems;
 
   const NavigationItem({
     required this.icon,
     required this.label,
     required this.permission,
+    this.subItems,
   });
 }
 
@@ -86,7 +89,7 @@ class SidebarNavigation extends StatefulWidget {
         ),
         NavigationItem(
           icon: Icons.payments_rounded,
-          label: 'Customer Payments',
+          label: 'Receipts',
           permission: AppPermission.viewInvoices,
         ),
       ],
@@ -104,6 +107,11 @@ class SidebarNavigation extends StatefulWidget {
           icon: Icons.shopping_cart_rounded,
           label: 'Purchase Orders',
           permission: AppPermission.viewSuppliers,
+        ),
+        NavigationItem(
+          icon: Icons.receipt_long_rounded,
+          label: 'Purchase Invoices (Bills)',
+          permission: AppPermission.viewBills,
         ),
         NavigationItem(
           icon: Icons.paid_rounded,
@@ -209,6 +217,28 @@ class SidebarNavigation extends StatefulWidget {
           icon: Icons.account_balance_wallet_rounded,
           label: 'Financial Settings',
           permission: AppPermission.manageSettings,
+          subItems: [
+            NavigationItem(
+              icon: Icons.calendar_month_rounded,
+              label: 'Financial Period',
+              permission: AppPermission.manageSettings,
+            ),
+            NavigationItem(
+              icon: Icons.label_important_rounded,
+              label: 'Docs Prefix',
+              permission: AppPermission.manageSettings,
+            ),
+            NavigationItem(
+              icon: Icons.credit_card_rounded,
+              label: 'Credit Terms (Customers)',
+              permission: AppPermission.manageSettings,
+            ),
+            NavigationItem(
+              icon: Icons.payments_rounded,
+              label: 'Payment Terms (Quotations)',
+              permission: AppPermission.manageSettings,
+            ),
+          ],
         ),
         NavigationItem(
           icon: Icons.manage_accounts_rounded,
@@ -244,12 +274,12 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     final isDark = theme.brightness == Brightness.dark;
 
     final sidebarColor = isDark
-        ? const Color(0xFF020617)
+        ? const Color(0xFF000000)
         : const Color(0xFF0F172A);
-    final activeColor = theme.colorScheme.primary;
+    final activeColor = theme.colorScheme.secondary;
 
     final bool isExpanded = _isHovered || _isPinned;
-    final double width = isExpanded ? 260 : 76;
+    final double width = isExpanded ? 260 : 52;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -264,7 +294,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             // Header
             Container(
               height: 64,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: EdgeInsets.symmetric(horizontal: isExpanded ? 20 : 0),
               child: Row(
                 mainAxisAlignment: isExpanded
                     ? MainAxisAlignment.start
@@ -273,7 +303,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   Icon(
                     Icons.account_balance_wallet_rounded,
                     color: theme.colorScheme.secondary,
-                    size: 28,
+                    size: isExpanded ? 28 : 24,
                   ),
                   if (isExpanded) ...[
                     const SizedBox(width: 12),
@@ -353,25 +383,111 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                         },
                       ),
                       if (isExpanded && isSectionExpanded)
-                        ...visibleItems.map((item) {
-                          final bool isSelected =
-                              widget.selectedItem == item.label;
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: _SidebarTile(
-                              item: item,
-                              isSelected: isSelected,
-                              isExpanded: isExpanded,
-                              activeColor: activeColor,
-                              onTap: () => widget.onItemSelected(item.label),
+                        ...visibleItems.expand((item) {
+                          final List<Widget> subWidgets = [];
+                          final bool isSelected = widget.selectedItem == item.label;
+                          
+                          subWidgets.add(
+                            Padding(
+                              padding: const EdgeInsets.only(left: 12),
+                              child: _SidebarTile(
+                                item: item,
+                                isSelected: isSelected,
+                                isExpanded: isExpanded,
+                                activeColor: activeColor,
+                                onTap: () => widget.onItemSelected(item.label),
+                              ),
                             ),
                           );
+
+                          if (item.subItems != null) {
+                            // If parent is selected, or any child is selected, we might want to show children
+                            // For simplicity, always show children if parent section is expanded
+                            subWidgets.addAll(
+                              item.subItems!.where((si) => widget.role.hasPermission(si.permission)).map((subItem) {
+                                final bool isSubSelected = widget.selectedItem == subItem.label;
+                                return Padding(
+                                  padding: const EdgeInsets.only(left: 32),
+                                  child: _SidebarTile(
+                                    item: subItem,
+                                    isSelected: isSubSelected,
+                                    isExpanded: isExpanded,
+                                    activeColor: activeColor,
+                                    onTap: () => widget.onItemSelected(subItem.label),
+                                    isSubItem: true,
+                                  ),
+                                );
+                              }),
+                            );
+                          }
+                          return subWidgets;
                         }),
                     ],
                   );
                 }).toList(),
               ),
             ),
+            const Divider(color: Colors.white10, height: 1),
+
+            // Logout Button
+            _LogoutTile(isExpanded: isExpanded),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoutTile extends StatelessWidget {
+  final bool isExpanded;
+  const _LogoutTile({required this.isExpanded});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Logout'),
+            content: const Text('Are you sure you want to logout?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Logout'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed == true) {
+          AuthService().signOut();
+        }
+      },
+      child: Container(
+        height: 56,
+        padding: EdgeInsets.symmetric(horizontal: isExpanded ? 20 : 0),
+        child: Row(
+          mainAxisAlignment: isExpanded
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 24),
+            if (isExpanded) ...[
+              const SizedBox(width: 12),
+              const Text(
+                'Logout',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -409,7 +525,10 @@ class _SidebarHeaderTileState extends State<_SidebarHeaderTile> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         height: 48,
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        margin: EdgeInsets.symmetric(
+          horizontal: widget.isExpanded ? 12 : 4,
+          vertical: 2,
+        ),
         decoration: BoxDecoration(
           color: _isHovered
               ? Colors.white.withValues(alpha: 0.05)
@@ -422,7 +541,7 @@ class _SidebarHeaderTileState extends State<_SidebarHeaderTile> {
               : MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: widget.isExpanded ? 46 : 52,
+              width: widget.isExpanded ? 46 : 44,
               child: Icon(
                 widget.icon,
                 color: _isHovered || widget.isSectionExpanded
@@ -484,6 +603,7 @@ class _SidebarTile extends StatefulWidget {
   final bool isExpanded;
   final Color activeColor;
   final VoidCallback onTap;
+  final bool isSubItem;
 
   const _SidebarTile({
     required this.item,
@@ -491,6 +611,7 @@ class _SidebarTile extends StatefulWidget {
     required this.isExpanded,
     required this.activeColor,
     required this.onTap,
+    this.isSubItem = false,
   });
 
   @override
@@ -510,7 +631,10 @@ class _SidebarTileState extends State<_SidebarTile> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         height: 48,
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        margin: EdgeInsets.symmetric(
+          horizontal: widget.isExpanded ? 12 : 4,
+          vertical: 2,
+        ),
         decoration: BoxDecoration(
           color: widget.isSelected
               ? widget.activeColor.withValues(alpha: 0.15)
@@ -525,13 +649,13 @@ class _SidebarTileState extends State<_SidebarTile> {
               : MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: widget.isExpanded ? 46 : 52,
+              width: widget.isExpanded ? 46 : 44,
               child: Icon(
                 widget.item.icon,
                 color: widget.isSelected
                     ? widget.activeColor
                     : (showHighlight ? Colors.white : Colors.white70),
-                size: 24,
+                size: widget.isSubItem ? 18 : 24,
               ),
             ),
             if (widget.isExpanded)
@@ -542,7 +666,7 @@ class _SidebarTileState extends State<_SidebarTile> {
                     color: widget.isSelected
                         ? Colors.white
                         : (showHighlight ? Colors.white : Colors.white70),
-                    fontSize: 14,
+                    fontSize: widget.isSubItem ? 13 : 14,
                     fontWeight: widget.isSelected
                         ? FontWeight.w600
                         : FontWeight.w400,

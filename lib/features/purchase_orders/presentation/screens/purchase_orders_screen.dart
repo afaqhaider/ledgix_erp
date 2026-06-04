@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/purchase_orders/models/purchase_order_model.dart';
 import 'package:ledgixerp/features/purchase_orders/services/purchase_order_service.dart';
 import 'package:ledgixerp/features/purchase_orders/services/po_pdf_service.dart';
 import 'package:ledgixerp/features/purchase_orders/presentation/screens/add_purchase_order_screen.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   final AppUser user;
@@ -24,6 +26,19 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   final _poService = PurchaseOrderService();
   final _companyService = CompanyService();
   final _approvalService = ApprovalService();
+  CompanyModel? _company;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).listen((company) {
+      if (mounted) setState(() => _company = company);
+    });
+  }
 
   Future<void> _submitForApproval(PurchaseOrderModel po) async {
     try {
@@ -38,18 +53,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         requestedAt: DateTime.now(),
       );
 
-      await _approvalService.submitForApproval(request);
-
-      await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.user.companyId)
-          .collection('purchaseOrders')
-          .doc(po.id)
-          .update({'approvalStatus': 'pending'});
+      await _approvalService.submitForApproval(
+        request,
+        requesterRole: widget.user.role,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PO submitted for approval')),
+          const SnackBar(content: Text('Processing approval/submission...')),
         );
       }
     } catch (e) {
@@ -77,11 +88,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          AddPurchaseOrderScreen(user: widget.user),
+                  showErpSidePane(
+                    context: context,
+                    builder: AddPurchaseOrderScreen(
+                      user: widget.user,
+                      isPane: true,
                     ),
                   );
                 },
@@ -186,10 +197,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                       DataCell(Text(po.poNumber)),
                       DataCell(Text(po.supplierName)),
                       DataCell(
-                        Text(DateFormat('dd MMM yyyy').format(po.poDate)),
+                        Text(AppFormatters.date(po.poDate)),
                       ),
                       DataCell(
-                        Text(NumberFormat('#,##0.00').format(po.totalAmount)),
+                        Text(AppFormatters.currency(po.totalAmount, symbol: _company?.baseCurrency)),
                       ),
                       DataCell(
                         Container(

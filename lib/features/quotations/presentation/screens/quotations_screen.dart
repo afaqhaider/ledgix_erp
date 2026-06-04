@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/quotations/models/quotation_model.dart';
 import 'package:ledgixerp/features/quotations/services/quotation_service.dart';
 import 'package:ledgixerp/features/quotations/services/quotation_pdf_service.dart';
 import 'package:ledgixerp/features/quotations/presentation/screens/add_quotation_screen.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class QuotationsScreen extends StatefulWidget {
   final AppUser user;
@@ -24,6 +25,19 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
   final _quotationService = QuotationService();
   final _companyService = CompanyService();
   final _approvalService = ApprovalService();
+  CompanyModel? _company;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).listen((company) {
+      if (mounted) setState(() => _company = company);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,11 +168,11 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                       DataCell(Text(quo.customerName)),
                       DataCell(
                         Text(
-                          DateFormat('dd MMM yyyy').format(quo.quotationDate),
+                          AppFormatters.date(quo.quotationDate),
                         ),
                       ),
                       DataCell(
-                        Text(NumberFormat('#,##0.00').format(quo.totalAmount)),
+                        Text(AppFormatters.currency(quo.totalAmount, symbol: _company?.baseCurrency)),
                       ),
                       DataCell(
                         Container(
@@ -290,18 +304,14 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
         requestedAt: DateTime.now(),
       );
 
-      await _approvalService.submitForApproval(request);
-
-      await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.user.companyId)
-          .collection('quotations')
-          .doc(quo.id)
-          .update({'approvalStatus': 'pending'});
+      await _approvalService.submitForApproval(
+        request,
+        requesterRole: widget.user.role,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Quotation submitted for approval')),
+          const SnackBar(content: Text('Processing approval/submission...')),
         );
       }
     } catch (e) {

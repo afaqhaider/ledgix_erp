@@ -47,7 +47,7 @@ class BankAccountModel {
       'openingBalance': openingBalance,
       'currentBalance': currentBalance,
       'isActive': isActive,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
     };
   }
 
@@ -68,7 +68,7 @@ class BankAccountModel {
       openingBalance: (map['openingBalance'] as num?)?.toDouble() ?? 0.0,
       currentBalance: (map['currentBalance'] as num?)?.toDouble() ?? 0.0,
       isActive: map['isActive'] ?? true,
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 }

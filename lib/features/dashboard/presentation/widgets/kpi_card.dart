@@ -46,25 +46,31 @@ class KPICard extends StatelessWidget {
                   child: Icon(icon, color: color, size: 24),
                 ),
                 if (trend != null)
-                  Row(
-                    children: [
-                      Icon(
-                        isTrendUp == true
-                            ? Icons.trending_up
-                            : Icons.trending_down,
-                        color: isTrendUp == true ? Colors.green : Colors.red,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        trend!,
-                        style: TextStyle(
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isTrendUp == true
+                              ? Icons.trending_up
+                              : Icons.trending_down,
                           color: isTrendUp == true ? Colors.green : Colors.red,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          size: 16,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            trend!,
+                            style: TextStyle(
+                              color: isTrendUp == true ? Colors.green : Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),

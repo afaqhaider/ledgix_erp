@@ -188,7 +188,11 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                             ),
                             if (canManage)
                               IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 20,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () => _confirmDelete(supplier),
                               ),
                           ],
@@ -210,7 +214,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete supplier ${supplier.supplierName}? This will only work if there are no linked payments or orders.'),
+        content: Text(
+          'Are you sure you want to delete supplier ${supplier.supplierName}? This will only work if there are no linked payments or orders.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -227,7 +233,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
     if (confirmed == true) {
       try {
-        await _supplierService.deleteSupplier(widget.user.companyId!, supplier.id);
+        await _supplierService.deleteSupplier(
+          widget.user.companyId!,
+          supplier.id,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Supplier deleted successfully')),
@@ -236,7 +245,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
@@ -254,8 +266,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   void _showImportModal(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) =>
-          const ImportExportModal(initialModule: MigrationModule.suppliers),
+      builder: (context) => ImportExportModal(
+        initialModule: MigrationModule.suppliers,
+        companyId: widget.user.companyId!,
+      ),
     );
   }
 

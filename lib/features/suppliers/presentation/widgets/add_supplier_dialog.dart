@@ -3,6 +3,8 @@ import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.da
 import 'package:ledgixerp/features/suppliers/models/supplier_model.dart';
 import 'package:ledgixerp/features/suppliers/services/supplier_service.dart';
 
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
+
 class AddSupplierDialog extends StatefulWidget {
   final String companyId;
 
@@ -57,7 +59,9 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
         contactPerson: _contactController.text.trim().isEmpty
             ? null
             : _contactController.text.trim(),
-        email: _emailController.text.trim(),
+        email: _emailController.text.trim().isEmpty
+            ? 'no-email@temporary.com'
+            : _emailController.text.trim(),
         phone: _phoneController.text.trim().isEmpty
             ? null
             : _phoneController.text.trim(),
@@ -93,197 +97,141 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add New Supplier'),
-      content: SizedBox(
-        width: 600,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    return ErpGlassModal(
+      title: 'Add New Supplier',
+      width: 700,
+      onCancel: () => Navigator.pop(context),
+      onSave: _save,
+      isLoading: _isLoading,
+      saveLabel: 'Save Supplier',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        initialValue: _generatedCode,
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Supplier Code',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 2,
-                      child: TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Supplier/Company Name',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => v!.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _contactController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact Person',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email Address',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) {
-                          if (v!.isEmpty) return 'Required';
-                          if (!RegExp(
-                            r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$',
-                          ).hasMatch(v)) {
-                            return 'Invalid email';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _phoneController,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone Number',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _trnController,
-                        decoration: const InputDecoration(
-                          labelText: 'TRN / VAT Number',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _countryController,
-                        decoration: const InputDecoration(
-                          labelText: 'Country',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 2,
-                      child: TextFormField(
-                        controller: _addressController,
-                        decoration: const InputDecoration(
-                          labelText: 'Address',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 16),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Opening Balance',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: InputDecorator(
+                    decoration: ErpFormStyle.inputDecoration(context, 'Supplier Code'),
+                    child: Text(_generatedCode, style: ErpFormStyle.inputStyle(context)),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextFormField(
-                        controller: _balanceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Opening Balance Amount',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<BalanceType>(
-                        initialValue: _balanceType,
-                        decoration: const InputDecoration(
-                          labelText: 'Type',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: BalanceType.values.map((type) {
-                          return DropdownMenuItem(
-                            value: type,
-                            child: Text(type.label),
-                          );
-                        }).toList(),
-                        onChanged: (val) => setState(() => _balanceType = val!),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _nameController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Supplier/Company Name'),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _contactController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Contact Person'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _emailController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Email Address'),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return null;
+                      if (!RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
+                        return 'Invalid email';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _phoneController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Phone Number'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _trnController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'TRN / VAT Number'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _countryController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Country'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _addressController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Address'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text('Opening Balance', style: ErpFormStyle.sectionHeaderStyle(context)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _balanceController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Balance Amount'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<BalanceType>(
+                    value: _balanceType,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Type'),
+                    items: BalanceType.values.map((type) {
+                      return DropdownMenuItem(
+                        value: type,
+                        child: Text(type.label),
+                      );
+                    }).toList(),
+                    onChanged: (val) => setState(() => _balanceType = val!),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _save,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-          ),
-          child: _isLoading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text('Save Supplier'),
-        ),
-      ],
     );
   }
 }

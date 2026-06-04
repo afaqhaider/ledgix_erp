@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:ledgixerp/features/crm/customers/models/customer_model.dart';
 import 'package:ledgixerp/features/crm/customers/services/customer_service.dart';
 
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
+
 class AddCustomerDialog extends StatefulWidget {
   final String companyId;
 
@@ -31,7 +33,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         id: '',
         companyId: widget.companyId,
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
+        email: _emailController.text.trim().isEmpty
+            ? 'no-email@temporary.com' // Fallback for model if email is required
+            : _emailController.text.trim(),
         phone: _phoneController.text.trim().isEmpty
             ? null
             : _phoneController.text.trim(),
@@ -62,97 +66,67 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add New Customer'),
-      content: SizedBox(
-        width: 500,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    return ErpGlassModal(
+      title: 'Add New Customer',
+      onCancel: () => Navigator.pop(context),
+      onSave: _save,
+      isLoading: _isLoading,
+      saveLabel: 'Save Customer',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              style: ErpFormStyle.inputStyle(context),
+              decoration: ErpFormStyle.inputDecoration(context, 'Customer/Company Name', icon: Icons.person),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _emailController,
+              style: ErpFormStyle.inputStyle(context),
+              decoration: ErpFormStyle.inputDecoration(context, 'Email Address (Optional)', icon: Icons.email),
+              validator: (v) {
+                if (v == null || v.isEmpty) return null;
+                if (!RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
+                  return 'Invalid email';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            Row(
               children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Customer/Company Name',
-                    prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email Address',
-                    prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) {
-                    if (v!.isEmpty) return 'Required';
-                    if (!RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
-                      return 'Invalid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    prefixIcon: Icon(Icons.phone),
-                    border: OutlineInputBorder(),
+                Expanded(
+                  child: TextFormField(
+                    controller: _phoneController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Phone Number', icon: Icons.phone),
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _taxController,
-                  decoration: const InputDecoration(
-                    labelText: 'Tax Number (VAT/TRN)',
-                    prefixIcon: Icon(Icons.description),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _addressController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Billing Address',
-                    prefixIcon: Icon(Icons.location_on),
-                    border: OutlineInputBorder(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _taxController,
+                    style: ErpFormStyle.inputStyle(context),
+                    decoration: ErpFormStyle.inputDecoration(context, 'Tax Number (VAT/TRN)', icon: Icons.description),
                   ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _addressController,
+              maxLines: 3,
+              style: ErpFormStyle.inputStyle(context),
+              decoration: ErpFormStyle.inputDecoration(context, 'Billing Address', icon: Icons.location_on),
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _save,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-          ),
-          child: _isLoading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text('Save Customer'),
-        ),
-      ],
     );
   }
 }

@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/invoices/services/invoice_service.dart';
 import 'package:ledgixerp/features/invoices/presentation/screens/add_invoice_screen.dart';
 import 'package:ledgixerp/features/invoices/presentation/screens/invoice_detail_screen.dart';
+
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
 class InvoicesScreen extends StatefulWidget {
   final AppUser user;
@@ -17,6 +22,20 @@ class InvoicesScreen extends StatefulWidget {
 
 class _InvoicesScreenState extends State<InvoicesScreen> {
   final _invoiceService = InvoiceService();
+  final _companyService = CompanyService();
+  CompanyModel? _company;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).listen((company) {
+      if (mounted) setState(() => _company = company);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +53,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddInvoiceScreen(user: widget.user),
+                  showErpSidePane(
+                    context: context,
+                    builder: AddInvoiceScreen(
+                      user: widget.user,
+                      isPane: true,
                     ),
                   );
                 },
@@ -137,13 +157,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                       DataCell(Text(invoice.customerName)),
                       DataCell(
                         Text(
-                          DateFormat('dd MMM yyyy').format(invoice.invoiceDate),
+                          AppFormatters.date(invoice.invoiceDate),
                         ),
                       ),
                       DataCell(
-                        Text(
-                          NumberFormat('#,##0.00').format(invoice.totalAmount),
-                        ),
+                        Text(AppFormatters.currency(invoice.totalAmount, symbol: _company?.baseCurrency)),
                       ),
                       DataCell(
                         Container(
@@ -152,15 +170,20 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(
-                              invoice.status,
-                            ).withValues(alpha: 0.1),
+                            color: (invoice.isPosted
+                                    ? Colors.green
+                                    : _getStatusColor(invoice.status))
+                                .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            invoice.status.name.toUpperCase(),
+                            (invoice.isPosted
+                                    ? 'POSTED'
+                                    : invoice.status.name.toUpperCase()),
                             style: TextStyle(
-                              color: _getStatusColor(invoice.status),
+                              color: invoice.isPosted
+                                  ? Colors.green
+                                  : _getStatusColor(invoice.status),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -172,7 +195,10 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.visibility_outlined, size: 20),
+                              icon: const Icon(
+                                Icons.visibility_outlined,
+                                size: 20,
+                              ),
                               onPressed: () {
                                 Navigator.push(
                                   context,
@@ -187,7 +213,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                             ),
                             if (canManage && !invoice.isPosted)
                               IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 20,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () => _confirmDelete(invoice),
                               ),
                           ],
@@ -209,7 +239,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete invoice ${invoice.invoiceNumber}?'),
+        content: Text(
+          'Are you sure you want to delete invoice ${invoice.invoiceNumber}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -235,7 +267,10 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }

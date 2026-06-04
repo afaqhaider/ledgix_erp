@@ -27,7 +27,10 @@ class CustomerPaymentService {
   }
 
   Future<String> generateNextNumber(String companyId) async {
-    return await _settingsService.generateNextDocumentNumber(companyId, 'customerPayment');
+    return await _settingsService.previewNextDocumentNumber(
+      companyId,
+      'receipt',
+    );
   }
 
   Future<void> addPayment(CustomerPaymentModel payment) async {
@@ -40,31 +43,72 @@ class CustomerPaymentService {
     }
 
     await _firestore.runTransaction((transaction) async {
-      final payRef = _getRef(payment.companyId).doc();
-      transaction.set(payRef, payment.toMap()..['id'] = payRef.id);
+      // 1. ALL READS FIRST (WEB REQUIREMENT)
+      
+      // Get settings snapshot for number generation
+      final settingsRef = _firestore.collection('settings').doc(payment.companyId);
+      final settingsSnap = await transaction.get(settingsRef);
+      
+      // Get all invoice snapshots
+      final List<DocumentSnapshot> invoiceSnaps = [];
+      final List<String> invoiceIds = [];
+      
+      if (payment.allocations.isNotEmpty) {
+        for (var allocation in payment.allocations) {
+          invoiceIds.add(allocation.invoiceId);
+        }
+      } else if (payment.invoiceId != null) {
+        invoiceIds.add(payment.invoiceId!);
+      }
 
-      // Update invoice if linked
-      if (payment.invoiceId != null) {
+      for (var id in invoiceIds) {
         final invRef = _firestore
             .collection('companies')
             .doc(payment.companyId)
             .collection('salesInvoices')
-            .doc(payment.invoiceId);
+            .doc(id);
+        invoiceSnaps.add(await transaction.get(invRef));
+      }
 
-        final invDoc = await transaction.get(invRef);
-        if (invDoc.exists) {
-          final currentPaid = (invDoc.data()?['amountPaid'] as num?)?.toDouble() ?? 0.0;
-          final totalAmount = (invDoc.data()?['totalAmount'] as num?)?.toDouble() ?? 0.0;
-          
-          final newPaid = currentPaid + payment.amount;
+      // 2. ALL WRITES AFTER
+      
+      // Generate final number and increment
+      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
+        payment.companyId,
+        'receipt',
+        transaction: transaction,
+      );
+
+      final payRef = _getRef(payment.companyId).doc();
+      final paymentToSave = payment.copyWith(
+        id: payRef.id,
+        paymentNumber: finalNumber,
+      );
+
+      transaction.set(payRef, paymentToSave.toMap());
+
+      // Update invoices
+      for (var i = 0; i < invoiceIds.length; i++) {
+        final invSnap = invoiceSnaps[i];
+        if (invSnap.exists) {
+          final data = invSnap.data() as Map<String, dynamic>;
+          final currentPaid = (data['amountPaid'] as num?)?.toDouble() ?? 0.0;
+          final totalAmount = (data['totalAmount'] as num?)?.toDouble() ?? 0.0;
+
+          double allocationAmount = payment.amount;
+          if (payment.allocations.isNotEmpty) {
+            allocationAmount = payment.allocations[i].amount;
+          }
+
+          final newPaid = currentPaid + allocationAmount;
           final newBalance = totalAmount - newPaid;
-          
+
           String status = 'partiallyPaid';
           if (newBalance <= 0) {
             status = 'paid';
           }
 
-          transaction.update(invRef, {
+          transaction.update(invSnap.reference, {
             'amountPaid': newPaid,
             'balanceDue': newBalance,
             'status': status,
@@ -82,29 +126,57 @@ class CustomerPaymentService {
   Future<void> deletePayment(String companyId, String paymentId) async {
     final doc = await _getRef(companyId).doc(paymentId).get();
     if (!doc.exists) return;
-    
-    final payment = CustomerPaymentModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+
+    final payment = CustomerPaymentModel.fromMap(
+      doc.data() as Map<String, dynamic>,
+      doc.id,
+    );
     if (payment.isPosted) {
-      throw Exception('Cannot delete a posted payment. Reverse the entry via Journal if needed.');
+      throw Exception(
+        'Cannot delete a posted payment. Reverse the entry via Journal if needed.',
+      );
     }
 
     await _firestore.runTransaction((transaction) async {
-      // If linked to invoice, reverse the amounts
-      if (payment.invoiceId != null) {
+      // 1. ALL READS FIRST
+      final List<DocumentSnapshot> invoiceSnaps = [];
+      final List<String> invoiceIds = [];
+
+      if (payment.allocations.isNotEmpty) {
+        for (var allocation in payment.allocations) {
+          invoiceIds.add(allocation.invoiceId);
+        }
+      } else if (payment.invoiceId != null) {
+        invoiceIds.add(payment.invoiceId!);
+      }
+
+      for (var id in invoiceIds) {
         final invRef = _firestore
             .collection('companies')
             .doc(companyId)
             .collection('salesInvoices')
-            .doc(payment.invoiceId!);
-        
-        final invDoc = await transaction.get(invRef);
-        if (invDoc.exists) {
-          final currentPaid = (invDoc.data()?['amountPaid'] as num?)?.toDouble() ?? 0.0;
-          final totalAmount = (invDoc.data()?['totalAmount'] as num?)?.toDouble() ?? 0.0;
-          
-          final newPaid = currentPaid - payment.amount;
+            .doc(id);
+        invoiceSnaps.add(await transaction.get(invRef));
+      }
+
+      // 2. ALL WRITES AFTER
+      
+      // Reverse allocations
+      for (var i = 0; i < invoiceIds.length; i++) {
+        final invSnap = invoiceSnaps[i];
+        if (invSnap.exists) {
+          final data = invSnap.data() as Map<String, dynamic>;
+          final currentPaid = (data['amountPaid'] as num?)?.toDouble() ?? 0.0;
+          final totalAmount = (data['totalAmount'] as num?)?.toDouble() ?? 0.0;
+
+          double allocationAmount = payment.amount;
+          if (payment.allocations.isNotEmpty) {
+            allocationAmount = payment.allocations[i].amount;
+          }
+
+          final newPaid = currentPaid - allocationAmount;
           final newBalance = totalAmount - newPaid;
-          
+
           String status = 'sent';
           if (newPaid > 0 && newBalance > 0) {
             status = 'partiallyPaid';
@@ -112,13 +184,14 @@ class CustomerPaymentService {
             status = 'paid';
           }
 
-          transaction.update(invRef, {
+          transaction.update(invSnap.reference, {
             'amountPaid': newPaid,
             'balanceDue': newBalance,
             'status': status,
           });
         }
       }
+
       transaction.delete(_getRef(companyId).doc(paymentId));
     });
   }

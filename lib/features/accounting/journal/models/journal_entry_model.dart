@@ -36,17 +36,49 @@ class JournalEntryModel {
     this.approvalStatus,
   });
 
+  JournalEntryModel copyWith({
+    String? id,
+    String? companyId,
+    DateTime? date,
+    String? reference,
+    String? description,
+    List<JournalLineModel>? lines,
+    JournalStatus? status,
+    String? createdBy,
+    DateTime? createdAt,
+    String? sourceType,
+    String? sourceId,
+    String? sourceNumber,
+    String? approvalStatus,
+  }) {
+    return JournalEntryModel(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      date: date ?? this.date,
+      reference: reference ?? this.reference,
+      description: description ?? this.description,
+      lines: lines ?? this.lines,
+      status: status ?? this.status,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      sourceType: sourceType ?? this.sourceType,
+      sourceId: sourceId ?? this.sourceId,
+      sourceNumber: sourceNumber ?? this.sourceNumber,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'companyId': companyId,
-      'date': date,
+      'date': Timestamp.fromDate(date),
       'reference': reference,
       'description': description,
       'lines': lines.map((l) => l.toMap()).toList(),
       'status': status.name,
       'createdBy': createdBy,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
       'sourceType': sourceType,
       'sourceId': sourceId,
       'sourceNumber': sourceNumber,
@@ -55,13 +87,19 @@ class JournalEntryModel {
   }
 
   factory JournalEntryModel.fromMap(Map<String, dynamic> map, String id) {
+    DateTime parseDate(dynamic d) {
+      if (d is Timestamp) return d.toDate();
+      if (d is String) return DateTime.tryParse(d) ?? DateTime.now();
+      return DateTime.now();
+    }
+
     return JournalEntryModel(
       id: id,
       companyId: map['companyId'] ?? '',
-      date: (map['date'] as Timestamp).toDate(),
+      date: parseDate(map['date']),
       reference: map['reference'] ?? '',
       description: map['description'] ?? '',
-      lines: (map['lines'] as List)
+      lines: (map['lines'] as List? ?? [])
           .map((l) => JournalLineModel.fromMap(l as Map<String, dynamic>))
           .toList(),
       status: JournalStatus.values.firstWhere(
@@ -69,7 +107,7 @@ class JournalEntryModel {
         orElse: () => JournalStatus.posted,
       ),
       createdBy: map['createdBy'] ?? '',
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: parseDate(map['createdAt']),
       sourceType: map['sourceType'],
       sourceId: map['sourceId'],
       sourceNumber: map['sourceNumber'],

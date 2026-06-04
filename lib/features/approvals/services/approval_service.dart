@@ -3,6 +3,7 @@ import 'package:ledgixerp/features/approvals/models/approval_request_model.dart'
 import 'package:ledgixerp/core/audit/audit_service.dart';
 import 'package:ledgixerp/features/notifications/services/notification_service.dart';
 import 'package:ledgixerp/features/notifications/models/notification_model.dart';
+import 'package:ledgixerp/core/auth/user_role.dart';
 
 class ApprovalService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -49,31 +50,57 @@ class ApprovalService {
         });
   }
 
-  Future<void> submitForApproval(ApprovalRequestModel request) async {
+  Future<void> submitForApproval(
+    ApprovalRequestModel request, {
+    required UserRole requesterRole,
+  }) async {
+    // 1. AUTO-APPROVE Logic: If requester is Owner or Finance Manager (rank >= 80)
+    if (requesterRole.rank >= 80) {
+      await _autoApprove(request);
+      return;
+    }
+
     final batch = _firestore.batch();
 
-    // 1. Create approval request
+    // 2. Create approval request
     final docRef = _getRef(request.companyId).doc();
     batch.set(docRef, request.toMap()..['id'] = docRef.id);
 
-    // 2. Update source document status if needed (e.g. set to 'pending_approval')
-    // We'll handle this in the UI or by passing a callback
+    // 3. Update source document status to 'pendingApproval'
+    final sourceCollection = _getCollectionForType(request.sourceType);
+    batch.update(
+      _firestore
+          .collection('companies')
+          .doc(request.companyId)
+          .collection(sourceCollection)
+          .doc(request.sourceId),
+      {'approvalStatus': ApprovalStatus.pending.name},
+    );
 
     await batch.commit();
 
-    // 3. Notify owners/admins
-    final ownersSnap = await _firestore.collection('users')
+    // 4. Notify higher roles (Hierarchical Escalation)
+    final superiorsSnap = await _firestore
+        .collection('users')
         .where('companyId', isEqualTo: request.companyId)
-        .where('role', whereIn: ['owner', 'admin'])
         .get();
 
-    for (var doc in ownersSnap.docs) {
-      if (doc.id != request.requestedByUserId) { // Don't notify self
+    for (var doc in superiorsSnap.docs) {
+      final userData = doc.data();
+      final roleName = userData['role'] ?? 'dataEntry';
+      final role = UserRole.values.firstWhere(
+        (e) => e.name == roleName,
+        orElse: () => UserRole.dataEntry,
+      );
+
+      if (role.rank > requesterRole.rank &&
+          doc.id != request.requestedByUserId) {
         await _notificationService.sendNotification(
           userId: doc.id,
           companyId: request.companyId,
-          title: 'Approval Requested',
-          message: '${request.requestedByUserName} submitted a ${request.sourceType} (${request.sourceNumber}) for approval.',
+          title: 'Approval Required',
+          message:
+              '${request.requestedByUserName} submitted ${request.sourceType} ${request.sourceNumber} for review.',
           type: NotificationType.approval,
           relatedDocId: docRef.id,
           relatedDocType: 'approval',
@@ -85,12 +112,53 @@ class ApprovalService {
       companyId: request.companyId,
       userId: request.requestedByUserId,
       userName: request.requestedByUserName,
-      actionType: 'create',
+      actionType: 'submit_approval',
       module: 'approvals',
       documentId: docRef.id,
       documentNumber: request.sourceNumber,
       description:
           'Submitted ${request.sourceType} ${request.sourceNumber} for approval',
+    );
+  }
+
+  Future<void> _autoApprove(ApprovalRequestModel request) async {
+    final batch = _firestore.batch();
+    final sourceCollection = _getCollectionForType(request.sourceType);
+
+    batch.update(
+      _firestore
+          .collection('companies')
+          .doc(request.companyId)
+          .collection(sourceCollection)
+          .doc(request.sourceId),
+      {'approvalStatus': ApprovalStatus.approved.name},
+    );
+
+    final docRef = _getRef(request.companyId).doc();
+    batch.set(
+      docRef,
+      request.toMap()..addAll({
+        'id': docRef.id,
+        'status': ApprovalStatus.approved.name,
+        'approverUserId': request.requestedByUserId,
+        'approverUserName': '${request.requestedByUserName} (Auto)',
+        'actionedAt': FieldValue.serverTimestamp(),
+        'notes': 'Auto-approved based on role rank.',
+      }),
+    );
+
+    await batch.commit();
+
+    await _auditService.log(
+      companyId: request.companyId,
+      userId: request.requestedByUserId,
+      userName: request.requestedByUserName,
+      actionType: 'auto_approve',
+      module: 'approvals',
+      documentId: request.sourceId,
+      documentNumber: request.sourceNumber,
+      description:
+          'Auto-approved ${request.sourceType} ${request.sourceNumber}',
     );
   }
 
@@ -107,7 +175,6 @@ class ApprovalService {
   }) async {
     final batch = _firestore.batch();
 
-    // 1. Update approval request
     batch.update(_getRef(companyId).doc(approvalId), {
       'status': status.name,
       'approverUserId': approverId,
@@ -116,30 +183,7 @@ class ApprovalService {
       'notes': notes,
     });
 
-    // 2. Update source document status
-    String collectionName;
-    switch (sourceType) {
-      case 'salesInvoice':
-        collectionName = 'salesInvoices';
-        break;
-      case 'quotation':
-        collectionName = 'quotations';
-        break;
-      case 'purchaseOrder':
-        collectionName = 'purchaseOrders';
-        break;
-      case 'supplierPayment':
-        collectionName = 'supplierPayments';
-        break;
-      case 'customerPayment':
-        collectionName = 'customerPayments';
-        break;
-      case 'journalEntry':
-        collectionName = 'journalEntries';
-        break;
-      default:
-        throw 'Unknown source type: $sourceType';
-    }
+    final collectionName = _getCollectionForType(sourceType);
 
     batch.update(
       _firestore
@@ -152,7 +196,6 @@ class ApprovalService {
 
     await batch.commit();
 
-    // 3. Notify the requester
     final reqSnap = await _getRef(companyId).doc(approvalId).get();
     if (reqSnap.exists) {
       final reqData = reqSnap.data() as Map<String, dynamic>;
@@ -183,6 +226,27 @@ class ApprovalService {
       description:
           '${status == ApprovalStatus.approved ? 'Approved' : 'Rejected'} $sourceType $sourceNumber',
     );
+  }
+
+  String _getCollectionForType(String sourceType) {
+    switch (sourceType) {
+      case 'salesInvoice':
+        return 'salesInvoices';
+      case 'quotation':
+        return 'quotations';
+      case 'purchaseOrder':
+        return 'purchaseOrders';
+      case 'supplierPayment':
+        return 'supplierPayments';
+      case 'customerPayment':
+        return 'customerPayments';
+      case 'journalEntry':
+        return 'journalEntries';
+      case 'supplierBill':
+        return 'supplierBills';
+      default:
+        throw 'Unknown source type: $sourceType';
+    }
   }
 
   Future<ApprovalRequestModel?> getRequestBySource(

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
 import '../../services/reporting_service.dart';
 import '../../models/report_models.dart';
+import 'package:ledgixerp/core/services/export_service.dart';
 
 class TrialBalanceScreen extends StatefulWidget {
   final AppUser user;
@@ -14,6 +18,9 @@ class TrialBalanceScreen extends StatefulWidget {
 
 class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
   final _reportingService = ReportingService();
+  final _exportService = ExportService();
+  final _companyService = CompanyService();
+  CompanyModel? _company;
   DateTime _selectedDate = DateTime.now();
   late Future<TrialBalanceReport> _reportFuture;
 
@@ -21,6 +28,13 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
   void initState() {
     super.initState();
     _loadReport();
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).listen((company) {
+      if (mounted) setState(() => _company = company);
+    });
   }
 
   void _loadReport() {
@@ -30,6 +44,53 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
         _selectedDate,
       );
     });
+  }
+
+  Future<void> _exportReport(TrialBalanceReport report, bool isPdf) async {
+    final currencySymbol = _company?.baseCurrency ?? 'AED';
+    final asOfDate = 'As of ${AppFormatters.date(_selectedDate)}';
+
+    if (isPdf) {
+      final List<List<String>> tableData = report.balances
+          .where((b) => b.debit != 0 || b.credit != 0)
+          .map((b) => [
+                b.account.accountName,
+                b.account.accountCode,
+                b.debit > 0 ? AppFormatters.currency(b.debit, symbol: currencySymbol) : '0.00',
+                b.credit > 0 ? AppFormatters.currency(b.credit, symbol: currencySymbol) : '0.00',
+              ])
+          .toList();
+
+      await _exportService.exportReportToPdf(
+        title: 'Trial Balance Report',
+        subTitle: asOfDate,
+        headers: ['Account Name', 'Code', 'Debit', 'Credit'],
+        data: tableData,
+        summary: {
+          'Total Debits': AppFormatters.currency(report.totalDebits, symbol: currencySymbol),
+          'Total Credits': AppFormatters.currency(report.totalCredits, symbol: currencySymbol),
+        },
+      );
+    } else {
+      final List<List<dynamic>> excelData = report.balances
+          .where((b) => b.debit != 0 || b.credit != 0)
+          .map((b) => [
+                b.account.accountName,
+                b.account.accountCode,
+                b.debit,
+                b.credit,
+              ])
+          .toList();
+
+      excelData.add(['TOTAL', '', report.totalDebits, report.totalCredits]);
+
+      await _exportService.exportToExcel(
+        fileName: 'Trial_Balance_${_selectedDate.year}${_selectedDate.month}${_selectedDate.day}',
+        sheetName: 'Trial Balance',
+        headers: ['Account Name', 'Code', 'Debit', 'Credit'],
+        data: excelData,
+      );
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -54,10 +115,20 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
         title: const Text('Trial Balance'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadReport),
-          IconButton(
-            icon: const Icon(Icons.print),
-            onPressed: () {
-              // TODO: Implement PDF Export
+          FutureBuilder<TrialBalanceReport>(
+            future: _reportFuture,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return PopupMenuButton<String>(
+                  icon: const Icon(Icons.download),
+                  onSelected: (value) => _exportReport(snapshot.data!, value == 'pdf'),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
+                    const PopupMenuItem(value: 'excel', child: Text('Export Excel')),
+                  ],
+                );
+              }
+              return const SizedBox();
             },
           ),
         ],
@@ -88,7 +159,7 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      DateFormat('dd MMM yyyy').format(_selectedDate),
+                      AppFormatters.date(_selectedDate),
                     ),
                   ),
                 ),
@@ -107,7 +178,7 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
                 }
 
                 final report = snapshot.data!;
-                final currencyFormat = NumberFormat.simpleCurrency();
+                final currencySymbol = _company?.baseCurrency ?? 'AED';
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
@@ -155,14 +226,14 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
                                       DataCell(
                                         Text(
                                           b.debit > 0
-                                              ? currencyFormat.format(b.debit)
+                                              ? AppFormatters.currency(b.debit, symbol: currencySymbol)
                                               : '',
                                         ),
                                       ),
                                       DataCell(
                                         Text(
                                           b.credit > 0
-                                              ? currencyFormat.format(b.credit)
+                                              ? AppFormatters.currency(b.credit, symbol: currencySymbol)
                                               : '',
                                         ),
                                       ),
@@ -185,7 +256,7 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
                                 const DataCell(Text('')),
                                 DataCell(
                                   Text(
-                                    currencyFormat.format(report.totalDebits),
+                                    AppFormatters.currency(report.totalDebits, symbol: currencySymbol),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -193,7 +264,7 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
                                 ),
                                 DataCell(
                                   Text(
-                                    currencyFormat.format(report.totalCredits),
+                                    AppFormatters.currency(report.totalCredits, symbol: currencySymbol),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -212,7 +283,7 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
                                 const Icon(Icons.warning, color: Colors.orange),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Unbalanced! Difference: ${currencyFormat.format(report.totalDebits - report.totalCredits)}',
+                                  'Unbalanced! Difference: ${AppFormatters.currency(report.totalDebits - report.totalCredits, symbol: currencySymbol)}',
                                   style: const TextStyle(
                                     color: Colors.orange,
                                     fontWeight: FontWeight.bold,

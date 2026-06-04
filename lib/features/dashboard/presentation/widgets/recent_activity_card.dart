@@ -103,12 +103,16 @@ class RecentActivityCard extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               item.subtitle,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontSize: 11,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),

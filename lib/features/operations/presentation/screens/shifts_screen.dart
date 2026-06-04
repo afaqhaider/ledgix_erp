@@ -15,8 +15,14 @@ class ShiftsScreen extends StatelessWidget {
           children: [
             Icon(Icons.more_time, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Shifts Module', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text('Manage staff shifts and attendance.', style: TextStyle(color: Colors.grey)),
+            Text(
+              'Shifts Module',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Manage staff shifts and attendance.',
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       ),

@@ -1,16 +1,40 @@
 import 'package:ledgixerp/core/auth/permission.dart';
 
 enum UserRole {
-  owner,
-  admin,
-  accountant,
-  manager,
-  staff;
+  owner(100),
+  financeManager(80),
+  controller(60),
+  admin(50),
+  accountant(40),
+  dataEntry(20);
 
-  Set<AppPermission> get permissions {
+  final int rank;
+  const UserRole(this.rank);
+
+  Set<AppPermission> get defaultPermissions {
     switch (this) {
       case UserRole.owner:
         return AppPermission.values.toSet();
+      case UserRole.financeManager:
+        return {...AppPermission.values.toSet()}
+          ..remove(AppPermission.manageCompany);
+      case UserRole.controller:
+        return {
+          AppPermission.viewDashboard,
+          AppPermission.viewAccounting,
+          AppPermission.manageAccounting,
+          AppPermission.viewCustomers,
+          AppPermission.manageCustomers,
+          AppPermission.viewSuppliers,
+          AppPermission.manageSuppliers,
+          AppPermission.viewInvoices,
+          AppPermission.manageInvoices,
+          AppPermission.viewBills,
+          AppPermission.manageBills,
+          AppPermission.viewReports,
+          AppPermission.approveTransactions,
+          AppPermission.viewApprovals,
+        };
       case UserRole.admin:
         return {
           AppPermission.viewDashboard,
@@ -23,8 +47,11 @@ enum UserRole {
           AppPermission.manageSuppliers,
           AppPermission.viewInvoices,
           AppPermission.manageInvoices,
+          AppPermission.viewBills,
+          AppPermission.manageBills,
           AppPermission.viewReports,
           AppPermission.manageSettings,
+          AppPermission.viewApprovals,
         };
       case UserRole.accountant:
         return {
@@ -37,24 +64,23 @@ enum UserRole {
           AppPermission.manageSuppliers,
           AppPermission.viewInvoices,
           AppPermission.manageInvoices,
+          AppPermission.viewBills,
+          AppPermission.manageBills,
           AppPermission.viewReports,
+          AppPermission.viewApprovals,
         };
-      case UserRole.manager:
+      case UserRole.dataEntry:
         return {
           AppPermission.viewDashboard,
           AppPermission.viewCustomers,
-          AppPermission.manageCustomers,
           AppPermission.viewSuppliers,
-          AppPermission.manageSuppliers,
           AppPermission.viewInvoices,
-          AppPermission.manageInvoices,
-          AppPermission.viewReports,
+          AppPermission.viewBills,
+          AppPermission.viewAccounting,
         };
-      case UserRole.staff:
-        return {AppPermission.viewDashboard};
     }
   }
 
   bool hasPermission(AppPermission permission) =>
-      permissions.contains(permission);
+      defaultPermissions.contains(permission);
 }

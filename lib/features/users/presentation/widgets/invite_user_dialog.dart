@@ -19,10 +19,10 @@ class InviteUserDialog extends StatefulWidget {
 class _InviteUserDialogState extends State<InviteUserDialog> {
   final _formKey = GlobalKey<FormState>();
   final _userService = CompanyUserService();
-  
+
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
-  UserRole _selectedRole = UserRole.staff;
+  UserRole _selectedRole = UserRole.dataEntry;
   bool _isLoading = false;
 
   @override
@@ -47,9 +47,9 @@ class _InviteUserDialogState extends State<InviteUserDialog> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error inviting user: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error inviting user: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -90,17 +90,21 @@ class _InviteUserDialogState extends State<InviteUserDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<UserRole>(
-                value: _selectedRole,
+                initialValue: _selectedRole,
                 decoration: const InputDecoration(
                   labelText: 'Assigned Role',
                   border: OutlineInputBorder(),
                 ),
                 items: UserRole.values
-                    .where((r) => r != UserRole.owner) // Cannot invite another owner directly usually
-                    .map((r) => DropdownMenuItem(
-                          value: r,
-                          child: Text(r.name.toUpperCase()),
-                        ))
+                    .where(
+                      (r) => r != UserRole.owner,
+                    ) // Cannot invite another owner directly usually
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(r.name.toUpperCase()),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) => setState(() => _selectedRole = v!),
               ),

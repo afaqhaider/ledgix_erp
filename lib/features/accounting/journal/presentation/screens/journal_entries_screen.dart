@@ -7,7 +7,6 @@ import 'package:ledgixerp/features/accounting/journal/services/journal_service.d
 import 'package:ledgixerp/features/accounting/journal/presentation/screens/create_journal_entry_screen.dart';
 import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class JournalEntriesScreen extends StatefulWidget {
   final AppUser user;
@@ -34,18 +33,14 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
         requestedAt: DateTime.now(),
       );
 
-      await _approvalService.submitForApproval(request);
-
-      await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.user.companyId)
-          .collection('journalEntries')
-          .doc(entry.id)
-          .update({'approvalStatus': 'pending'});
+      await _approvalService.submitForApproval(
+        request,
+        requesterRole: widget.user.role,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Journal Entry submitted for approval')),
+          const SnackBar(content: Text('Processing approval/submission...')),
         );
       }
     } catch (e) {
@@ -62,7 +57,9 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete journal entry ${entry.reference}?'),
+        content: Text(
+          'Are you sure you want to delete journal entry ${entry.reference}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -79,7 +76,10 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
 
     if (confirmed == true) {
       try {
-        await _journalService.deleteJournalEntry(widget.user.companyId!, entry.id);
+        await _journalService.deleteJournalEntry(
+          widget.user.companyId!,
+          entry.id,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Journal Entry deleted successfully')),
@@ -88,7 +88,10 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
@@ -238,7 +241,11 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
                     children: [
                       if (entry.status != JournalStatus.posted && canManage)
                         IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                            size: 20,
+                          ),
                           onPressed: () => _confirmDelete(entry),
                         ),
                       if (entry.approvalStatus == null)

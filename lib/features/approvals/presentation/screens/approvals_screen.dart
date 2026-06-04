@@ -14,16 +14,52 @@ class ApprovalsScreen extends StatefulWidget {
 
 class _ApprovalsScreenState extends State<ApprovalsScreen> {
   final _approvalService = ApprovalService();
+  late Stream<List<ApprovalRequestModel>> _approvalsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _approvalsStream = _approvalService.getPendingApprovals(widget.user.companyId!);
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Approvals Workflow')),
+      appBar: AppBar(title: const Text('Approvals')),
       body: StreamBuilder<List<ApprovalRequestModel>>(
-        stream: _approvalService.getPendingApprovals(widget.user.companyId!),
+        stream: _approvalsStream,
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error loading approvals: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                    if (snapshot.error.toString().contains('index'))
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'This usually means a Firestore index is being built. Please wait a few minutes.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }

@@ -42,7 +42,9 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
       setState(() => _entries = entries);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       setState(() => _isLoading = false);

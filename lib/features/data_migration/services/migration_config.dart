@@ -22,9 +22,9 @@ class MigrationConfig {
             aliases: ['Mobile', 'Contact', 'Telephone'],
           ),
           FieldDefinition(
-            key: 'trn',
-            label: 'TRN Number',
-            aliases: ['Tax Number', 'VAT NO', 'TRN'],
+            key: 'taxNumber',
+            label: 'Tax Number (TRN)',
+            aliases: ['Tax Number', 'VAT NO', 'TRN', 'TRN Number'],
           ),
           FieldDefinition(key: 'address', label: 'Address'),
           FieldDefinition(
@@ -36,15 +36,22 @@ class MigrationConfig {
       case MigrationModule.suppliers:
         return [
           FieldDefinition(
-            key: 'name',
+            key: 'supplierCode',
+            label: 'Supplier Code',
+            isRequired: true,
+            aliases: ['Code', 'Supplier ID', 'Vendor Code'],
+          ),
+          FieldDefinition(
+            key: 'supplierName',
             label: 'Supplier Name',
             isRequired: true,
-            aliases: ['Supplier', 'Vendor'],
+            aliases: ['Supplier', 'Vendor', 'Name', 'Supplier Name'],
           ),
           FieldDefinition(key: 'email', label: 'Email'),
           FieldDefinition(key: 'phone', label: 'Phone'),
-          FieldDefinition(key: 'trn', label: 'TRN Number', aliases: ['VAT NO']),
+          FieldDefinition(key: 'trnVatNumber', label: 'TRN / VAT Number', aliases: ['VAT NO', 'TRN Number', 'TRN']),
           FieldDefinition(key: 'address', label: 'Address'),
+          FieldDefinition(key: 'country', label: 'Country'),
         ];
       case MigrationModule.chartOfAccounts:
         return [
@@ -67,6 +74,32 @@ class MigrationConfig {
             aliases: ['Type', 'Category'],
           ),
           FieldDefinition(key: 'description', label: 'Description'),
+        ];
+      case MigrationModule.inventory:
+        return [
+          FieldDefinition(
+            key: 'sku',
+            label: 'SKU / Item Code',
+            isRequired: true,
+            aliases: ['SKU', 'Item Code', 'Part Number'],
+          ),
+          FieldDefinition(
+            key: 'name',
+            label: 'Product Name',
+            isRequired: true,
+            aliases: ['Name', 'Product', 'Item'],
+          ),
+          FieldDefinition(key: 'description', label: 'Description'),
+          FieldDefinition(
+            key: 'salePrice',
+            label: 'Sale Price',
+            aliases: ['Price', 'Selling Price'],
+          ),
+          FieldDefinition(
+            key: 'costPrice',
+            label: 'Cost Price',
+            aliases: ['Cost', 'Purchase Price'],
+          ),
         ];
       default:
         return [];

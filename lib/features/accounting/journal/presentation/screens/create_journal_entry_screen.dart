@@ -6,6 +6,8 @@ import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.
 import 'package:ledgixerp/features/accounting/journal/models/journal_entry_model.dart';
 import 'package:ledgixerp/features/accounting/journal/models/journal_line_model.dart';
 import 'package:ledgixerp/features/accounting/journal/services/journal_service.dart';
+import 'package:ledgixerp/widgets/searchable_selector.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/add_account_dialog.dart';
 
 class CreateJournalEntryScreen extends StatefulWidget {
   final AppUser user;
@@ -32,26 +34,24 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
   void initState() {
     super.initState();
     _loadInitialData();
-    // Start with 2 empty lines
     _addLine();
     _addLine();
+    _listenToAccounts();
+  }
+
+  void _listenToAccounts() {
+    _accountService.getAccounts(widget.user.companyId!).listen((accounts) {
+      if (mounted) setState(() => _accounts = accounts);
+    });
   }
 
   Future<void> _loadInitialData() async {
-    _loadAccounts();
     final number = await _journalService.generateNextJournalNumber(
       widget.user.companyId!,
     );
     if (mounted) {
       setState(() => _journalNumber = number);
     }
-  }
-
-  Future<void> _loadAccounts() async {
-    final accounts = await _accountService
-        .getAccounts(widget.user.companyId!)
-        .first;
-    setState(() => _accounts = accounts);
   }
 
   void _addLine() {
@@ -84,13 +84,25 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
       return;
     }
 
+    if (_lines.any(
+      (l) => l.accountId.isEmpty && (l.debit > 0 || l.credit > 0),
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All lines with amounts must have an account selected'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final entry = JournalEntryModel(
         id: '',
         companyId: widget.user.companyId!,
         date: _selectedDate,
-        reference: _journalNumber,
+        reference: 'AUTO',
         description: _descController.text.trim(),
         lines: _lines.where((l) => l.accountId.isNotEmpty).toList(),
         createdBy: widget.user.uid,
@@ -111,6 +123,13 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showAddAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AddAccountDialog(companyId: widget.user.companyId!),
+    );
   }
 
   @override
@@ -147,10 +166,16 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
                       Expanded(
                         child: InputDecorator(
                           decoration: const InputDecoration(
-                            labelText: 'Reference',
+                            labelText: 'Journal Number',
                             border: OutlineInputBorder(),
                           ),
-                          child: Text(_journalNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          child: Text(
+                            'Next number: $_journalNumber',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blueAccent,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -249,35 +274,35 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
         ..._lines.asMap().entries.map((entry) {
           int index = entry.key;
           JournalLineModel line = entry.value;
+          final currentAccount = line.accountId.isEmpty
+              ? null
+              : _accounts.where((a) => a.id == line.accountId).firstOrNull;
+
           return TableRow(
             children: [
               Padding(
                 padding: const EdgeInsets.all(4),
-                child: DropdownButtonFormField<String>(
-                  initialValue: line.accountId.isEmpty ? null : line.accountId,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _accounts
-                      .map(
-                        (a) => DropdownMenuItem(
-                          value: a.id,
-                          child: Text('${a.accountCode} - ${a.accountName}'),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) {
-                    final acc = _accounts.firstWhere((a) => a.id == val);
-                    setState(() {
-                      _lines[index] = JournalLineModel(
-                        accountId: acc.id,
-                        accountName: acc.accountName,
-                        accountCode: acc.accountCode,
-                        debit: line.debit,
-                        credit: line.credit,
-                      );
-                    });
+                child: SearchableSelector<AccountModel>(
+                  labelText: 'Select Account',
+                  items: _accounts,
+                  itemLabelBuilder: (a) =>
+                      '${a.accountCode} - ${a.accountName}',
+                  onSelected: (acc) {
+                    if (acc != null) {
+                      setState(() {
+                        _lines[index] = JournalLineModel(
+                          accountId: acc.id,
+                          accountName: acc.accountName,
+                          accountCode: acc.accountCode,
+                          debit: line.debit,
+                          credit: line.credit,
+                        );
+                      });
+                    }
                   },
+                  addLabel: 'Add Account',
+                  onAdd: _showAddAccountDialog,
+                  initialValue: currentAccount,
                 ),
               ),
               Padding(
@@ -295,7 +320,7 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
                         accountName: line.accountName,
                         accountCode: line.accountCode,
                         debit: double.tryParse(val) ?? 0,
-                        credit: 0, // Reset credit if debit is set
+                        credit: 0,
                       );
                     });
                   },
@@ -315,7 +340,7 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
                         accountId: line.accountId,
                         accountName: line.accountName,
                         accountCode: line.accountCode,
-                        debit: 0, // Reset debit if credit is set
+                        debit: 0,
                         credit: double.tryParse(val) ?? 0,
                       );
                     });

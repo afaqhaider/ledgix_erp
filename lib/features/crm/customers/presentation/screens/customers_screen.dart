@@ -155,7 +155,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             ),
                             if (canManage)
                               IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 20,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () => _confirmDelete(customer),
                               ),
                           ],
@@ -177,7 +181,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete customer ${customer.name}? This will only work if there are no linked invoices or payments.'),
+        content: Text(
+          'Are you sure you want to delete customer ${customer.name}? This will only work if there are no linked invoices or payments.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -194,7 +200,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
     if (confirmed == true) {
       try {
-        await _customerService.deleteCustomer(widget.user.companyId!, customer.id);
+        await _customerService.deleteCustomer(
+          widget.user.companyId!,
+          customer.id,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Customer deleted successfully')),
@@ -203,7 +212,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
@@ -221,8 +233,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
   void _showImportModal(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) =>
-          const ImportExportModal(initialModule: MigrationModule.customers),
+      builder: (context) => ImportExportModal(
+        initialModule: MigrationModule.customers,
+        companyId: widget.user.companyId!,
+      ),
     );
   }
 

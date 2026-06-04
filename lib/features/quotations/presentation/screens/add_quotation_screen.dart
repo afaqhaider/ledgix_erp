@@ -5,6 +5,20 @@ import 'package:ledgixerp/features/crm/customers/models/customer_model.dart';
 import 'package:ledgixerp/features/crm/customers/services/customer_service.dart';
 import 'package:ledgixerp/features/quotations/models/quotation_model.dart';
 import 'package:ledgixerp/features/quotations/services/quotation_service.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
+import 'package:ledgixerp/widgets/searchable_selector.dart';
+import 'package:ledgixerp/features/crm/customers/presentation/widgets/add_customer_dialog.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/add_account_dialog.dart';
+import 'package:ledgixerp/features/inventory/models/product_model.dart';
+import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
+import 'package:ledgixerp/features/settings/models/payment_term_model.dart';
+import 'package:ledgixerp/features/settings/services/terms_service.dart';
+import 'package:ledgixerp/features/settings/presentation/widgets/add_payment_term_dialog.dart';
+import 'package:ledgixerp/features/inventory/presentation/widgets/add_product_dialog.dart';
+import 'package:ledgixerp/core/models/attachment_model.dart';
+import 'package:ledgixerp/core/widgets/attachment_section.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
 class AddQuotationScreen extends StatefulWidget {
   final AppUser user;
@@ -18,14 +32,23 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _quoService = QuotationService();
   final _customerService = CustomerService();
+  final _accountService = AccountService();
+  final _inventoryService = InventoryService();
+  final _termsService = TermsService();
   final _notesController = TextEditingController();
   final _termsController = TextEditingController();
 
-  String _quoNumber = 'Loading...';
+  String _previewNumber = 'Loading...';
   CustomerModel? _selectedCustomer;
+  PaymentTermModel? _selectedTerm;
   DateTime _quoDate = DateTime.now();
   DateTime _validUntil = DateTime.now().add(const Duration(days: 15));
+  List<AttachmentModel> _attachments = [];
 
+  List<CustomerModel> _allCustomers = [];
+  List<AccountModel> _allAccounts = [];
+  List<ProductModel> _allProducts = [];
+  List<PaymentTermModel> _allTerms = [];
   final List<QuotationLineItemModel> _items = [];
   bool _isLoading = false;
 
@@ -34,14 +57,55 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     super.initState();
     _loadInitialData();
     _addItem();
+    _listenToMasterData();
+  }
+
+  void _listenToMasterData() {
+    _customerService.getCustomers(widget.user.companyId!).listen((customers) {
+      if (mounted) setState(() => _allCustomers = customers);
+    });
+    _accountService.getAccounts(widget.user.companyId!).listen((accounts) {
+      if (mounted) {
+        setState(() {
+          _allAccounts = accounts.where((a) => 
+            a.accountType == AccountType.income || 
+            a.accountType == AccountType.otherIncome
+          ).toList();
+        });
+      }
+    });
+    _inventoryService.getProducts(widget.user.companyId!).listen((products) {
+      if (mounted) setState(() => _allProducts = products);
+    });
+    _termsService.getPaymentTerms(widget.user.companyId!).listen((terms) {
+      if (mounted) {
+        setState(() {
+          _allTerms = terms;
+          if (_selectedTerm == null) {
+            _selectedTerm = terms.where((t) => t.isDefault).firstOrNull;
+            if (_selectedTerm != null) {
+              _updateValidUntilDate();
+            }
+          }
+        });
+      }
+    });
+  }
+
+  void _updateValidUntilDate() {
+    if (_selectedTerm != null) {
+      setState(() {
+        _validUntil = _quoDate.add(Duration(days: _selectedTerm!.days));
+      });
+    }
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _quoService.generateNextQuotationNumber(
+    final number = await _quoService.previewNextQuotationNumber(
       widget.user.companyId!,
     );
     if (mounted) {
-      setState(() => _quoNumber = number);
+      setState(() => _previewNumber = number);
     }
   }
 
@@ -49,6 +113,8 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     setState(() {
       _items.add(
         QuotationLineItemModel(
+          accountId: '',
+          accountName: '',
           description: '',
           quantity: 1,
           unitPrice: 0,
@@ -69,6 +135,9 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
 
   void _updateItem(
     int index, {
+    String? productId,
+    String? accountId,
+    String? accountName,
     String? desc,
     double? qty,
     double? price,
@@ -84,6 +153,9 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
 
     setState(() {
       _items[index] = QuotationLineItemModel(
+        productId: productId ?? item.productId,
+        accountId: accountId ?? item.accountId,
+        accountName: accountName ?? item.accountName,
         description: desc ?? item.description,
         quantity: newQty,
         unitPrice: newPrice,
@@ -109,12 +181,19 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
       return;
     }
 
+    if (_items.any((item) => item.accountId.isEmpty)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('All items must have an account selected')));
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final quo = QuotationModel(
         id: '',
         companyId: widget.user.companyId!,
-        quotationNumber: _quoNumber,
+        quotationNumber: 'AUTO',
         customerId: _selectedCustomer!.id,
         customerName: _selectedCustomer!.name,
         quotationDate: _quoDate,
@@ -129,6 +208,7 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
         termsAndConditions: _termsController.text.trim().isEmpty
             ? null
             : _termsController.text.trim(),
+        attachments: _attachments,
         createdAt: DateTime.now(),
       );
 
@@ -146,6 +226,34 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showAddCustomerDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AddCustomerDialog(companyId: widget.user.companyId!),
+    );
+  }
+
+  void _showAddAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AddAccountDialog(companyId: widget.user.companyId!),
+    );
+  }
+
+  void _showAddPaymentTermDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AddPaymentTermDialog(companyId: widget.user.companyId!),
+    );
+  }
+
+  void _showAddProductDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AddProductDialog(companyId: widget.user.companyId!),
+    );
   }
 
   @override
@@ -183,40 +291,28 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                         children: [
                           Expanded(
                             child: InputDecorator(
-                              decoration: const InputDecoration(
-                                labelText: 'Quotation Number',
-                                border: OutlineInputBorder(),
+                              decoration: ErpFormStyle.inputDecoration(context, 'Document Number'),
+                              child: Text(
+                                'Next number: $_previewNumber',
+                                style: ErpFormStyle.inputStyle(context).copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blueAccent,
+                                ),
                               ),
-                              child: Text(_quoNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             flex: 2,
-                            child: StreamBuilder<List<CustomerModel>>(
-                              stream: _customerService.getCustomers(
-                                widget.user.companyId!,
-                              ),
-                              builder: (context, snapshot) {
-                                final customers = snapshot.data ?? [];
-                                return DropdownButtonFormField<CustomerModel>(
-                                  initialValue: _selectedCustomer,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Select Customer',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  items: customers.map((c) {
-                                    return DropdownMenuItem(
-                                      value: c,
-                                      child: Text(c.name),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) =>
-                                      setState(() => _selectedCustomer = val),
-                                  validator: (v) =>
-                                      v == null ? 'Required' : null,
-                                );
-                              },
+                            child: SearchableSelector<CustomerModel>(
+                              labelText: 'Select Customer',
+                              items: _allCustomers,
+                              itemLabelBuilder: (c) => c.name,
+                              onSelected: (val) => setState(() => _selectedCustomer = val),
+                              addLabel: 'Add New Customer',
+                              onAdd: _showAddCustomerDialog,
+                              initialValue: _selectedCustomer,
+                              validator: (v) => _selectedCustomer == null ? 'Required' : null,
                             ),
                           ),
                         ],
@@ -228,7 +324,27 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                             child: _buildDatePicker(
                               label: 'Quotation Date',
                               selectedDate: _quoDate,
-                              onTap: (date) => setState(() => _quoDate = date),
+                              onTap: (date) {
+                                setState(() => _quoDate = date);
+                                _updateValidUntilDate();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: SearchableSelector<PaymentTermModel>(
+                              labelText: 'Payment Terms',
+                              items: _allTerms,
+                              itemLabelBuilder: (t) => t.name,
+                              onSelected: (val) {
+                                setState(() {
+                                  _selectedTerm = val;
+                                  _updateValidUntilDate();
+                                });
+                              },
+                              addLabel: 'Add New Term',
+                              onAdd: _showAddPaymentTermDialog,
+                              initialValue: _selectedTerm,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -247,9 +363,9 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              const Text(
+              Text(
                 'Quotation Items',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: ErpFormStyle.sectionHeaderStyle(context),
               ),
               const SizedBox(height: 16),
               _buildItemsTable(),
@@ -258,6 +374,14 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                 onPressed: _addItem,
                 icon: const Icon(Icons.add),
                 label: const Text('Add Item'),
+              ),
+              const SizedBox(height: 32),
+              AttachmentSection(
+                companyId: widget.user.companyId!,
+                folder: 'quotations',
+                onAttachmentsChanged: (attachments) {
+                  _attachments = attachments;
+                },
               ),
               const SizedBox(height: 32),
               Row(
@@ -269,19 +393,15 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                         TextFormField(
                           controller: _notesController,
                           maxLines: 2,
-                          decoration: const InputDecoration(
-                            labelText: 'Notes',
-                            border: OutlineInputBorder(),
-                          ),
+                          style: ErpFormStyle.inputStyle(context),
+                          decoration: ErpFormStyle.inputDecoration(context, 'Notes'),
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _termsController,
                           maxLines: 2,
-                          decoration: const InputDecoration(
-                            labelText: 'Terms & Conditions',
-                            border: OutlineInputBorder(),
-                          ),
+                          style: ErpFormStyle.inputStyle(context),
+                          decoration: ErpFormStyle.inputDecoration(context, 'Terms & Conditions'),
                         ),
                       ],
                     ),
@@ -313,16 +433,15 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
         if (date != null) onTap(date);
       },
       child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-        child: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
+        decoration: ErpFormStyle.inputDecoration(context, label, icon: Icons.calendar_today),
+        child: Text(DateFormat('yyyy-MM-dd').format(selectedDate), style: ErpFormStyle.inputStyle(context)),
       ),
     );
   }
 
   Widget _buildItemsTable() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Table(
       columnWidths: const {
         0: FlexColumnWidth(4),
@@ -333,94 +452,89 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
         5: IntrinsicColumnWidth(),
       },
       children: [
-        const TableRow(
+        TableRow(
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          ),
           children: [
-            Padding(
-              padding: EdgeInsets.all(8),
-              child: Text(
-                'Description',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(8),
-              child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            Padding(
-              padding: EdgeInsets.all(8),
-              child: Text(
-                'Unit Price',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(8),
-              child: Text(
-                'VAT%',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(8),
-              child: Text(
-                'Total',
-                textAlign: TextAlign.right,
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Padding(padding: EdgeInsets.all(8), child: Text('')),
+            Padding(padding: const EdgeInsets.all(8), child: Text('Product / Account', style: ErpFormStyle.labelStyle(context))),
+            Padding(padding: const EdgeInsets.all(8), child: Text('Qty', style: ErpFormStyle.labelStyle(context))),
+            Padding(padding: const EdgeInsets.all(8), child: Text('Unit Price', style: ErpFormStyle.labelStyle(context))),
+            Padding(padding: const EdgeInsets.all(8), child: Text('VAT%', style: ErpFormStyle.labelStyle(context))),
+            Padding(padding: const EdgeInsets.all(8), child: Text('Total', textAlign: TextAlign.right, style: ErpFormStyle.labelStyle(context))),
+            const Padding(padding: EdgeInsets.all(8), child: Text('')),
           ],
         ),
         ..._items.asMap().entries.map((entry) {
           int index = entry.key;
           QuotationLineItemModel item = entry.value;
+
           return TableRow(
             children: [
               Padding(
                 padding: const EdgeInsets.all(4),
-                child: TextFormField(
-                  initialValue: item.description,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (v) => _updateItem(index, desc: v),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                child: SearchableSelector<dynamic>(
+                  labelText: '',
+                  items: [..._allProducts, ..._allAccounts],
+                  itemLabelBuilder: (val) {
+                    if (val is ProductModel) return '${val.sku} - ${val.name}';
+                    if (val is AccountModel) return '${val.accountCode} - ${val.accountName}';
+                    return '';
+                  },
+                  onSelected: (val) {
+                    if (val is ProductModel) {
+                      _updateItem(
+                        index,
+                        productId: val.id,
+                        accountId: val.incomeAccountId ?? '',
+                        accountName: val.name,
+                        desc: val.description ?? val.name,
+                        price: val.salePrice,
+                      );
+                    } else if (val is AccountModel) {
+                      _updateItem(
+                        index,
+                        accountId: val.id,
+                        accountName: val.accountName,
+                        desc: val.accountName,
+                      );
+                    }
+                  },
+                  addLabel: 'Add Product',
+                  onAdd: _showAddProductDialog,
+                  initialValue: item.productId != null 
+                      ? _allProducts.where((p) => p.id == item.productId).firstOrNull
+                      : _allAccounts.where((a) => a.id == item.accountId).firstOrNull,
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.quantity.toString(),
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
+                  style: ErpFormStyle.inputStyle(context),
+                  decoration: ErpFormStyle.inputDecoration(context, ''),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) =>
-                      _updateItem(index, qty: double.tryParse(v) ?? 0),
+                  onChanged: (v) => _updateItem(index, qty: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.unitPrice.toString(),
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
+                  style: ErpFormStyle.inputStyle(context),
+                  decoration: ErpFormStyle.inputDecoration(context, ''),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) =>
-                      _updateItem(index, price: double.tryParse(v) ?? 0),
+                  onChanged: (v) => _updateItem(index, price: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(4),
                 child: TextFormField(
                   initialValue: item.vatRate.toString(),
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
+                  style: ErpFormStyle.inputStyle(context),
+                  decoration: ErpFormStyle.inputDecoration(context, ''),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) =>
-                      _updateItem(index, vat: double.tryParse(v) ?? 0),
+                  onChanged: (v) => _updateItem(index, vat: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
@@ -428,10 +542,11 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                 child: Text(
                   NumberFormat('#,##0.00').format(item.lineTotal),
                   textAlign: TextAlign.right,
+                  style: ErpFormStyle.inputStyle(context),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                icon: Icon(Icons.close, color: theme.iconTheme.color?.withValues(alpha: 0.3), size: 18),
                 onPressed: () => _removeItem(index),
               ),
             ],
@@ -442,19 +557,22 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   }
 
   Widget _buildSummarySection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: 300,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
+        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.01),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
         children: [
           _buildSummaryRow('Subtotal', _totalSubtotal),
           const SizedBox(height: 8),
           _buildSummaryRow('VAT Amount', _totalVat),
-          const Divider(height: 24),
+          Divider(height: 24, color: theme.dividerColor),
           _buildSummaryRow('Total Amount', _totalAmount, isBold: true),
         ],
       ),
@@ -462,18 +580,18 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   }
 
   Widget _buildSummaryRow(String label, double value, {bool isBold = false}) {
+    final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-          ),
+          style: isBold ? ErpFormStyle.sectionHeaderStyle(context) : ErpFormStyle.labelStyle(context),
         ),
         Text(
           NumberFormat('#,##0.00').format(value),
           style: TextStyle(
+            color: isBold ? Colors.blueAccent : theme.colorScheme.onSurface,
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             fontSize: isBold ? 18 : 14,
           ),

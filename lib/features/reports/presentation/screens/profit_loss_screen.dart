@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
 import '../../services/reporting_service.dart';
 import '../../models/report_models.dart';
+import 'package:ledgixerp/core/services/export_service.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
 
 class ProfitLossScreen extends StatefulWidget {
   final AppUser user;
@@ -14,6 +18,9 @@ class ProfitLossScreen extends StatefulWidget {
 
 class _ProfitLossScreenState extends State<ProfitLossScreen> {
   final _reportingService = ReportingService();
+  final _exportService = ExportService();
+  final _companyService = CompanyService();
+  CompanyModel? _company;
   DateTime _startDate = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _endDate = DateTime.now();
   late Future<ProfitLossReport> _reportFuture;
@@ -22,6 +29,13 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
   void initState() {
     super.initState();
     _loadReport();
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).listen((company) {
+      if (mounted) setState(() => _company = company);
+    });
   }
 
   void _loadReport() {
@@ -32,6 +46,84 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
         _endDate,
       );
     });
+  }
+
+  Future<void> _exportReport(ProfitLossReport report, bool isPdf) async {
+    final currencySymbol = _company?.baseCurrency ?? 'AED';
+    final dateRange = '${AppFormatters.date(_startDate)} - ${AppFormatters.date(_endDate)}';
+
+    if (isPdf) {
+      final List<List<String>> tableData = [];
+      
+      tableData.add(['INCOME', '']);
+      for (var b in report.income) {
+        tableData.add([b.account.accountName, AppFormatters.currency(b.balance, symbol: currencySymbol)]);
+      }
+      tableData.add(['Total Income', AppFormatters.currency(report.totalIncome, symbol: currencySymbol)]);
+      tableData.add(['', '']);
+
+      tableData.add(['COST OF SALES', '']);
+      for (var b in report.costOfSales) {
+        tableData.add([b.account.accountName, AppFormatters.currency(b.balance, symbol: currencySymbol)]);
+      }
+      tableData.add(['Total Cost of Sales', AppFormatters.currency(report.totalCostOfSales, symbol: currencySymbol)]);
+      tableData.add(['', '']);
+
+      tableData.add(['GROSS PROFIT', AppFormatters.currency(report.grossProfit, symbol: currencySymbol)]);
+      tableData.add(['', '']);
+
+      tableData.add(['EXPENSES', '']);
+      for (var b in report.expenses) {
+        tableData.add([b.account.accountName, AppFormatters.currency(b.balance, symbol: currencySymbol)]);
+      }
+      tableData.add(['Total Expenses', AppFormatters.currency(report.totalExpenses, symbol: currencySymbol)]);
+      tableData.add(['', '']);
+
+      tableData.add(['NET PROFIT', AppFormatters.currency(report.netProfit, symbol: currencySymbol)]);
+
+      await _exportService.exportReportToPdf(
+        title: 'Profit & Loss Report',
+        subTitle: 'Period: $dateRange',
+        headers: ['Account', 'Amount'],
+        data: tableData,
+      );
+    } else {
+      final List<List<dynamic>> excelData = [];
+      excelData.add(['Account', 'Amount']);
+      
+      excelData.add(['INCOME']);
+      for (var b in report.income) {
+        excelData.add([b.account.accountName, b.balance]);
+      }
+      excelData.add(['Total Income', report.totalIncome]);
+      excelData.add([]);
+
+      excelData.add(['COST OF SALES']);
+      for (var b in report.costOfSales) {
+        excelData.add([b.account.accountName, b.balance]);
+      }
+      excelData.add(['Total Cost of Sales', report.totalCostOfSales]);
+      excelData.add([]);
+
+      excelData.add(['GROSS PROFIT', report.grossProfit]);
+      excelData.add([]);
+
+      excelData.add(['EXPENSES']);
+      for (var b in report.expenses) {
+        excelData.add([b.account.accountName, b.balance]);
+      }
+      excelData.add(['Total Expenses', report.totalExpenses]);
+      excelData.add([]);
+
+      excelData.add(['NET PROFIT', report.netProfit]);
+
+      await _exportService.exportToExcel(
+        fileName: 'Profit_and_Loss_${DateTime.now().year}${DateTime.now().month}${DateTime.now().day}',
+        sheetName: 'Profit & Loss',
+        headers: ['Statement of Profit & Loss', dateRange],
+        data: excelData,
+      );
+    }
   }
 
   Future<void> _selectDateRange(BuildContext context) async {
@@ -57,7 +149,22 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
         title: const Text('Profit & Loss'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadReport),
-          IconButton(icon: const Icon(Icons.print), onPressed: () {}),
+          FutureBuilder<ProfitLossReport>(
+            future: _reportFuture,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return PopupMenuButton<String>(
+                  icon: const Icon(Icons.download),
+                  onSelected: (value) => _exportReport(snapshot.data!, value == 'pdf'),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
+                    const PopupMenuItem(value: 'excel', child: Text('Export Excel')),
+                  ],
+                );
+              }
+              return const SizedBox();
+            },
+          ),
         ],
       ),
       body: Column(
@@ -72,7 +179,7 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
                   const Icon(Icons.date_range, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Period: ${DateFormat('dd MMM yyyy').format(_startDate)} - ${DateFormat('dd MMM yyyy').format(_endDate)}',
+                    'Period: ${AppFormatters.date(_startDate)} - ${AppFormatters.date(_endDate)}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
@@ -93,16 +200,14 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
                 }
 
                 final report = snapshot.data!;
-                final currencyFormat = NumberFormat.simpleCurrency();
 
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    _buildSection('INCOME', report.income, currencyFormat),
+                    _buildSection('INCOME', report.income),
                     _buildTotalRow(
                       'Total Income',
                       report.totalIncome,
-                      currencyFormat,
                       isBold: true,
                     ),
                     const Divider(height: 32),
@@ -110,12 +215,10 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
                     _buildSection(
                       'COST OF SALES',
                       report.costOfSales,
-                      currencyFormat,
                     ),
                     _buildTotalRow(
                       'Total Cost of Sales',
                       report.totalCostOfSales,
-                      currencyFormat,
                       isBold: true,
                     ),
                     const Divider(height: 32),
@@ -123,16 +226,14 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
                     _buildTotalRow(
                       'GROSS PROFIT',
                       report.grossProfit,
-                      currencyFormat,
                       isHeader: true,
                     ),
                     const SizedBox(height: 24),
 
-                    _buildSection('EXPENSES', report.expenses, currencyFormat),
+                    _buildSection('EXPENSES', report.expenses),
                     _buildTotalRow(
                       'Total Expenses',
                       report.totalExpenses,
-                      currencyFormat,
                       isBold: true,
                     ),
                     const Divider(height: 48),
@@ -140,7 +241,6 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
                     _buildTotalRow(
                       'NET PROFIT',
                       report.netProfit,
-                      currencyFormat,
                       isHeader: true,
                       highlight: true,
                     ),
@@ -157,7 +257,6 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
   Widget _buildSection(
     String title,
     List<AccountBalance> balances,
-    NumberFormat format,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,7 +277,7 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(b.account.accountName),
-                Text(format.format(b.balance)),
+                Text(AppFormatters.currency(b.balance, symbol: _company?.baseCurrency)),
               ],
             ),
           ),
@@ -189,12 +288,12 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
 
   Widget _buildTotalRow(
     String title,
-    double amount,
-    NumberFormat format, {
+    double amount, {
     bool isBold = false,
     bool isHeader = false,
     bool highlight = false,
   }) {
+    final currencySymbol = _company?.baseCurrency ?? 'AED';
     return Container(
       padding: EdgeInsets.symmetric(vertical: isHeader ? 12 : 8, horizontal: 8),
       decoration: highlight
@@ -216,7 +315,7 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
             ),
           ),
           Text(
-            format.format(amount),
+            AppFormatters.currency(amount, symbol: currencySymbol),
             style: TextStyle(
               fontWeight: (isBold || isHeader)
                   ? FontWeight.bold

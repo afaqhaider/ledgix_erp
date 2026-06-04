@@ -15,8 +15,14 @@ class JobsScreen extends StatelessWidget {
           children: [
             Icon(Icons.work_outline, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Jobs Module', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text('Manage projects and service jobs here.', style: TextStyle(color: Colors.grey)),
+            Text(
+              'Jobs Module',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Manage projects and service jobs here.',
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       ),

@@ -132,25 +132,25 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                     ),
                     DataColumn(
                       label: Text(
+                        'Category',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
                         'Type',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     DataColumn(
                       label: Text(
-                        'Opening Balance',
+                        'Postable',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     DataColumn(
                       label: Text(
-                        'Status',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Text(
-                        'Actions',
+                        'Balance',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -158,8 +158,32 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                   rows: accounts.map((account) {
                     return DataRow(
                       cells: [
-                        DataCell(Text(account.accountCode)),
-                        DataCell(Text(account.accountName)),
+                        DataCell(
+                          Text(
+                            account.accountCode,
+                            style: TextStyle(
+                              fontWeight: account.isGroup
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Padding(
+                            padding: EdgeInsets.only(
+                              left: account.level * 16.0,
+                            ),
+                            child: Text(
+                              account.accountName,
+                              style: TextStyle(
+                                fontWeight: account.isGroup
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataCell(Text(account.accountCategory.label)),
                         DataCell(
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -183,24 +207,26 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                           ),
                         ),
                         DataCell(
+                          account.isGroup
+                              ? const Text('-')
+                              : Icon(
+                                  account.allowPosting
+                                      ? Icons.check_circle
+                                      : Icons.cancel,
+                                  color: account.allowPosting
+                                      ? Colors.blue
+                                      : Colors.grey,
+                                  size: 18,
+                                ),
+                        ),
+                        DataCell(
                           Text(
                             '${NumberFormat('#,##0.00').format(account.openingBalance)} ${account.openingBalanceType.label.substring(0, 2)}',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                        DataCell(
-                          Icon(
-                            account.isActive
-                                ? Icons.check_circle
-                                : Icons.cancel,
-                            color: account.isActive ? Colors.green : Colors.red,
-                            size: 20,
-                          ),
-                        ),
-                        DataCell(
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed: canManage ? () {} : null,
+                            style: TextStyle(
+                              fontWeight: account.isGroup
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -229,6 +255,10 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
         return Colors.deepOrange;
       case AccountType.expense:
         return Colors.red;
+      case AccountType.otherIncome:
+        return Colors.teal;
+      case AccountType.otherExpense:
+        return Colors.brown;
     }
   }
 
@@ -242,8 +272,9 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
   void _showImportModal(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => const ImportExportModal(
+      builder: (context) => ImportExportModal(
         initialModule: MigrationModule.chartOfAccounts,
+        companyId: widget.user.companyId!,
       ),
     );
   }

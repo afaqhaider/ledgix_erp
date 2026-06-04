@@ -6,14 +6,18 @@ import 'package:ledgixerp/features/banking/models/bank_account_model.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/crm/customer_payments/models/customer_payment_model.dart';
 import 'package:ledgixerp/features/supplier_payments/models/supplier_payment_model.dart';
+import 'package:ledgixerp/features/suppliers/models/bill_model.dart';
 import 'package:ledgixerp/core/audit/audit_service.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
+import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
+import 'package:ledgixerp/features/inventory/models/product_model.dart';
 
 class AccountingPostingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _auditService = AuditService();
   final _settingsService = FinancialSettingsService();
+  final _inventoryService = InventoryService();
 
   Future<void> postSalesInvoice(
     String companyId,
@@ -21,10 +25,10 @@ class AccountingPostingService {
     AppUser user,
   ) async {
     final String userId = user.uid;
-    if (invoice.isPosted) throw 'Invoice is already posted';
+    if (invoice.isPosted) throw Exception('Invoice is already posted');
 
     if (await _settingsService.isPeriodLocked(companyId, invoice.invoiceDate)) {
-      throw 'Accounting period for this invoice date is locked.';
+      throw Exception('Accounting period for this invoice date is locked.');
     }
 
     final arAccount = await _findAccount(
@@ -32,14 +36,19 @@ class AccountingPostingService {
       'Accounts Receivable',
       AccountType.asset,
     );
+    _validatePostable(arAccount);
+
     final salesAccount = await _findAccount(
       companyId,
       'Sales Revenue',
       AccountType.income,
     );
+    _validatePostable(salesAccount);
+
     final vatAccount = invoice.vatAmount > 0
         ? await _findAccount(companyId, 'VAT Payable', AccountType.liability)
         : null;
+    if (vatAccount != null) _validatePostable(vatAccount);
 
     final List<JournalLineModel> lines = [];
 
@@ -78,6 +87,51 @@ class AccountingPostingService {
       );
     }
 
+    // Inventory & COGS logic
+    double totalCogs = 0.0;
+    final batch = _firestore.batch();
+    
+    for (var item in invoice.items) {
+      if (item.productId != null && item.productId!.isNotEmpty) {
+        final product = await _inventoryService.getProduct(companyId, item.productId!);
+        if (product.type == ProductType.storable) {
+          final itemCogs = await _inventoryService.recordSale(
+            companyId: companyId,
+            productId: item.productId!,
+            quantity: item.quantity,
+            batch: batch,
+          );
+          totalCogs += itemCogs;
+        }
+      }
+    }
+
+    if (totalCogs > 0) {
+      final cogsAccount = await _findAccount(companyId, 'Cost of Goods Sold', AccountType.costOfSales);
+      final inventoryAccount = await _findAccount(companyId, 'Inventory Asset', AccountType.asset);
+      
+      _validatePostable(cogsAccount);
+      _validatePostable(inventoryAccount);
+
+      lines.add(JournalLineModel(
+        accountId: cogsAccount.id,
+        accountName: cogsAccount.accountName,
+        accountCode: cogsAccount.accountCode,
+        debit: totalCogs,
+        credit: 0,
+        memo: 'COGS for Invoice ${invoice.invoiceNumber}',
+      ));
+
+      lines.add(JournalLineModel(
+        accountId: inventoryAccount.id,
+        accountName: inventoryAccount.accountName,
+        accountCode: inventoryAccount.accountCode,
+        debit: 0,
+        credit: totalCogs,
+        memo: 'Inventory reduction for Invoice ${invoice.invoiceNumber}',
+      ));
+    }
+
     final journalEntry = JournalEntryModel(
       id: '',
       companyId: companyId,
@@ -95,13 +149,16 @@ class AccountingPostingService {
 
     _validateBalancing(lines);
 
-    final batch = _firestore.batch();
+    // final batch = _firestore.batch(); // Already created above
     final jeRef = _firestore
         .collection('companies')
         .doc(companyId)
         .collection('journalEntries')
         .doc();
-    batch.set(jeRef, journalEntry.toMap()..['id'] = jeRef.id);
+    
+    final entryData = journalEntry.toMap();
+    entryData['id'] = jeRef.id;
+    batch.set(jeRef, entryData);
 
     final invoiceRef = _firestore
         .collection('companies')
@@ -131,10 +188,10 @@ class AccountingPostingService {
     AppUser user,
   ) async {
     final String userId = user.uid;
-    if (payment.isPosted) throw 'Payment is already posted';
+    if (payment.isPosted) throw Exception('Payment is already posted');
 
     if (await _settingsService.isPeriodLocked(companyId, payment.paymentDate)) {
-      throw 'Accounting period for this payment date is locked.';
+      throw Exception('Accounting period for this payment date is locked.');
     }
 
     AccountModel bankChartAccount;
@@ -150,16 +207,18 @@ class AccountingPostingService {
     } else {
       bankChartAccount = await _findAccount(
         companyId,
-        'Bank',
+        'Bank Account',
         AccountType.asset,
       );
     }
+    _validatePostable(bankChartAccount);
 
     final arAccount = await _findAccount(
       companyId,
       'Accounts Receivable',
       AccountType.asset,
     );
+    _validatePostable(arAccount);
 
     final List<JournalLineModel> lines = [
       JournalLineModel(
@@ -168,7 +227,7 @@ class AccountingPostingService {
         accountCode: bankChartAccount.accountCode,
         debit: payment.amount,
         credit: 0,
-        memo: 'Customer Payment ${payment.paymentNumber}',
+        memo: 'Receipt ${payment.paymentNumber}',
       ),
       JournalLineModel(
         accountId: arAccount.id,
@@ -176,7 +235,7 @@ class AccountingPostingService {
         accountCode: arAccount.accountCode,
         debit: 0,
         credit: payment.amount,
-        memo: 'Customer Payment ${payment.paymentNumber}',
+        memo: 'Receipt ${payment.paymentNumber}',
       ),
     ];
 
@@ -185,12 +244,12 @@ class AccountingPostingService {
       companyId: companyId,
       date: payment.paymentDate,
       reference: payment.paymentNumber,
-      description: 'Posting Customer Payment ${payment.paymentNumber}',
+      description: 'Posting Receipt ${payment.paymentNumber}',
       lines: lines,
       status: JournalStatus.posted,
       createdBy: userId,
       createdAt: DateTime.now(),
-      sourceType: 'customer_payment',
+      sourceType: 'receipt',
       sourceId: payment.id,
       sourceNumber: payment.paymentNumber,
     );
@@ -203,7 +262,10 @@ class AccountingPostingService {
         .doc(companyId)
         .collection('journalEntries')
         .doc();
-    batch.set(jeRef, journalEntry.toMap()..['id'] = jeRef.id);
+    
+    final entryData = journalEntry.toMap();
+    entryData['id'] = jeRef.id;
+    batch.set(jeRef, entryData);
 
     final paymentRef = _firestore
         .collection('companies')
@@ -222,7 +284,7 @@ class AccountingPostingService {
       module: 'payments',
       documentId: payment.id,
       documentNumber: payment.paymentNumber,
-      description: 'Posted Customer Payment ${payment.paymentNumber}',
+      description: 'Posted Receipt ${payment.paymentNumber}',
       newValues: {'isPosted': true},
     );
   }
@@ -233,10 +295,10 @@ class AccountingPostingService {
     AppUser user,
   ) async {
     final String userId = user.uid;
-    if (payment.isPosted) throw 'Payment is already posted';
+    if (payment.isPosted) throw Exception('Payment is already posted');
 
     if (await _settingsService.isPeriodLocked(companyId, payment.paymentDate)) {
-      throw 'Accounting period for this payment date is locked.';
+      throw Exception('Accounting period for this payment date is locked.');
     }
 
     AccountModel bankChartAccount;
@@ -252,16 +314,18 @@ class AccountingPostingService {
     } else {
       bankChartAccount = await _findAccount(
         companyId,
-        'Bank',
+        'Bank Account',
         AccountType.asset,
       );
     }
+    _validatePostable(bankChartAccount);
 
     final apAccount = await _findAccount(
       companyId,
       'Accounts Payable',
       AccountType.liability,
     );
+    _validatePostable(apAccount);
 
     final List<JournalLineModel> lines = [
       JournalLineModel(
@@ -305,7 +369,10 @@ class AccountingPostingService {
         .doc(companyId)
         .collection('journalEntries')
         .doc();
-    batch.set(jeRef, journalEntry.toMap()..['id'] = jeRef.id);
+    
+    final entryData = journalEntry.toMap();
+    entryData['id'] = jeRef.id;
+    batch.set(jeRef, entryData);
 
     final paymentRef = _firestore
         .collection('companies')
@@ -329,6 +396,175 @@ class AccountingPostingService {
     );
   }
 
+  Future<void> postSupplierBill(
+    String companyId,
+    BillModel bill,
+    AppUser user,
+  ) async {
+    final String userId = user.uid;
+    if (bill.isPosted) throw Exception('Bill is already posted');
+
+    if (await _settingsService.isPeriodLocked(companyId, bill.billDate)) {
+      throw Exception('Accounting period for this bill date is locked.');
+    }
+
+    final apAccount = await _findAccount(
+      companyId,
+      'Accounts Payable',
+      AccountType.liability,
+    );
+    _validatePostable(apAccount);
+
+    final expenseAccount = await _findAccount(
+      companyId,
+      'Expenses',
+      AccountType.expense,
+    );
+    _validatePostable(expenseAccount);
+
+    final inventoryAccount = await _findAccount(
+      companyId,
+      'Inventory Asset',
+      AccountType.asset,
+    );
+    _validatePostable(inventoryAccount);
+
+    final vatAccount = bill.vatAmount > 0
+        ? await _findAccount(companyId, 'VAT Payable', AccountType.liability)
+        : null;
+    if (vatAccount != null) _validatePostable(vatAccount);
+
+    final List<JournalLineModel> lines = [];
+
+    // AP (Credit)
+    lines.add(
+      JournalLineModel(
+        accountId: apAccount.id,
+        accountName: apAccount.accountName,
+        accountCode: apAccount.accountCode,
+        debit: 0,
+        credit: bill.totalAmount,
+        memo: 'Vendor Bill ${bill.billNumber}',
+      ),
+    );
+
+    double inventorySubtotal = 0;
+    double expenseSubtotal = 0;
+    final batch = _firestore.batch();
+
+    for (var item in bill.items) {
+      if (item.productId != null && item.productId!.isNotEmpty) {
+        final product = await _inventoryService.getProduct(companyId, item.productId!);
+        if (product.type == ProductType.storable) {
+          await _inventoryService.recordPurchase(
+            companyId: companyId,
+            productId: item.productId!,
+            quantity: item.quantity,
+            unitCost: item.unitPrice,
+            purchaseId: bill.id,
+            batch: batch,
+          );
+          inventorySubtotal += item.lineSubtotal;
+        } else {
+          expenseSubtotal += item.lineSubtotal;
+        }
+      } else {
+        expenseSubtotal += item.lineSubtotal;
+      }
+    }
+
+    // Inventory Asset (Debit)
+    if (inventorySubtotal > 0) {
+      lines.add(
+        JournalLineModel(
+          accountId: inventoryAccount.id,
+          accountName: inventoryAccount.accountName,
+          accountCode: inventoryAccount.accountCode,
+          debit: inventorySubtotal,
+          credit: 0,
+          memo: 'Inventory purchase on bill ${bill.billNumber}',
+        ),
+      );
+    }
+
+    // Expense (Debit)
+    if (expenseSubtotal > 0) {
+      lines.add(
+        JournalLineModel(
+          accountId: expenseAccount.id,
+          accountName: expenseAccount.accountName,
+          accountCode: expenseAccount.accountCode,
+          debit: expenseSubtotal,
+          credit: 0,
+          memo: 'Expenses on bill ${bill.billNumber}',
+        ),
+      );
+    }
+
+    // VAT (Debit)
+    if (vatAccount != null && bill.vatAmount > 0) {
+      lines.add(
+        JournalLineModel(
+          accountId: vatAccount.id,
+          accountName: vatAccount.accountName,
+          accountCode: vatAccount.accountCode,
+          debit: bill.vatAmount,
+          credit: 0,
+          memo: 'VAT on ${bill.billNumber}',
+        ),
+      );
+    }
+
+    final journalEntry = JournalEntryModel(
+      id: '',
+      companyId: companyId,
+      date: bill.billDate,
+      reference: bill.billNumber,
+      description: 'Posting Vendor Bill ${bill.billNumber}',
+      lines: lines,
+      status: JournalStatus.posted,
+      createdBy: userId,
+      createdAt: DateTime.now(),
+      sourceType: 'supplier_bill',
+      sourceId: bill.id,
+      sourceNumber: bill.billNumber,
+    );
+
+    _validateBalancing(lines);
+
+    // final batch = _firestore.batch(); // Already created above
+    final jeRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('journalEntries')
+        .doc();
+    
+    final entryData = journalEntry.toMap();
+    entryData['id'] = jeRef.id;
+    batch.set(jeRef, entryData);
+
+    final billRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('supplierBills')
+        .doc(bill.id);
+    batch.update(billRef, {'isPosted': true, 'journalEntryId': jeRef.id});
+
+    await batch.commit();
+
+    await _auditService.log(
+      companyId: companyId,
+      userId: user.uid,
+      userName: user.fullName,
+      actionType: 'post',
+      module: 'bills',
+      documentId: bill.id,
+      documentNumber: bill.billNumber,
+      description: 'Posted Vendor Bill ${bill.billNumber}',
+      newValues: {'isPosted': true},
+    );
+  }
+
   Future<AccountModel> _findAccount(
     String companyId,
     String name,
@@ -343,7 +579,7 @@ class AccountingPostingService {
         .get();
 
     if (snapshot.docs.isEmpty) {
-      throw 'Required account "$name" not found in Chart of Accounts. Please create it first.';
+      throw Exception('Required account "$name" not found in Chart of Accounts. Please create it first.');
     }
 
     return AccountModel.fromMap(
@@ -361,7 +597,7 @@ class AccountingPostingService {
         .get();
 
     if (!doc.exists) {
-      throw 'Chart of Account not found';
+      throw Exception('Chart of Account not found');
     }
 
     return AccountModel.fromMap(doc.data()!, doc.id);
@@ -376,7 +612,7 @@ class AccountingPostingService {
         .get();
 
     if (!doc.exists) {
-      throw 'Bank Account not found';
+      throw Exception('Bank Account not found');
     }
 
     return BankAccountModel.fromMap(doc.data()!, doc.id);
@@ -387,7 +623,19 @@ class AccountingPostingService {
     double totalCredit = lines.fold(0.0, (acc, line) => acc + line.credit);
 
     if ((totalDebit - totalCredit).abs() > 0.001) {
-      throw 'Journal entry is not balanced. Dr: $totalDebit, Cr: $totalCredit';
+      throw Exception('Journal entry is not balanced. Dr: $totalDebit, Cr: $totalCredit');
+    }
+  }
+
+  void _validatePostable(AccountModel account) {
+    if (account.isGroup) {
+      throw Exception('Account "${account.accountName}" is a group account and cannot be posted to.');
+    }
+    if (!account.allowPosting) {
+      throw Exception('Account "${account.accountName}" does not allow posting.');
+    }
+    if (!account.isActive) {
+      throw Exception('Account "${account.accountName}" is inactive.');
     }
   }
 }

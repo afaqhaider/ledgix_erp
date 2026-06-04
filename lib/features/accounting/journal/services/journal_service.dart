@@ -27,7 +27,10 @@ class JournalService {
   }
 
   Future<String> generateNextJournalNumber(String companyId) async {
-    return await _settingsService.generateNextDocumentNumber(companyId, 'journal');
+    return await _settingsService.previewNextDocumentNumber(
+      companyId,
+      'journal',
+    );
   }
 
   Future<void> addJournalEntry(JournalEntryModel entry) async {
@@ -50,16 +53,84 @@ class JournalService {
       );
     }
 
-    await _getJournalRef(entry.companyId).doc().set(entry.toMap());
+    await _firestore.runTransaction((transaction) async {
+      // 1. Generate final number and increment within transaction
+      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
+        entry.companyId,
+        'journal',
+        transaction: transaction,
+      );
+
+      final docRef = _getJournalRef(entry.companyId).doc();
+      final entryWithId = entry.copyWith(
+        id: docRef.id,
+        reference: finalNumber,
+      );
+
+      // 2. Save entry
+      transaction.set(docRef, entryWithId.toMap());
+
+      // Update source document if applicable
+      if (entry.sourceId != null && entry.sourceType != null) {
+        await _updateSourceDocumentInTransaction(
+          transaction,
+          entry.companyId,
+          entry.sourceType!,
+          entry.sourceId!,
+          docRef.id,
+        );
+      }
+    });
+  }
+
+  Future<void> _updateSourceDocumentInTransaction(
+    Transaction tx,
+    String companyId,
+    String sourceType,
+    String sourceId,
+    String journalEntryId,
+  ) async {
+    String collection;
+    switch (sourceType.toLowerCase()) {
+      case 'invoice':
+      case 'salesinvoice':
+        collection = 'salesInvoices';
+        break;
+      case 'bill':
+      case 'supplierbill':
+        collection = 'supplierBills';
+        break;
+      case 'quotation':
+        collection = 'quotations';
+        break;
+      case 'purchaseorder':
+        collection = 'purchaseOrders';
+        break;
+      default:
+        return;
+    }
+
+    final sourceRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection(collection)
+        .doc(sourceId);
+    
+    tx.update(sourceRef, {'journalEntryId': journalEntryId});
   }
 
   Future<void> deleteJournalEntry(String companyId, String entryId) async {
     final doc = await _getJournalRef(companyId).doc(entryId).get();
     if (!doc.exists) return;
 
-    final entry = JournalEntryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    final entry = JournalEntryModel.fromMap(
+      doc.data() as Map<String, dynamic>,
+      doc.id,
+    );
     if (entry.status == JournalStatus.posted) {
-      throw Exception('Cannot delete a posted journal entry. Reverse it instead.');
+      throw Exception(
+        'Cannot delete a posted journal entry. Reverse it instead.',
+      );
     }
 
     await _getJournalRef(companyId).doc(entryId).delete();

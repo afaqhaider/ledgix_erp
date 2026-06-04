@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/widgets/sidebar_navigation.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
@@ -7,6 +8,7 @@ import 'package:ledgixerp/features/accounting/chart_of_accounts/chart_of_account
 import 'package:ledgixerp/features/accounting/journal/presentation/screens/journal_entries_screen.dart';
 import 'package:ledgixerp/features/crm/customers/presentation/screens/customers_screen.dart';
 import 'package:ledgixerp/features/suppliers/presentation/screens/suppliers_screen.dart';
+import 'package:ledgixerp/features/suppliers/presentation/screens/bills_screen.dart';
 import 'package:ledgixerp/features/purchase_orders/presentation/screens/purchase_orders_screen.dart';
 import 'package:ledgixerp/features/quotations/presentation/screens/quotations_screen.dart';
 import 'package:ledgixerp/features/invoices/presentation/screens/invoices_screen.dart';
@@ -31,8 +33,14 @@ import 'package:ledgixerp/features/audit/presentation/screens/audit_logs_screen.
 import 'package:ledgixerp/core/audit/audit_service.dart';
 import 'package:ledgixerp/features/company/presentation/screens/company_settings_screen.dart';
 import 'package:ledgixerp/features/settings/presentation/screens/financial_settings_screen.dart';
+import 'package:ledgixerp/features/settings/presentation/screens/financial_period_screen.dart';
+import 'package:ledgixerp/features/settings/presentation/screens/docs_prefix_screen.dart';
+import 'package:ledgixerp/features/settings/presentation/screens/credit_terms_screen.dart';
+import 'package:ledgixerp/features/settings/presentation/screens/payment_terms_screen.dart';
 import 'package:ledgixerp/features/settings/presentation/screens/data_management_screen.dart';
 import 'package:ledgixerp/features/users/presentation/screens/users_screen.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
 
 class DashboardScreen extends StatefulWidget {
   final AppUser user;
@@ -45,6 +53,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _selectedPageLabel = 'Dashboard';
   final _dashboardService = DashboardService();
+  final _companyService = CompanyService();
 
   @override
   Widget build(BuildContext context) {
@@ -82,16 +91,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: PopupMenuButton<String>(
               onSelected: (value) async {
                 if (value == 'logout') {
-                  await AuditService().log(
-                    companyId: widget.user.companyId!,
-                    userId: widget.user.uid,
-                    userName: widget.user.fullName,
-                    actionType: 'logout',
-                    module: 'auth',
-                    documentId: widget.user.uid,
-                    description: 'User logged out',
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Logout'),
+                      content: const Text('Are you sure you want to logout?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Logout'),
+                        ),
+                      ],
+                    ),
                   );
-                  AuthService().signOut();
+
+                  if (confirmed != true) return;
+
+                  try {
+                    if (widget.user.companyId != null) {
+                      await AuditService()
+                          .log(
+                            companyId: widget.user.companyId!,
+                            userId: widget.user.uid,
+                            userName: widget.user.fullName,
+                            actionType: 'logout',
+                            module: 'auth',
+                            documentId: widget.user.uid,
+                            description: 'User logged out',
+                          )
+                          .timeout(const Duration(seconds: 2));
+                    }
+                  } catch (e) {
+                    debugPrint('Error logging logout: $e');
+                  }
+                  await AuthService().signOut();
                 }
               },
               itemBuilder: (context) => [
@@ -113,26 +150,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.user.fullName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                  if (!isMobile)
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.user.fullName,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      Text(
-                        widget.user.role.name.toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
+                        Text(
+                          widget.user.role.name.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -192,6 +230,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return SuppliersScreen(user: widget.user);
       case 'Purchase Orders':
         return PurchaseOrdersScreen(user: widget.user);
+      case 'Purchase Invoices (Bills)':
+        return BillsScreen(user: widget.user);
       case 'Supplier Payments':
         return SupplierPaymentsScreen(user: widget.user);
       case 'Jobs':
@@ -204,7 +244,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return QuotationsScreen(user: widget.user);
       case 'Sales Invoices':
         return InvoicesScreen(user: widget.user);
-      case 'Customer Payments':
+      case 'Receipts':
         return CustomerPaymentsScreen(user: widget.user);
       case 'Reports':
         return ReportsScreen(user: widget.user);
@@ -218,6 +258,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return CompanySettingsScreen(user: widget.user);
       case 'Financial Settings':
         return FinancialSettingsScreen(user: widget.user);
+      case 'Financial Period':
+        return FinancialPeriodScreen(user: widget.user);
+      case 'Docs Prefix':
+        return DocsPrefixScreen(user: widget.user);
+      case 'Credit Terms (Customers)':
+        return CreditTermsScreen(user: widget.user);
+      case 'Payment Terms (Quotations)':
+        return PaymentTermsScreen(user: widget.user);
       case 'Data Management':
         return DataManagementScreen(user: widget.user);
       case 'User Management':
@@ -242,102 +290,108 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildDashboardOverview() {
     final theme = Theme.of(context);
     final companyId = widget.user.companyId!;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isNarrow = screenWidth < 1200;
 
-    return StreamBuilder<DashboardStats>(
-      stream: _dashboardService.getDashboardStats(companyId),
-      builder: (context, statsSnapshot) {
-        if (statsSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return StreamBuilder<CompanyModel?>(
+      stream: _companyService.getCompany(companyId),
+      builder: (context, companySnapshot) {
+        final currency = companySnapshot.data?.baseCurrency ?? 'AED';
 
-        final stats = statsSnapshot.data ?? DashboardStats();
+        return StreamBuilder<DashboardStats>(
+          stream: _dashboardService.getDashboardStats(companyId),
+          builder: (context, statsSnapshot) {
+            if (statsSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Welcome back, ${widget.user.fullName}',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.download, size: 18),
-                    label: const Text('Export Summary'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
+            final stats = statsSnapshot.data ?? DashboardStats();
 
-              // KPI Section
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  int count = constraints.maxWidth > 1200
-                      ? 4
-                      : (constraints.maxWidth > 800 ? 2 : 1);
-                  return GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: count,
-                    crossAxisSpacing: 24,
-                    mainAxisSpacing: 24,
-                    childAspectRatio: 1.8,
-                    children: [
-                      KPICard(
-                        title: 'Total Revenue',
-                        value: NumberFormat.currency(
-                          symbol: '\$',
-                        ).format(stats.totalRevenue),
-                        icon: Icons.attach_money_rounded,
-                        color: Colors.blue,
-                        trend: 'Live',
-                        isTrendUp: true,
-                      ),
-                      KPICard(
-                        title: 'Total Expenses',
-                        value: NumberFormat.currency(
-                          symbol: '\$',
-                        ).format(stats.totalExpenses),
-                        icon: Icons.shopping_bag_rounded,
-                        color: Colors.orange,
-                      ),
-                      KPICard(
-                        title: 'Net Profit',
-                        value: NumberFormat.currency(
-                          symbol: '\$',
-                        ).format(stats.totalProfit),
-                        icon: Icons.trending_up_rounded,
-                        color: Colors.green,
-                        isTrendUp: stats.totalProfit > 0,
-                      ),
-                      KPICard(
-                        title: 'Pending Invoices',
-                        value: stats.pendingInvoicesCount.toString(),
-                        icon: Icons.receipt_long_rounded,
-                        color: Colors.purple,
-                        trend: '${stats.overdueInvoicesCount} Overdue',
-                        isTrendUp: false,
-                      ),
-                    ],
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              // Charts and Activity
-              Row(
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(screenWidth < 600 ? 16 : 32),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 2,
-                    child: Column(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Welcome back, ${widget.user.fullName}',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (screenWidth > 600)
+                        ElevatedButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(Icons.download, size: 18),
+                          label: const Text('Export Summary'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // KPI Section
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      int count = constraints.maxWidth > 1200
+                          ? 4
+                          : (constraints.maxWidth > 800 ? 2 : 1);
+                      return GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: count,
+                        crossAxisSpacing: 24,
+                        mainAxisSpacing: 24,
+                        childAspectRatio: constraints.maxWidth > 600
+                            ? 1.8
+                            : 2.5,
+                        children: [
+                          KPICard(
+                            title: 'Total Revenue',
+                            value: AppFormatters.currency(stats.totalRevenue, symbol: currency),
+                            icon: Icons.attach_money_rounded,
+                            color: Colors.blue,
+                            trend: 'Live',
+                            isTrendUp: true,
+                          ),
+                          KPICard(
+                            title: 'Total Expenses',
+                            value: AppFormatters.currency(
+                              stats.totalExpenses,
+                              symbol: currency,
+                            ),
+                            icon: Icons.shopping_bag_rounded,
+                            color: Colors.orange,
+                          ),
+                          KPICard(
+                            title: 'Net Profit',
+                            value: AppFormatters.currency(stats.totalProfit, symbol: currency),
+                            icon: Icons.trending_up_rounded,
+                            color: Colors.green,
+                            isTrendUp: stats.totalProfit > 0,
+                          ),
+                          KPICard(
+                            title: 'Pending Invoices',
+                            value: stats.pendingInvoicesCount.toString(),
+                            icon: Icons.receipt_long_rounded,
+                            color: Colors.purple,
+                            trend: '${stats.overdueInvoicesCount} Overdue',
+                            isTrendUp: false,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Charts and Activity
+                  if (isNarrow)
+                    Column(
                       children: [
                         DashboardChart(
                           title: 'Operational Trends',
@@ -349,17 +403,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           labels: ['Revenue', 'Expenses', 'Profit'],
                         ),
                         const SizedBox(height: 24),
-                        _buildRecentActivityGrid(companyId),
+                        _buildRecentActivityGrid(companyId, currency),
+                        const SizedBox(height: 24),
+                        _buildOperationalSidebar(stats),
+                      ],
+                    )
+                  else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            children: [
+                              DashboardChart(
+                                title: 'Operational Trends',
+                                data: [
+                                  stats.totalRevenue,
+                                  stats.totalExpenses,
+                                  stats.totalProfit,
+                                ],
+                                labels: ['Revenue', 'Expenses', 'Profit'],
+                              ),
+                              const SizedBox(height: 24),
+                              _buildRecentActivityGrid(companyId, currency),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          flex: 1,
+                          child: _buildOperationalSidebar(stats),
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 24),
-                  if (MediaQuery.of(context).size.width > 1200)
-                    Expanded(flex: 1, child: _buildOperationalSidebar(stats)),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -405,7 +486,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildRecentActivityGrid(String companyId) {
+  Widget _buildRecentActivityGrid(String companyId, String currency) {
     return LayoutBuilder(
       builder: (context, constraints) {
         int count = constraints.maxWidth > 800 ? 2 : 1;
@@ -415,7 +496,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisCount: count,
           crossAxisSpacing: 24,
           mainAxisSpacing: 24,
-          childAspectRatio: 1.2,
+          childAspectRatio: constraints.maxWidth > 600 ? 1.2 : 1.5,
           children: [
             StreamBuilder(
               stream: _dashboardService.getRecentCustomerPayments(companyId),
@@ -425,9 +506,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       (p) => RecentActivityItem(
                         title: p.customerName,
                         subtitle: p.paymentNumber,
-                        trailing: NumberFormat.simpleCurrency().format(
-                          p.amount,
-                        ),
+                        trailing: AppFormatters.currency(p.amount, symbol: currency),
                         icon: Icons.payment_rounded,
                         iconColor: Colors.green,
                         date: p.paymentDate,
@@ -435,7 +514,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     )
                     .toList();
                 return RecentActivityCard(
-                  title: 'Recent Customer Payments',
+                  title: 'Recent Receipts',
                   items: items,
                 );
               },
@@ -448,9 +527,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       (q) => RecentActivityItem(
                         title: q.customerName,
                         subtitle: q.quotationNumber,
-                        trailing: NumberFormat.simpleCurrency().format(
-                          q.totalAmount,
-                        ),
+                        trailing: AppFormatters.currency(q.totalAmount, symbol: currency),
                         icon: Icons.description_rounded,
                         iconColor: Colors.blue,
                         date: q.createdAt,

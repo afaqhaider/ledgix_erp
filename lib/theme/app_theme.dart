@@ -1,83 +1,82 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ledgixerp/core/theme/app_colors.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
 
 class AppTheme {
-  static const primaryColor = Color(0xFF0F172A); // Deep Dark Navy
-  static const accentColor = Color(0xFF3B82F6); // Modern Blue Accent
-  static const surfaceColor = Colors.white;
-  static const backgroundColor = Color(0xFFF8FAFC);
-
-  static const darkSurfaceColor = Color(0xFF1E293B);
-  static const darkBackgroundColor = Color(0xFF020617);
-
-  static final borderRadius = BorderRadius.circular(12);
-  static const cardPadding = EdgeInsets.all(24);
+  static final borderRadius = BorderRadius.circular(AppSpacing.borderRadius);
+  static const darkSurfaceVariant = AppColors.surfaceVariantDark;
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
+    scaffoldBackgroundColor: AppColors.backgroundLight,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: primaryColor,
-      primary: primaryColor,
-      secondary: accentColor,
-      surface: surfaceColor,
-      onSurface: const Color(0xFF1E293B),
+      seedColor: AppColors.primary,
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      surface: AppColors.surfaceLight,
+      onSurface: AppColors.onSurfaceLight,
       brightness: Brightness.light,
     ),
     textTheme: GoogleFonts.interTextTheme(),
     cardTheme: CardThemeData(
       elevation: 0,
-      color: surfaceColor,
+      color: AppColors.surfaceLight,
       shape: RoundedRectangleBorder(
         borderRadius: borderRadius,
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        side: const BorderSide(color: AppColors.borderLight),
       ),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: surfaceColor,
-      foregroundColor: primaryColor,
+      backgroundColor: AppColors.surfaceLight,
+      foregroundColor: AppColors.primary,
       elevation: 0,
       centerTitle: false,
-      shape: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-    ),
-    navigationRailTheme: const NavigationRailThemeData(
-      backgroundColor: primaryColor,
-      selectedIconTheme: IconThemeData(color: Colors.white),
-      unselectedIconTheme: IconThemeData(color: Colors.white60),
-      selectedLabelTextStyle: TextStyle(color: Colors.white),
-      unselectedLabelTextStyle: TextStyle(color: Colors.white60),
+      shape: Border(bottom: BorderSide(color: AppColors.borderLight)),
     ),
   );
 
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
+    scaffoldBackgroundColor: AppColors.backgroundDark,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: primaryColor,
-      primary: accentColor,
-      secondary: accentColor,
-      surface: darkSurfaceColor,
+      seedColor: AppColors.primary,
+      primary: AppColors.accent,
+      secondary: AppColors.accent,
+      surface: AppColors.surfaceDark,
+      onSurface: AppColors.onSurfaceDark,
       brightness: Brightness.dark,
+    ).copyWith(
+      background: AppColors.backgroundDark,
     ),
-    textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+    textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+      bodyLarge: const TextStyle(color: Colors.white),
+      bodyMedium: const TextStyle(color: Colors.white70),
+    ),
     cardTheme: CardThemeData(
       elevation: 0,
-      color: darkSurfaceColor,
+      color: AppColors.surfaceDark,
       shape: RoundedRectangleBorder(
         borderRadius: borderRadius,
-        side: const BorderSide(color: Color(0xFF334155)),
+        side: BorderSide(color: AppColors.borderDark),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: AppColors.surfaceDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: borderRadius,
+        side: BorderSide(color: AppColors.borderDark),
       ),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: darkSurfaceColor,
+      backgroundColor: AppColors.backgroundDark,
       elevation: 0,
       centerTitle: false,
-      shape: Border(bottom: BorderSide(color: Color(0xFF334155))),
+      shape: Border(bottom: BorderSide(color: AppColors.surfaceVariantDark)),
     ),
-    navigationRailTheme: const NavigationRailThemeData(
-      backgroundColor: Color(0xFF020617),
-      selectedIconTheme: IconThemeData(color: Colors.white),
-      unselectedIconTheme: IconThemeData(color: Colors.white60),
-      selectedLabelTextStyle: TextStyle(color: Colors.white),
-      unselectedLabelTextStyle: TextStyle(color: Colors.white60),
+    dividerTheme: const DividerThemeData(
+      color: AppColors.borderDark,
+      thickness: 1,
     ),
   );
 }

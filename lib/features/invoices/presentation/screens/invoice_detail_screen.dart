@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
@@ -59,18 +58,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         requestedAt: DateTime.now(),
       );
 
-      await _approvalService.submitForApproval(request);
+      await _approvalService.submitForApproval(
+        request,
+        requesterRole: widget.user.role,
+      );
 
-      // Update invoice locally/Firestore
-      // For simplicity, we assume Firestore syncs or we refresh.
-      // Let's update Firestore status for the invoice
-      await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.user.companyId)
-          .collection('salesInvoices')
-          .doc(_currentInvoice.id)
-          .update({'approvalStatus': 'pending'});
-
+      // Local update for immediate feedback
       setState(() {
         _currentInvoice = InvoiceModel.fromMap(
           _currentInvoice.toMap()..['approvalStatus'] = 'pending',
@@ -80,7 +73,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invoice submitted for approval')),
+          const SnackBar(content: Text('Processing approval/submission...')),
         );
       }
     } catch (e) {
@@ -147,12 +140,18 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final invoice = _currentInvoice;
-    
+
     final primaryColor = _company != null
-        ? Color(int.parse(_company!.primaryBrandColor.replaceFirst('#', '0xFF')))
+        ? Color(
+            int.parse(_company!.primaryBrandColor.replaceFirst('#', '0xFF')),
+          )
         : (invoice.primaryBrandColor != null
-            ? Color(int.parse(invoice.primaryBrandColor!.replaceFirst('#', '0xFF')))
-            : theme.colorScheme.primary);
+              ? Color(
+                  int.parse(
+                    invoice.primaryBrandColor!.replaceFirst('#', '0xFF'),
+                  ),
+                )
+              : theme.colorScheme.primary);
 
     return Scaffold(
       appBar: AppBar(
@@ -255,8 +254,13 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_company?.companyLogoUrl != null || invoice.companyLogoUrl != null)
-                            Image.network(_company?.companyLogoUrl ?? invoice.companyLogoUrl!, height: 60)
+                          if (_company?.companyLogoUrl != null ||
+                              invoice.companyLogoUrl != null)
+                            Image.network(
+                              _company?.companyLogoUrl ??
+                                  invoice.companyLogoUrl!,
+                              height: 60,
+                            )
                           else
                             Icon(
                               Icons.account_balance_wallet,
@@ -271,9 +275,21 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                             ),
                           ),
                           if (_company?.address != null)
-                            Text(_company!.address!, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(
+                              _company!.address!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                           if (_company?.trnVatNumber != null)
-                            Text('TRN: ${_company!.trnVatNumber}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(
+                              'TRN: ${_company!.trnVatNumber}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                         ],
                       ),
                       Column(

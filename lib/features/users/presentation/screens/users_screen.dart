@@ -53,57 +53,86 @@ class _UsersScreenState extends State<UsersScreen> {
                   DataColumn(label: Text('Status')),
                   DataColumn(label: Text('Actions')),
                 ],
-                rows: users.map((u) => DataRow(
-                  cells: [
-                    DataCell(Text(u.fullName)),
-                    DataCell(Text(u.email)),
-                    DataCell(
-                      DropdownButton<UserRole>(
-                        value: u.role,
-                        underline: const SizedBox(),
-                        items: UserRole.values
-                            .where((r) => r != UserRole.owner || u.role == UserRole.owner)
-                            .map((r) => DropdownMenuItem(
-                                  value: r,
-                                  child: Text(r.name.toUpperCase(), style: const TextStyle(fontSize: 12)),
-                                ))
-                            .toList(),
-                        onChanged: (u.role == UserRole.owner && u.uid == widget.user.uid) 
-                          ? null // Cannot change own owner role
-                          : (newRole) {
-                              if (newRole != null) {
-                                _userService.updateUserRole(widget.user.companyId!, u.uid, newRole);
-                              }
-                            },
-                      ),
-                    ),
-                    DataCell(_buildStatusChip(u.status)),
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (u.uid != widget.user.uid) // Cannot disable self
-                            IconButton(
-                              icon: Icon(
-                                u.status == UserStatus.disabled 
-                                  ? Icons.check_circle_outline 
-                                  : Icons.block,
-                                size: 20,
-                                color: u.status == UserStatus.disabled ? Colors.green : Colors.red,
-                              ),
-                              onPressed: () {
-                                final newStatus = u.status == UserStatus.disabled 
-                                  ? UserStatus.active 
-                                  : UserStatus.disabled;
-                                _userService.updateUserStatus(widget.user.companyId!, u.uid, newStatus);
-                              },
-                              tooltip: u.status == UserStatus.disabled ? 'Enable User' : 'Disable User',
+                rows: users
+                    .map(
+                      (u) => DataRow(
+                        cells: [
+                          DataCell(Text(u.fullName)),
+                          DataCell(Text(u.email)),
+                          DataCell(
+                            DropdownButton<UserRole>(
+                              value: u.role,
+                              underline: const SizedBox(),
+                              items: UserRole.values
+                                  .where(
+                                    (r) =>
+                                        r != UserRole.owner ||
+                                        u.role == UserRole.owner,
+                                  )
+                                  .map(
+                                    (r) => DropdownMenuItem(
+                                      value: r,
+                                      child: Text(
+                                        r.name.toUpperCase(),
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged:
+                                  (u.role == UserRole.owner &&
+                                      u.uid == widget.user.uid)
+                                  ? null // Cannot change own owner role
+                                  : (newRole) {
+                                      if (newRole != null) {
+                                        _userService.updateUserRole(
+                                          widget.user.companyId!,
+                                          u.uid,
+                                          newRole,
+                                        );
+                                      }
+                                    },
                             ),
+                          ),
+                          DataCell(_buildStatusChip(u.status)),
+                          DataCell(
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (u.uid !=
+                                    widget.user.uid) // Cannot disable self
+                                  IconButton(
+                                    icon: Icon(
+                                      u.status == UserStatus.disabled
+                                          ? Icons.check_circle_outline
+                                          : Icons.block,
+                                      size: 20,
+                                      color: u.status == UserStatus.disabled
+                                          ? Colors.green
+                                          : Colors.red,
+                                    ),
+                                    onPressed: () {
+                                      final newStatus =
+                                          u.status == UserStatus.disabled
+                                          ? UserStatus.active
+                                          : UserStatus.disabled;
+                                      _userService.updateUserStatus(
+                                        widget.user.companyId!,
+                                        u.uid,
+                                        newStatus,
+                                      );
+                                    },
+                                    tooltip: u.status == UserStatus.disabled
+                                        ? 'Enable User'
+                                        : 'Disable User',
+                                  ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
-                )).toList(),
+                    )
+                    .toList(),
               ),
             ),
           );

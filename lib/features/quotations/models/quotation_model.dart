@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ledgixerp/core/models/attachment_model.dart';
 
 enum QuotationStatus { draft, sent, accepted, rejected, expired, converted }
 
 class QuotationLineItemModel {
+  final String? productId;
+  final String accountId;
+  final String accountName;
   final String description;
   final double quantity;
   final double unitPrice;
@@ -12,6 +16,9 @@ class QuotationLineItemModel {
   final double lineTotal;
 
   QuotationLineItemModel({
+    this.productId,
+    required this.accountId,
+    required this.accountName,
     required this.description,
     required this.quantity,
     required this.unitPrice,
@@ -23,6 +30,9 @@ class QuotationLineItemModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'productId': productId,
+      'accountId': accountId,
+      'accountName': accountName,
       'description': description,
       'quantity': quantity,
       'unitPrice': unitPrice,
@@ -35,6 +45,9 @@ class QuotationLineItemModel {
 
   factory QuotationLineItemModel.fromMap(Map<String, dynamic> map) {
     return QuotationLineItemModel(
+      productId: map['productId'],
+      accountId: map['accountId'] ?? '',
+      accountName: map['accountName'] ?? '',
       description: map['description'] ?? '',
       quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
       unitPrice: (map['unitPrice'] as num?)?.toDouble() ?? 0.0,
@@ -63,6 +76,7 @@ class QuotationModel {
   final String? termsAndConditions;
   final DateTime createdAt;
   final String? approvalStatus;
+  final List<AttachmentModel> attachments;
 
   QuotationModel({
     required this.id,
@@ -81,17 +95,57 @@ class QuotationModel {
     this.termsAndConditions,
     required this.createdAt,
     this.approvalStatus,
+    this.attachments = const [],
   });
+
+  QuotationModel copyWith({
+    String? id,
+    String? companyId,
+    String? quotationNumber,
+    String? customerId,
+    String? customerName,
+    DateTime? quotationDate,
+    DateTime? validUntilDate,
+    QuotationStatus? status,
+    List<QuotationLineItemModel>? items,
+    double? subtotal,
+    double? vatAmount,
+    double? totalAmount,
+    String? notes,
+    String? termsAndConditions,
+    DateTime? createdAt,
+    String? approvalStatus,
+    List<AttachmentModel>? attachments,
+  }) {
+    return QuotationModel(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      quotationNumber: quotationNumber ?? this.quotationNumber,
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      quotationDate: quotationDate ?? this.quotationDate,
+      validUntilDate: validUntilDate ?? this.validUntilDate,
+      status: status ?? this.status,
+      items: items ?? this.items,
+      subtotal: subtotal ?? this.subtotal,
+      vatAmount: vatAmount ?? this.vatAmount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      notes: notes ?? this.notes,
+      termsAndConditions: termsAndConditions ?? this.termsAndConditions,
+      createdAt: createdAt ?? this.createdAt,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+      attachments: attachments ?? this.attachments,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'companyId': companyId,
       'quotationNumber': quotationNumber,
       'customerId': customerId,
       'customerName': customerName,
-      'quotationDate': quotationDate,
-      'validUntilDate': validUntilDate,
+      'quotationDate': Timestamp.fromDate(quotationDate),
+      'validUntilDate': Timestamp.fromDate(validUntilDate),
       'status': status.name,
       'items': items.map((i) => i.toMap()).toList(),
       'subtotal': subtotal,
@@ -99,8 +153,9 @@ class QuotationModel {
       'totalAmount': totalAmount,
       'notes': notes,
       'termsAndConditions': termsAndConditions,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
       'approvalStatus': approvalStatus,
+      'attachments': attachments.map((x) => x.toMap()).toList(),
     };
   }
 
@@ -132,6 +187,11 @@ class QuotationModel {
       termsAndConditions: map['termsAndConditions'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       approvalStatus: map['approvalStatus'],
+      attachments:
+          (map['attachments'] as List?)
+              ?.map((x) => AttachmentModel.fromMap(x))
+              .toList() ??
+          [],
     );
   }
 }

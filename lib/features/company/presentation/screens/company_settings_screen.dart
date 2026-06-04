@@ -19,7 +19,213 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _companyService = CompanyService();
   bool _isLoading = false;
+  bool _isInitialLoading = true;
+  bool _showAllCurrencies = false;
+  String? _errorMessage;
   CompanyModel? _company;
+
+  static const List<String> _commonCurrencies = [
+    'AED',
+    'USD',
+    'SAR',
+    'PKR',
+    'EUR',
+    'GBP',
+    'INR',
+    'BDT',
+  ];
+  static const List<String> _allCurrencies = [
+    'AED',
+    'AFN',
+    'ALL',
+    'AMD',
+    'ANG',
+    'AOA',
+    'ARS',
+    'AUD',
+    'AWG',
+    'AZN',
+    'BAM',
+    'BBD',
+    'BDT',
+    'BGN',
+    'BHD',
+    'BIF',
+    'BMD',
+    'BND',
+    'BOB',
+    'BRL',
+    'BSD',
+    'BTN',
+    'BWP',
+    'BYN',
+    'BZD',
+    'CAD',
+    'CDF',
+    'CHF',
+    'CLP',
+    'CNY',
+    'COP',
+    'CRC',
+    'CUP',
+    'CVE',
+    'CZK',
+    'DJF',
+    'DKK',
+    'DOP',
+    'DZD',
+    'EGP',
+    'ERN',
+    'ETB',
+    'EUR',
+    'FJD',
+    'FKP',
+    'GBP',
+    'GEL',
+    'GHS',
+    'GIP',
+    'GMD',
+    'GNF',
+    'GTQ',
+    'GYD',
+    'HKD',
+    'HNL',
+    'HRK',
+    'HTG',
+    'HUF',
+    'IDR',
+    'ILS',
+    'INR',
+    'IQD',
+    'IRR',
+    'ISK',
+    'JMD',
+    'JOD',
+    'JPY',
+    'KES',
+    'KGS',
+    'KHR',
+    'KMF',
+    'KPW',
+    'KRW',
+    'KWD',
+    'KYD',
+    'KZT',
+    'LAK',
+    'LBP',
+    'LKR',
+    'LRD',
+    'LSL',
+    'LYD',
+    'MAD',
+    'MDL',
+    'MGA',
+    'MKD',
+    'MMK',
+    'MNT',
+    'MOP',
+    'MRU',
+    'MUR',
+    'MVR',
+    'MWK',
+    'MXN',
+    'MYR',
+    'MZN',
+    'NAD',
+    'NGN',
+    'NIO',
+    'NOK',
+    'NPR',
+    'NZD',
+    'OMR',
+    'PAB',
+    'PEN',
+    'PGK',
+    'PHP',
+    'PKR',
+    'PLN',
+    'PYG',
+    'QAR',
+    'RON',
+    'RSD',
+    'RUB',
+    'RWF',
+    'SAR',
+    'SBD',
+    'SCR',
+    'SDG',
+    'SEK',
+    'SGD',
+    'SHP',
+    'SLL',
+    'SOS',
+    'SRD',
+    'SSP',
+    'STN',
+    'SYP',
+    'SZL',
+    'THB',
+    'TJS',
+    'TMT',
+    'TND',
+    'TOP',
+    'TRY',
+    'TTD',
+    'TWD',
+    'TZS',
+    'UAH',
+    'UGX',
+    'USD',
+    'UYU',
+    'UZS',
+    'VES',
+    'VND',
+    'VUV',
+    'WST',
+    'XAF',
+    'XCD',
+    'XOF',
+    'XPF',
+    'YER',
+    'ZAR',
+    'ZMW',
+    'ZWL',
+  ];
+
+  static const List<String> _timezones = [
+    'UTC',
+    'Africa/Cairo',
+    'Africa/Johannesburg',
+    'Africa/Lagos',
+    'Africa/Nairobi',
+    'America/Anchorage',
+    'America/Argentina/Buenos_Aires',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Mexico_City',
+    'America/New_York',
+    'America/Sao_Paulo',
+    'Asia/Bangkok',
+    'Asia/Dubai',
+    'Asia/Hong_Kong',
+    'Asia/Istanbul',
+    'Asia/Jakarta',
+    'Asia/Karachi',
+    'Asia/Kolkata',
+    'Asia/Manila',
+    'Asia/Riyadh',
+    'Asia/Seoul',
+    'Asia/Singapore',
+    'Asia/Tokyo',
+    'Australia/Sydney',
+    'Europe/Berlin',
+    'Europe/London',
+    'Europe/Madrid',
+    'Europe/Paris',
+    'Europe/Rome',
+    'Pacific/Auckland',
+  ];
 
   // Form Controllers
   final _legalNameController = TextEditingController();
@@ -46,17 +252,35 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
     _loadCompany();
   }
 
-  void _loadCompany() {
-    if (widget.user.companyId == null) return;
+  void _loadCompany() async {
+    if (widget.user.companyId == null) {
+      setState(() {
+        _isInitialLoading = false;
+        _errorMessage = 'No company linked to this user.';
+      });
+      return;
+    }
 
-    _companyService.getCompany(widget.user.companyId!).first.then((company) {
-      if (company != null && mounted) {
+    try {
+      final company = await _companyService
+          .getCompany(widget.user.companyId!)
+          .first;
+
+      if (!mounted) return;
+
+      if (company != null) {
         setState(() {
           _company = company;
           _legalNameController.text = company.companyLegalName;
           _tradeNameController.text = company.tradeName;
           _countryController.text = company.country;
           _currencyController.text = company.baseCurrency;
+
+          // Auto-expand currencies if the current one is not in the common list
+          if (!_commonCurrencies.contains(company.baseCurrency)) {
+            _showAllCurrencies = true;
+          }
+
           _trnController.text = company.trnVatNumber ?? '';
           _phoneController.text = company.phone ?? '';
           _emailController.text = company.email ?? '';
@@ -64,11 +288,41 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
           _addressController.text = company.address ?? '';
           _timezoneController.text = company.timezone;
           _financialYearStartMonth = company.financialYearStartMonth;
-          _primaryColor = Color(int.parse(company.primaryBrandColor));
-          _secondaryColor = Color(int.parse(company.secondaryBrandColor));
+          _primaryColor = _parseColor(
+            company.primaryBrandColor,
+            const Color(0xFF0F172A),
+          );
+          _secondaryColor = _parseColor(
+            company.secondaryBrandColor,
+            const Color(0xFF3B82F6),
+          );
+          _isInitialLoading = false;
+        });
+      } else {
+        setState(() {
+          _isInitialLoading = false;
+          _errorMessage = 'Company settings not found.';
         });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+          _errorMessage = 'Error loading company: $e';
+        });
+      }
+    }
+  }
+
+  Color _parseColor(String colorStr, Color fallback) {
+    try {
+      if (colorStr.startsWith('0x')) {
+        return Color(int.parse(colorStr));
+      }
+      return Color(int.parse('0x$colorStr'));
+    } catch (_) {
+      return fallback;
+    }
   }
 
   Future<void> _pickLogo() async {
@@ -157,8 +411,34 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (_company == null) {
+    if (_isInitialLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 60),
+              const SizedBox(height: 16),
+              Text(_errorMessage!, style: const TextStyle(fontSize: 18)),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _loadCompany,
+                child: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_company == null) {
+      return const Scaffold(
+        body: Center(child: Text('Company data unavailable.')),
+      );
     }
 
     return Scaffold(
@@ -340,10 +620,47 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildTextField(
-                            'Base Currency',
-                            _currencyController,
-                            isRequired: true,
+                          child: DropdownButtonFormField<String>(
+                            initialValue:
+                                (_showAllCurrencies
+                                        ? _allCurrencies
+                                        : _commonCurrencies)
+                                    .contains(_currencyController.text)
+                                ? _currencyController.text
+                                : (_allCurrencies.contains(
+                                        _currencyController.text,
+                                      )
+                                      ? _currencyController.text
+                                      : null),
+                            decoration: const InputDecoration(
+                              labelText: 'Base Currency*',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              ...(_showAllCurrencies
+                                      ? _allCurrencies
+                                      : _commonCurrencies)
+                                  .map(
+                                    (c) => DropdownMenuItem(
+                                      value: c,
+                                      child: Text(c),
+                                    ),
+                                  ),
+                              if (!_showAllCurrencies)
+                                const DropdownMenuItem(
+                                  value: 'other',
+                                  child: Text('Other...'),
+                                ),
+                            ],
+                            onChanged: (v) {
+                              if (v == 'other') {
+                                setState(() => _showAllCurrencies = true);
+                              } else if (v != null) {
+                                setState(() => _currencyController.text = v);
+                              }
+                            },
+                            validator: (v) =>
+                                v == null || v.isEmpty ? 'Required' : null,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -368,10 +685,27 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildTextField(
-                      'Timezone',
-                      _timezoneController,
-                      isRequired: true,
+                    DropdownButtonFormField<String>(
+                      initialValue:
+                          _timezones.contains(_timezoneController.text)
+                          ? _timezoneController.text
+                          : 'UTC',
+                      decoration: const InputDecoration(
+                        labelText: 'Timezone*',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _timezones
+                          .map(
+                            (t) => DropdownMenuItem(value: t, child: Text(t)),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() => _timezoneController.text = v);
+                        }
+                      },
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
                     ),
                   ],
                 ),

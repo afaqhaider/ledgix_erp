@@ -10,6 +10,10 @@ enum AppPermission {
   manageSuppliers,
   viewInvoices,
   manageInvoices,
+  viewBills,
+  manageBills,
   viewReports,
   manageSettings,
+  approveTransactions,
+  viewApprovals,
 }

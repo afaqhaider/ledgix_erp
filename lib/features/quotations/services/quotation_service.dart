@@ -29,16 +29,39 @@ class QuotationService {
     });
   }
 
-  Future<String> generateNextQuotationNumber(String companyId) async {
-    return await _settingsService.generateNextDocumentNumber(companyId, 'quotation');
+  Future<String> previewNextQuotationNumber(String companyId) async {
+    return await _settingsService.previewNextDocumentNumber(
+      companyId,
+      'quotation',
+    );
   }
 
   Future<void> addQuotation(QuotationModel quotation) async {
     // Check if period is locked
-    if (await _settingsService.isPeriodLocked(quotation.companyId, quotation.quotationDate)) {
+    if (await _settingsService.isPeriodLocked(
+      quotation.companyId,
+      quotation.quotationDate,
+    )) {
       throw Exception('Accounting period for this date is locked.');
     }
-    await _getQuoRef(quotation.companyId).doc().set(quotation.toMap());
+
+    await _firestore.runTransaction((transaction) async {
+      // 1. Generate final number and increment within transaction
+      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
+        quotation.companyId,
+        'quotation',
+        transaction: transaction,
+      );
+
+      final docRef = _getQuoRef(quotation.companyId).doc();
+      final finalQuotation = quotation.copyWith(
+        id: docRef.id,
+        quotationNumber: finalNumber,
+      );
+
+      // 2. Save quotation
+      transaction.set(docRef, finalQuotation.toMap());
+    });
   }
 
   Future<void> updateQuotationStatus(
@@ -52,32 +75,31 @@ class QuotationService {
   }
 
   Future<void> convertToInvoice(QuotationModel quotation) async {
-    final invoiceNumber = await _invoiceService.generateNextInvoiceNumber(
-      quotation.companyId,
-    );
-
+    // Conversion usually happens as a new transaction
+    // We can use the existing addInvoice which handles transactions
     final invoice = InvoiceModel(
       id: '',
       companyId: quotation.companyId,
-      invoiceNumber: invoiceNumber,
+      invoiceNumber: 'AUTO', // Will be replaced by service
       customerId: quotation.customerId,
       customerName: quotation.customerName,
       invoiceDate: DateTime.now(),
       dueDate: DateTime.now().add(const Duration(days: 30)),
       status: InvoiceStatus.draft,
-      items: quotation.items
-          .map(
-            (item) => InvoiceLineItemModel(
-              description: item.description,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              vatRate: item.vatRate,
-              lineSubtotal: item.lineSubtotal,
-              lineVat: item.lineVat,
-              lineTotal: item.lineTotal,
-            ),
-          )
-          .toList(),
+      items: quotation.items.map((item) {
+        return InvoiceLineItemModel(
+          productId: item.productId,
+          accountId: item.accountId,
+          accountName: item.accountName,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          vatRate: item.vatRate,
+          lineSubtotal: item.lineSubtotal,
+          lineVat: item.lineVat,
+          lineTotal: item.lineTotal,
+        );
+      }).toList(),
       subtotal: quotation.subtotal,
       vatAmount: quotation.vatAmount,
       totalAmount: quotation.totalAmount,
@@ -85,20 +107,9 @@ class QuotationService {
       createdAt: DateTime.now(),
     );
 
-    final batch = _firestore.batch();
-
-    // Create the invoice
-    final invoiceRef = _firestore
-        .collection('companies')
-        .doc(quotation.companyId)
-        .collection('salesInvoices')
-        .doc();
-    batch.set(invoiceRef, invoice.toMap());
-
+    await _invoiceService.addInvoice(invoice);
+    
     // Update the quotation status
-    final quoRef = _getQuoRef(quotation.companyId).doc(quotation.id);
-    batch.update(quoRef, {'status': QuotationStatus.converted.name});
-
-    await batch.commit();
+    await updateQuotationStatus(quotation.companyId, quotation.id, QuotationStatus.converted);
   }
 }

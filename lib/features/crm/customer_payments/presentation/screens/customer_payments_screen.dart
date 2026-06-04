@@ -1,35 +1,51 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/crm/customer_payments/models/customer_payment_model.dart';
 import 'package:ledgixerp/features/crm/customer_payments/services/customer_payment_service.dart';
 import 'package:ledgixerp/features/crm/customer_payments/presentation/screens/add_customer_payment_screen.dart';
 import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
 import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
 class CustomerPaymentsScreen extends StatefulWidget {
   final AppUser user;
   const CustomerPaymentsScreen({super.key, required this.user});
 
   @override
-  State<CustomerPaymentsScreen> createState() => _CustomerPaymentsScreenState();
+  State<CustomerPaymentsScreen> createState() => _ReceiptsScreenState();
 }
 
-class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
+class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
   final _paymentService = CustomerPaymentService();
   final _postingService = AccountingPostingService();
   final _approvalService = ApprovalService();
+  final _companyService = CompanyService();
+  CompanyModel? _company;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).listen((company) {
+      if (mounted) setState(() => _company = company);
+    });
+  }
 
   Future<void> _submitForApproval(CustomerPaymentModel payment) async {
     try {
       final request = ApprovalRequestModel(
         id: '',
         companyId: widget.user.companyId!,
-        sourceType:
-            'customerPayment', // We need to handle this in ApprovalService
+        sourceType: 'customerPayment',
         sourceId: payment.id,
         sourceNumber: payment.paymentNumber,
         requestedByUserId: widget.user.uid,
@@ -37,18 +53,14 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
         requestedAt: DateTime.now(),
       );
 
-      await _approvalService.submitForApproval(request);
-
-      await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.user.companyId)
-          .collection('customerPayments')
-          .doc(payment.id)
-          .update({'approvalStatus': 'pending'});
+      await _approvalService.submitForApproval(
+        request,
+        requesterRole: widget.user.role,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment submitted for approval')),
+          const SnackBar(content: Text('Processing approval/submission...')),
         );
       }
     } catch (e) {
@@ -82,7 +94,7 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Payment posted successfully'),
+            content: Text('Receipt posted successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -111,23 +123,23 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Customer Payments'),
+        title: const Text('Receipts'),
         actions: [
           if (canManage)
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          AddCustomerPaymentScreen(user: widget.user),
+                  showErpSidePane(
+                    context: context,
+                    builder: AddCustomerPaymentScreen(
+                      user: widget.user,
+                      isPane: true,
                     ),
                   );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('Add Payment'),
+                label: const Text('Add Receipt'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: Colors.white,
@@ -161,7 +173,7 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No customer payments found',
+                    'No receipts found',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: Colors.grey,
                     ),
@@ -180,7 +192,7 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
                 columns: const [
                   DataColumn(
                     label: Text(
-                      'Payment #',
+                      'Receipt #',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -199,6 +211,12 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
                   DataColumn(
                     label: Text(
                       'Amount',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Status',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -229,13 +247,14 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
                       DataCell(Text(payment.customerName)),
                       DataCell(
                         Text(
-                          DateFormat('dd MMM yyyy').format(payment.paymentDate),
+                          AppFormatters.date(payment.paymentDate),
                         ),
                       ),
                       DataCell(
-                        Text(NumberFormat('#,##0.00').format(payment.amount)),
+                        Text(AppFormatters.currency(payment.amount, symbol: _company?.baseCurrency)),
                       ),
-                      DataCell(Text(payment.paymentMethod.name.toUpperCase())),
+                      DataCell(_buildStatusBadge(payment)),
+                      DataCell(Text(payment.paymentMethod == CustomerPaymentMethod.bankTransfer ? 'Bank Transfer' : payment.paymentMethod.name.toUpperCase())),
                       DataCell(
                         payment.approvalStatus == null
                             ? TextButton(
@@ -293,7 +312,11 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
                                   ),
                             if (!payment.isPosted && canManage)
                               IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 20,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () => _confirmDelete(payment),
                               ),
                           ],
@@ -315,7 +338,9 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete payment ${payment.paymentNumber}? This will also update the linked invoice balance.'),
+        content: Text(
+          'Are you sure you want to delete receipt ${payment.paymentNumber}? This will also update the linked invoice balance.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -341,11 +366,46 @@ class _CustomerPaymentsScreenState extends State<CustomerPaymentsScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
     }
+  }
+
+  Widget _buildStatusBadge(CustomerPaymentModel payment) {
+    String label = 'DRAFT';
+    Color color = Colors.grey;
+
+    if (payment.isPosted) {
+      label = 'POSTED';
+      color = Colors.blue;
+    } else if (payment.approvalStatus == 'approved') {
+      label = 'APPROVED';
+      color = Colors.green;
+    } else if (payment.approvalStatus == 'pending') {
+      label = 'PENDING';
+      color = Colors.orange;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   Color _getApprovalStatusColor(String status) {

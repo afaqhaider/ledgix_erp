@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/supplier_payments/models/supplier_payment_model.dart';
 import 'package:ledgixerp/features/supplier_payments/services/supplier_payment_service.dart';
 import 'package:ledgixerp/features/supplier_payments/presentation/screens/add_supplier_payment_screen.dart';
 import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
 import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
 class SupplierPaymentsScreen extends StatefulWidget {
   final AppUser user;
@@ -22,6 +26,20 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
   final _paymentService = SupplierPaymentService();
   final _postingService = AccountingPostingService();
   final _approvalService = ApprovalService();
+  final _companyService = CompanyService();
+  CompanyModel? _company;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).listen((company) {
+      if (mounted) setState(() => _company = company);
+    });
+  }
 
   Future<void> _submitForApproval(SupplierPaymentModel payment) async {
     try {
@@ -36,18 +54,14 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
         requestedAt: DateTime.now(),
       );
 
-      await _approvalService.submitForApproval(request);
-
-      await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.user.companyId)
-          .collection('supplierPayments')
-          .doc(payment.id)
-          .update({'approvalStatus': 'pending'});
+      await _approvalService.submitForApproval(
+        request,
+        requesterRole: widget.user.role,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment submitted for approval')),
+          const SnackBar(content: Text('Processing approval/submission...')),
         );
       }
     } catch (e) {
@@ -117,11 +131,11 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          AddSupplierPaymentScreen(user: widget.user),
+                  showErpSidePane(
+                    context: context,
+                    builder: AddSupplierPaymentScreen(
+                      user: widget.user,
+                      isPane: true,
                     ),
                   );
                 },
@@ -228,11 +242,11 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
                       DataCell(Text(payment.supplierName)),
                       DataCell(
                         Text(
-                          DateFormat('dd MMM yyyy').format(payment.paymentDate),
+                          AppFormatters.date(payment.paymentDate),
                         ),
                       ),
                       DataCell(
-                        Text(NumberFormat('#,##0.00').format(payment.amount)),
+                        Text(AppFormatters.currency(payment.amount, symbol: _company?.baseCurrency)),
                       ),
                       DataCell(Text(payment.paymentMethod.name.toUpperCase())),
                       DataCell(

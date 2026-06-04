@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import '../../models/company_model.dart';
 import '../../services/company_service.dart';
 
@@ -21,6 +22,210 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
 
   int _currentStep = 0;
   bool _isLoading = false;
+  bool _showAllCurrencies = false;
+
+  static const List<String> _commonCurrencies = [
+    'AED',
+    'USD',
+    'SAR',
+    'PKR',
+    'EUR',
+    'GBP',
+    'INR',
+    'BDT',
+  ];
+  static const List<String> _allCurrencies = [
+    'AED',
+    'AFN',
+    'ALL',
+    'AMD',
+    'ANG',
+    'AOA',
+    'ARS',
+    'AUD',
+    'AWG',
+    'AZN',
+    'BAM',
+    'BBD',
+    'BDT',
+    'BGN',
+    'BHD',
+    'BIF',
+    'BMD',
+    'BND',
+    'BOB',
+    'BRL',
+    'BSD',
+    'BTN',
+    'BWP',
+    'BYN',
+    'BZD',
+    'CAD',
+    'CDF',
+    'CHF',
+    'CLP',
+    'CNY',
+    'COP',
+    'CRC',
+    'CUP',
+    'CVE',
+    'CZK',
+    'DJF',
+    'DKK',
+    'DOP',
+    'DZD',
+    'EGP',
+    'ERN',
+    'ETB',
+    'EUR',
+    'FJD',
+    'FKP',
+    'GBP',
+    'GEL',
+    'GHS',
+    'GIP',
+    'GMD',
+    'GNF',
+    'GTQ',
+    'GYD',
+    'HKD',
+    'HNL',
+    'HRK',
+    'HTG',
+    'HUF',
+    'IDR',
+    'ILS',
+    'INR',
+    'IQD',
+    'IRR',
+    'ISK',
+    'JMD',
+    'JOD',
+    'JPY',
+    'KES',
+    'KGS',
+    'KHR',
+    'KMF',
+    'KPW',
+    'KRW',
+    'KWD',
+    'KYD',
+    'KZT',
+    'LAK',
+    'LBP',
+    'LKR',
+    'LRD',
+    'LSL',
+    'LYD',
+    'MAD',
+    'MDL',
+    'MGA',
+    'MKD',
+    'MMK',
+    'MNT',
+    'MOP',
+    'MRU',
+    'MUR',
+    'MVR',
+    'MWK',
+    'MXN',
+    'MYR',
+    'MZN',
+    'NAD',
+    'NGN',
+    'NIO',
+    'NOK',
+    'NPR',
+    'NZD',
+    'OMR',
+    'PAB',
+    'PEN',
+    'PGK',
+    'PHP',
+    'PKR',
+    'PLN',
+    'PYG',
+    'QAR',
+    'RON',
+    'RSD',
+    'RUB',
+    'RWF',
+    'SAR',
+    'SBD',
+    'SCR',
+    'SDG',
+    'SEK',
+    'SGD',
+    'SHP',
+    'SLL',
+    'SOS',
+    'SRD',
+    'SSP',
+    'STN',
+    'SYP',
+    'SZL',
+    'THB',
+    'TJS',
+    'TMT',
+    'TND',
+    'TOP',
+    'TRY',
+    'TTD',
+    'TWD',
+    'TZS',
+    'UAH',
+    'UGX',
+    'USD',
+    'UYU',
+    'UZS',
+    'VES',
+    'VND',
+    'VUV',
+    'WST',
+    'XAF',
+    'XCD',
+    'XOF',
+    'XPF',
+    'YER',
+    'ZAR',
+    'ZMW',
+    'ZWL',
+  ];
+
+  static const List<String> _timezones = [
+    'UTC',
+    'Africa/Cairo',
+    'Africa/Johannesburg',
+    'Africa/Lagos',
+    'Africa/Nairobi',
+    'America/Anchorage',
+    'America/Argentina/Buenos_Aires',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Mexico_City',
+    'America/New_York',
+    'America/Sao_Paulo',
+    'Asia/Bangkok',
+    'Asia/Dubai',
+    'Asia/Hong_Kong',
+    'Asia/Istanbul',
+    'Asia/Jakarta',
+    'Asia/Karachi',
+    'Asia/Kolkata',
+    'Asia/Manila',
+    'Asia/Riyadh',
+    'Asia/Seoul',
+    'Asia/Singapore',
+    'Asia/Tokyo',
+    'Australia/Sydney',
+    'Europe/Berlin',
+    'Europe/London',
+    'Europe/Madrid',
+    'Europe/Paris',
+    'Europe/Rome',
+    'Pacific/Auckland',
+  ];
 
   // Form Controllers
   final _legalNameController = TextEditingController();
@@ -66,10 +271,15 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
   }
 
   Future<void> _setupCompany() async {
-    if (!_formKey.currentState!.validate()) return;
+    debugPrint('CompanySetup: Starting setup...');
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('CompanySetup: Validation failed');
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
+      debugPrint('CompanySetup: Creating company model...');
       final company = CompanyModel(
         id: '',
         companyLegalName: _legalNameController.text.trim(),
@@ -101,27 +311,36 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
         createdByUserId: widget.user.uid,
       );
 
+      debugPrint('CompanySetup: Calling service.setupCompany...');
       final companyId = await _companyService.setupCompany(company);
+      debugPrint('CompanySetup: Company created with ID: $companyId');
 
       if (_logoFile != null) {
+        debugPrint('CompanySetup: Uploading logo...');
         final uploadedUrl = await _companyService.uploadLogo(
           companyId,
           kIsWeb ? _logoBytes : File(_logoFile!.path),
         );
         if (uploadedUrl != null) {
+          debugPrint('CompanySetup: Updating company with logo URL...');
           await _companyService.updateCompany(
             company.copyWith(companyLogoUrl: uploadedUrl).copyWithId(companyId),
           );
         }
       }
 
-      // AuthGate will naturally pick up the change and redirect
+      debugPrint(
+        'CompanySetup: Setup complete. Waiting for AuthGate redirect.',
+      );
     } catch (e) {
+      debugPrint('CompanySetup: ERROR during setup: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
             backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 10),
+            action: SnackBarAction(label: 'OK', onPressed: () {}),
           ),
         );
       }
@@ -241,19 +460,32 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
           bottom: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          const Icon(Icons.business_outlined, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            'Setup Your Company',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+          Align(
+            alignment: Alignment.topRight,
+            child: TextButton.icon(
+              onPressed: () => AuthService().signOut(),
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text('Logout'),
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Tell us about your business to get started with LedGix ERP.',
+          Column(
+            children: [
+              const Icon(Icons.business_outlined, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                'Setup Your Company',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Tell us about your business to get started with LedGix ERP.',
+              ),
+            ],
           ),
         ],
       ),
@@ -423,12 +655,32 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: _currencyController,
+              child: DropdownButtonFormField<String>(
+                initialValue:
+                    (_showAllCurrencies ? _allCurrencies : _commonCurrencies)
+                        .contains(_currencyController.text)
+                    ? _currencyController.text
+                    : null,
                 decoration: const InputDecoration(
                   labelText: 'Base Currency*',
                   border: OutlineInputBorder(),
                 ),
+                items: [
+                  ...(_showAllCurrencies ? _allCurrencies : _commonCurrencies)
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                  if (!_showAllCurrencies)
+                    const DropdownMenuItem(
+                      value: 'other',
+                      child: Text('Other...'),
+                    ),
+                ],
+                onChanged: (v) {
+                  if (v == 'other') {
+                    setState(() => _showAllCurrencies = true);
+                  } else if (v != null) {
+                    setState(() => _currencyController.text = v);
+                  }
+                },
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
             ),
@@ -461,12 +713,20 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
           onChanged: (v) => setState(() => _financialYearStartMonth = v!),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _timezoneController,
+        DropdownButtonFormField<String>(
+          initialValue: _timezones.contains(_timezoneController.text)
+              ? _timezoneController.text
+              : 'UTC',
           decoration: const InputDecoration(
             labelText: 'Timezone*',
             border: OutlineInputBorder(),
           ),
+          items: _timezones
+              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+              .toList(),
+          onChanged: (v) {
+            if (v != null) setState(() => _timezoneController.text = v);
+          },
           validator: (v) => v == null || v.isEmpty ? 'Required' : null,
         ),
       ],
@@ -519,13 +779,4 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     ];
     return months[month - 1];
   }
-}
-
-extension on Widget {
-  Widget maxWidth(double width) => Center(
-    child: Container(
-      constraints: BoxConstraints(maxWidth: width),
-      child: this,
-    ),
-  );
 }

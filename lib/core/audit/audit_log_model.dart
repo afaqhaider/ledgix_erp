@@ -48,7 +48,7 @@ class AuditLogModel {
       'description': description,
       'oldValues': oldValues,
       'newValues': newValues,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
       'deviceInfo': deviceInfo,
     };
   }
@@ -66,7 +66,7 @@ class AuditLogModel {
       description: map['description'] ?? '',
       oldValues: map['oldValues'],
       newValues: map['newValues'],
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       deviceInfo: map['deviceInfo'],
     );
   }

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import '../../services/reporting_service.dart';
 import '../../models/report_models.dart';
+import 'package:ledgixerp/core/services/export_service.dart';
 
 class BalanceSheetScreen extends StatefulWidget {
   final AppUser user;
@@ -14,6 +15,7 @@ class BalanceSheetScreen extends StatefulWidget {
 
 class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
   final _reportingService = ReportingService();
+  final _exportService = ExportService();
   DateTime _selectedDate = DateTime.now();
   late Future<BalanceSheetReport> _reportFuture;
 
@@ -30,6 +32,80 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
         _selectedDate,
       );
     });
+  }
+
+  Future<void> _exportReport(BalanceSheetReport report, bool isPdf) async {
+    final currencyFormat = NumberFormat.simpleCurrency();
+    final asOfDate = 'As of ${DateFormat('dd MMM yyyy').format(_selectedDate)}';
+
+    if (isPdf) {
+      final List<List<String>> tableData = [];
+      
+      tableData.add(['ASSETS', '']);
+      for (var b in report.assets) {
+        if (b.balance != 0) tableData.add([b.account.accountName, currencyFormat.format(b.balance)]);
+      }
+      tableData.add(['Total Assets', currencyFormat.format(report.totalAssets)]);
+      tableData.add(['', '']);
+
+      tableData.add(['LIABILITIES', '']);
+      for (var b in report.liabilities) {
+        if (b.balance != 0) tableData.add([b.account.accountName, currencyFormat.format(b.balance)]);
+      }
+      tableData.add(['Total Liabilities', currencyFormat.format(report.totalLiabilities)]);
+      tableData.add(['', '']);
+
+      tableData.add(['EQUITY', '']);
+      for (var b in report.equity) {
+        if (b.balance != 0) tableData.add([b.account.accountName, currencyFormat.format(b.balance)]);
+      }
+      tableData.add(['Net Profit Period', currencyFormat.format(report.netProfitPeriod)]);
+      tableData.add(['Total Equity', currencyFormat.format(report.totalEquity)]);
+      tableData.add(['', '']);
+
+      tableData.add(['TOTAL LIABILITIES & EQUITY', currencyFormat.format(report.totalLiabilitiesAndEquity)]);
+
+      await _exportService.exportReportToPdf(
+        title: 'Balance Sheet Report',
+        subTitle: asOfDate,
+        headers: ['Category / Account', 'Amount'],
+        data: tableData,
+      );
+    } else {
+      final List<List<dynamic>> excelData = [];
+      excelData.add(['Category / Account', 'Amount']);
+      
+      excelData.add(['ASSETS']);
+      for (var b in report.assets) {
+        if (b.balance != 0) excelData.add([b.account.accountName, b.balance]);
+      }
+      excelData.add(['Total Assets', report.totalAssets]);
+      excelData.add([]);
+
+      excelData.add(['LIABILITIES']);
+      for (var b in report.liabilities) {
+        if (b.balance != 0) excelData.add([b.account.accountName, b.balance]);
+      }
+      excelData.add(['Total Liabilities', report.totalLiabilities]);
+      excelData.add([]);
+
+      excelData.add(['EQUITY']);
+      for (var b in report.equity) {
+        if (b.balance != 0) excelData.add([b.account.accountName, b.balance]);
+      }
+      excelData.add(['Net Profit Period', report.netProfitPeriod]);
+      excelData.add(['Total Equity', report.totalEquity]);
+      excelData.add([]);
+
+      excelData.add(['TOTAL LIABILITIES & EQUITY', report.totalLiabilitiesAndEquity]);
+
+      await _exportService.exportToExcel(
+        fileName: 'Balance_Sheet_${DateFormat('yyyyMMdd').format(_selectedDate)}',
+        sheetName: 'Balance Sheet',
+        headers: ['Account', 'Amount'],
+        data: excelData,
+      );
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -54,7 +130,22 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
         title: const Text('Balance Sheet'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadReport),
-          IconButton(icon: const Icon(Icons.print), onPressed: () {}),
+          FutureBuilder<BalanceSheetReport>(
+            future: _reportFuture,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return PopupMenuButton<String>(
+                  icon: const Icon(Icons.download),
+                  onSelected: (value) => _exportReport(snapshot.data!, value == 'pdf'),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
+                    const PopupMenuItem(value: 'excel', child: Text('Export Excel')),
+                  ],
+                );
+              }
+              return const SizedBox();
+            },
+          ),
         ],
       ),
       body: Column(

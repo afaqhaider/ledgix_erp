@@ -27,24 +27,53 @@ class SupplierPaymentService {
   }
 
   Future<String> generateNextPaymentNumber(String companyId) async {
-    return await _settingsService.generateNextDocumentNumber(companyId, 'supplierPayment');
+    return await _settingsService.previewNextDocumentNumber(
+      companyId,
+      'supplierPayment',
+    );
   }
 
   Future<void> addPayment(SupplierPaymentModel payment) async {
     // Check if period is locked
-    if (await _settingsService.isPeriodLocked(payment.companyId, payment.paymentDate)) {
+    if (await _settingsService.isPeriodLocked(
+      payment.companyId,
+      payment.paymentDate,
+    )) {
       throw Exception('Accounting period for this date is locked.');
     }
-    await _getPaymentsRef(payment.companyId).doc().set(payment.toMap());
+
+    await _firestore.runTransaction((transaction) async {
+      // 1. Generate the actual document number and increment counter within transaction
+      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
+        payment.companyId,
+        'supplierPayment',
+        transaction: transaction,
+      );
+
+      final docRef = _getPaymentsRef(payment.companyId).doc();
+      
+      final paymentToSave = payment.copyWith(
+        id: docRef.id,
+        paymentNumber: finalNumber,
+      );
+
+      // 2. Save the payment
+      transaction.set(docRef, paymentToSave.toMap());
+    });
   }
 
   Future<void> deletePayment(String companyId, String paymentId) async {
     final doc = await _getPaymentsRef(companyId).doc(paymentId).get();
     if (!doc.exists) return;
 
-    final payment = SupplierPaymentModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    final payment = SupplierPaymentModel.fromMap(
+      doc.data() as Map<String, dynamic>,
+      doc.id,
+    );
     if (payment.isPosted) {
-      throw Exception('Cannot delete a posted payment. Reverse the entry via Journal if needed.');
+      throw Exception(
+        'Cannot delete a posted payment. Reverse the entry via Journal if needed.',
+      );
     }
 
     await _getPaymentsRef(companyId).doc(paymentId).delete();

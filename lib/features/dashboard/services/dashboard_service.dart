@@ -96,14 +96,16 @@ class DashboardService {
       }
 
       if (!controller.isClosed) {
-        controller.add(DashboardStats(
-          totalRevenue: revenue,
-          totalExpenses: expenses,
-          totalProfit: revenue - expenses,
-          pendingInvoicesCount: pendingInvoices,
-          overdueInvoicesCount: overdueInvoices,
-          pendingApprovalsCount: appSnap.docs.length,
-        ));
+        controller.add(
+          DashboardStats(
+            totalRevenue: revenue,
+            totalExpenses: expenses,
+            totalProfit: revenue - expenses,
+            pendingInvoicesCount: pendingInvoices,
+            overdueInvoicesCount: overdueInvoices,
+            pendingApprovalsCount: appSnap.docs.length,
+          ),
+        );
       }
     }
 

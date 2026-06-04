@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ledgixerp/core/models/attachment_model.dart';
 
 enum POStatus { draft, sent, partiallyReceived, received, cancelled }
 
 class POLineItemModel {
+  final String? productId;
+  final String? accountId;
   final String description;
   final double quantity;
   final double unitPrice;
@@ -12,6 +15,8 @@ class POLineItemModel {
   final double lineTotal;
 
   POLineItemModel({
+    this.productId,
+    this.accountId,
     required this.description,
     required this.quantity,
     required this.unitPrice,
@@ -23,6 +28,8 @@ class POLineItemModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'productId': productId,
+      'accountId': accountId,
       'description': description,
       'quantity': quantity,
       'unitPrice': unitPrice,
@@ -35,6 +42,8 @@ class POLineItemModel {
 
   factory POLineItemModel.fromMap(Map<String, dynamic> map) {
     return POLineItemModel(
+      productId: map['productId'],
+      accountId: map['accountId'],
       description: map['description'] ?? '',
       quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
       unitPrice: (map['unitPrice'] as num?)?.toDouble() ?? 0.0,
@@ -62,6 +71,8 @@ class PurchaseOrderModel {
   final String? notes;
   final DateTime createdAt;
   final String? approvalStatus;
+  final bool isReceived;
+  final List<AttachmentModel> attachments;
 
   PurchaseOrderModel({
     required this.id,
@@ -79,25 +90,68 @@ class PurchaseOrderModel {
     this.notes,
     required this.createdAt,
     this.approvalStatus,
+    this.isReceived = false,
+    this.attachments = const [],
   });
+
+  PurchaseOrderModel copyWith({
+    String? id,
+    String? companyId,
+    String? poNumber,
+    String? supplierId,
+    String? supplierName,
+    DateTime? poDate,
+    DateTime? expectedDeliveryDate,
+    POStatus? status,
+    List<POLineItemModel>? items,
+    double? subtotal,
+    double? vatAmount,
+    double? totalAmount,
+    String? notes,
+    DateTime? createdAt,
+    String? approvalStatus,
+    bool? isReceived,
+    List<AttachmentModel>? attachments,
+  }) {
+    return PurchaseOrderModel(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      poNumber: poNumber ?? this.poNumber,
+      supplierId: supplierId ?? this.supplierId,
+      supplierName: supplierName ?? this.supplierName,
+      poDate: poDate ?? this.poDate,
+      expectedDeliveryDate: expectedDeliveryDate ?? this.expectedDeliveryDate,
+      status: status ?? this.status,
+      items: items ?? this.items,
+      subtotal: subtotal ?? this.subtotal,
+      vatAmount: vatAmount ?? this.vatAmount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+      isReceived: isReceived ?? this.isReceived,
+      attachments: attachments ?? this.attachments,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'companyId': companyId,
       'poNumber': poNumber,
       'supplierId': supplierId,
       'supplierName': supplierName,
-      'poDate': poDate,
-      'expectedDeliveryDate': expectedDeliveryDate,
+      'poDate': Timestamp.fromDate(poDate),
+      'expectedDeliveryDate': Timestamp.fromDate(expectedDeliveryDate),
       'status': status.name,
       'items': items.map((i) => i.toMap()).toList(),
       'subtotal': subtotal,
       'vatAmount': vatAmount,
       'totalAmount': totalAmount,
       'notes': notes,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
       'approvalStatus': approvalStatus,
+      'isReceived': isReceived,
+      'attachments': attachments.map((x) => x.toMap()).toList(),
     };
   }
 
@@ -125,6 +179,12 @@ class PurchaseOrderModel {
       notes: map['notes'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       approvalStatus: map['approvalStatus'],
+      isReceived: map['isReceived'] ?? false,
+      attachments:
+          (map['attachments'] as List?)
+              ?.map((x) => AttachmentModel.fromMap(x))
+              .toList() ??
+          [],
     );
   }
 }

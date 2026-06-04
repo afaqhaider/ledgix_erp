@@ -12,9 +12,7 @@ class AccountBalance {
   });
 
   double get balance {
-    if (account.accountType == AccountType.asset ||
-        account.accountType == AccountType.expense ||
-        account.accountType == AccountType.costOfSales) {
+    if (account.normalBalance == BalanceType.debit) {
       return debit - credit;
     } else {
       return credit - debit;

@@ -9,22 +9,25 @@ class FinancialSettingsScreen extends StatefulWidget {
   const FinancialSettingsScreen({super.key, required this.user});
 
   @override
-  State<FinancialSettingsScreen> createState() => _FinancialSettingsScreenState();
+  State<FinancialSettingsScreen> createState() =>
+      _FinancialSettingsScreenState();
 }
 
 class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _service = FinancialSettingsService();
   bool _isLoading = true;
+  String? _errorMessage;
   late FinancialSettingsModel _settings;
 
   // Controllers
   final _invoicePrefixController = TextEditingController();
   final _quotationPrefixController = TextEditingController();
   final _poPrefixController = TextEditingController();
-  final _custPayPrefixController = TextEditingController();
+  final _receiptPrefixController = TextEditingController();
   final _suppPayPrefixController = TextEditingController();
   final _journalPrefixController = TextEditingController();
+  final _billPrefixController = TextEditingController();
   final _activePeriodController = TextEditingController();
 
   @override
@@ -34,22 +37,43 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final settings = await _service.getSettings(widget.user.companyId!);
-    setState(() {
-      _settings = settings;
-      _invoicePrefixController.text = settings.invoicePrefix;
-      _quotationPrefixController.text = settings.quotationPrefix;
-      _poPrefixController.text = settings.purchaseOrderPrefix;
-      _custPayPrefixController.text = settings.customerPaymentPrefix;
-      _suppPayPrefixController.text = settings.supplierPaymentPrefix;
-      _journalPrefixController.text = settings.journalPrefix;
-      _activePeriodController.text = settings.activeAccountingPeriod;
-      _isLoading = false;
-    });
+    if (widget.user.companyId == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No company linked to this user.';
+      });
+      return;
+    }
+
+    try {
+      final settings = await _service.getSettings(widget.user.companyId!);
+      if (mounted) {
+        setState(() {
+          _settings = settings;
+          _invoicePrefixController.text = settings.invoicePrefix;
+          _quotationPrefixController.text = settings.quotationPrefix;
+          _poPrefixController.text = settings.purchaseOrderPrefix;
+          _receiptPrefixController.text = settings.receiptPrefix;
+          _suppPayPrefixController.text = settings.supplierPaymentPrefix;
+          _journalPrefixController.text = settings.journalPrefix;
+          _billPrefixController.text = settings.billPrefix;
+          _activePeriodController.text = settings.activeAccountingPeriod;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error loading settings: $e';
+        });
+      }
+    }
   }
 
   Future<void> _saveSettings() async {
     if (!_formKey.currentState!.validate()) return;
+    if (widget.user.companyId == null) return;
 
     setState(() => _isLoading = true);
 
@@ -62,15 +86,17 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
       invoicePrefix: _invoicePrefixController.text,
       quotationPrefix: _quotationPrefixController.text,
       purchaseOrderPrefix: _poPrefixController.text,
-      customerPaymentPrefix: _custPayPrefixController.text,
+      receiptPrefix: _receiptPrefixController.text,
       supplierPaymentPrefix: _suppPayPrefixController.text,
       journalPrefix: _journalPrefixController.text,
+      billPrefix: _billPrefixController.text,
       nextInvoiceNumber: _settings.nextInvoiceNumber,
       nextQuotationNumber: _settings.nextQuotationNumber,
       nextPurchaseOrderNumber: _settings.nextPurchaseOrderNumber,
-      nextCustomerPaymentNumber: _settings.nextCustomerPaymentNumber,
+      nextReceiptNumber: _settings.nextReceiptNumber,
       nextSupplierPaymentNumber: _settings.nextSupplierPaymentNumber,
       nextJournalNumber: _settings.nextJournalNumber,
+      nextBillNumber: _settings.nextBillNumber,
     );
 
     try {
@@ -82,9 +108,9 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -97,14 +123,27 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    if (_errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Financial Settings')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: _loadSettings, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Financial Settings'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveSettings,
-          ),
+          IconButton(icon: const Icon(Icons.save), onPressed: _saveSettings),
         ],
       ),
       body: Form(
@@ -122,15 +161,21 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Required';
-                if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) return 'Use YYYY-MM format';
+                if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) {
+                  return 'Use YYYY-MM format';
+                }
                 return null;
               },
             ),
             SwitchListTile(
               title: const Text('Lock Past Periods'),
-              subtitle: const Text('Prevent posting or editing transactions in previous months'),
+              subtitle: const Text(
+                'Prevent posting or editing transactions in previous months',
+              ),
               value: _settings.lockPastPeriods,
-              onChanged: (val) => setState(() => _settings = _settings.copyWith(lockPastPeriods: val)),
+              onChanged: (val) => setState(
+                () => _settings = _settings.copyWith(lockPastPeriods: val),
+              ),
             ),
             const Divider(height: 48),
             _buildSectionHeader('Document Numbering (Prefixes)'),
@@ -138,9 +183,22 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
             _buildPrefixField('Invoice Prefix', _invoicePrefixController),
             _buildPrefixField('Quotation Prefix', _quotationPrefixController),
             _buildPrefixField('Purchase Order Prefix', _poPrefixController),
-            _buildPrefixField('Customer Payment Prefix', _custPayPrefixController),
-            _buildPrefixField('Supplier Payment Prefix', _suppPayPrefixController),
-            _buildPrefixField('Journal Voucher Prefix', _journalPrefixController),
+            _buildPrefixField(
+              'Receipt Prefix',
+              _receiptPrefixController,
+            ),
+            _buildPrefixField(
+              'Supplier Payment Prefix',
+              _suppPayPrefixController,
+            ),
+            _buildPrefixField(
+              'Journal Voucher Prefix',
+              _journalPrefixController,
+            ),
+            _buildPrefixField(
+              'Vendor Bill Prefix',
+              _billPrefixController,
+            ),
           ],
         ),
       ),
@@ -150,7 +208,9 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+      style: Theme.of(
+        context,
+      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
     );
   }
 
@@ -163,35 +223,9 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+        validator: (value) =>
+            value == null || value.isEmpty ? 'Required' : null,
       ),
-    );
-  }
-}
-
-// Extension to help with copying model
-extension on FinancialSettingsModel {
-  FinancialSettingsModel copyWith({
-    bool? lockPastPeriods,
-  }) {
-    return FinancialSettingsModel(
-      companyId: companyId,
-      financialYearStart: financialYearStart,
-      financialYearEnd: financialYearEnd,
-      activeAccountingPeriod: activeAccountingPeriod,
-      lockPastPeriods: lockPastPeriods ?? this.lockPastPeriods,
-      invoicePrefix: invoicePrefix,
-      quotationPrefix: quotationPrefix,
-      purchaseOrderPrefix: purchaseOrderPrefix,
-      customerPaymentPrefix: customerPaymentPrefix,
-      supplierPaymentPrefix: supplierPaymentPrefix,
-      journalPrefix: journalPrefix,
-      nextInvoiceNumber: nextInvoiceNumber,
-      nextQuotationNumber: nextQuotationNumber,
-      nextPurchaseOrderNumber: nextPurchaseOrderNumber,
-      nextCustomerPaymentNumber: nextCustomerPaymentNumber,
-      nextSupplierPaymentNumber: nextSupplierPaymentNumber,
-      nextJournalNumber: nextJournalNumber,
     );
   }
 }

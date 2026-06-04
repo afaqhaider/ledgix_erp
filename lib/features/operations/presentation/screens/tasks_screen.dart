@@ -15,8 +15,14 @@ class TasksScreen extends StatelessWidget {
           children: [
             Icon(Icons.task_alt, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Tasks Module', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text('Assign and track operational tasks.', style: TextStyle(color: Colors.grey)),
+            Text(
+              'Tasks Module',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Assign and track operational tasks.',
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       ),

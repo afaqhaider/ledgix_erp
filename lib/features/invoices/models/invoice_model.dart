@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ledgixerp/core/models/attachment_model.dart';
 
 enum InvoiceStatus { draft, sent, partiallyPaid, paid, cancelled }
 
 class InvoiceLineItemModel {
+  final String? productId; // Optional link to inventory
+  final String accountId;
+  final String accountName;
   final String description;
   final double quantity;
   final double unitPrice;
@@ -12,6 +16,9 @@ class InvoiceLineItemModel {
   final double lineTotal;
 
   InvoiceLineItemModel({
+    this.productId,
+    required this.accountId,
+    required this.accountName,
     required this.description,
     required this.quantity,
     required this.unitPrice,
@@ -23,6 +30,9 @@ class InvoiceLineItemModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'productId': productId,
+      'accountId': accountId,
+      'accountName': accountName,
       'description': description,
       'quantity': quantity,
       'unitPrice': unitPrice,
@@ -35,6 +45,9 @@ class InvoiceLineItemModel {
 
   factory InvoiceLineItemModel.fromMap(Map<String, dynamic> map) {
     return InvoiceLineItemModel(
+      productId: map['productId'],
+      accountId: map['accountId'] ?? '',
+      accountName: map['accountName'] ?? '',
       description: map['description'] ?? '',
       quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
       unitPrice: (map['unitPrice'] as num?)?.toDouble() ?? 0.0,
@@ -73,6 +86,7 @@ class InvoiceModel {
   final bool isPosted;
   final String? journalEntryId;
   final String? approvalStatus; // pending, approved, rejected
+  final List<AttachmentModel> attachments;
 
   InvoiceModel({
     required this.id,
@@ -97,17 +111,69 @@ class InvoiceModel {
     this.isPosted = false,
     this.journalEntryId,
     this.approvalStatus,
+    this.attachments = const [],
   });
+
+  InvoiceModel copyWith({
+    String? id,
+    String? companyId,
+    String? invoiceNumber,
+    String? customerId,
+    String? customerName,
+    DateTime? invoiceDate,
+    DateTime? dueDate,
+    InvoiceStatus? status,
+    List<InvoiceLineItemModel>? items,
+    double? subtotal,
+    double? vatAmount,
+    double? totalAmount,
+    double? amountPaid,
+    double? balanceDue,
+    DateTime? createdAt,
+    String? invoiceTemplateId,
+    String? primaryBrandColor,
+    String? secondaryBrandColor,
+    String? companyLogoUrl,
+    bool? isPosted,
+    String? journalEntryId,
+    String? approvalStatus,
+    List<AttachmentModel>? attachments,
+  }) {
+    return InvoiceModel(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      invoiceNumber: invoiceNumber ?? this.invoiceNumber,
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      invoiceDate: invoiceDate ?? this.invoiceDate,
+      dueDate: dueDate ?? this.dueDate,
+      status: status ?? this.status,
+      items: items ?? this.items,
+      subtotal: subtotal ?? this.subtotal,
+      vatAmount: vatAmount ?? this.vatAmount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      amountPaid: amountPaid ?? this.amountPaid,
+      balanceDue: balanceDue ?? this.balanceDue,
+      createdAt: createdAt ?? this.createdAt,
+      invoiceTemplateId: invoiceTemplateId ?? this.invoiceTemplateId,
+      primaryBrandColor: primaryBrandColor ?? this.primaryBrandColor,
+      secondaryBrandColor: secondaryBrandColor ?? this.secondaryBrandColor,
+      companyLogoUrl: companyLogoUrl ?? this.companyLogoUrl,
+      isPosted: isPosted ?? this.isPosted,
+      journalEntryId: journalEntryId ?? this.journalEntryId,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+      attachments: attachments ?? this.attachments,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'companyId': companyId,
       'invoiceNumber': invoiceNumber,
       'customerId': customerId,
       'customerName': customerName,
-      'invoiceDate': invoiceDate,
-      'dueDate': dueDate,
+      'invoiceDate': Timestamp.fromDate(invoiceDate),
+      'dueDate': Timestamp.fromDate(dueDate),
       'status': status.name,
       'items': items.map((i) => i.toMap()).toList(),
       'subtotal': subtotal,
@@ -115,7 +181,7 @@ class InvoiceModel {
       'totalAmount': totalAmount,
       'amountPaid': amountPaid,
       'balanceDue': balanceDue,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
       'invoiceTemplateId': invoiceTemplateId,
       'primaryBrandColor': primaryBrandColor,
       'secondaryBrandColor': secondaryBrandColor,
@@ -123,6 +189,7 @@ class InvoiceModel {
       'isPosted': isPosted,
       'journalEntryId': journalEntryId,
       'approvalStatus': approvalStatus,
+      'attachments': attachments.map((x) => x.toMap()).toList(),
     };
   }
 
@@ -133,8 +200,8 @@ class InvoiceModel {
       invoiceNumber: map['invoiceNumber'] ?? '',
       customerId: map['customerId'] ?? '',
       customerName: map['customerName'] ?? '',
-      invoiceDate: (map['invoiceDate'] as Timestamp).toDate(),
-      dueDate: (map['dueDate'] as Timestamp).toDate(),
+      invoiceDate: (map['invoiceDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      dueDate: (map['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       status: InvoiceStatus.values.firstWhere(
         (e) => e.name == map['status'],
         orElse: () => InvoiceStatus.draft,
@@ -151,7 +218,7 @@ class InvoiceModel {
       totalAmount: (map['totalAmount'] as num?)?.toDouble() ?? 0.0,
       amountPaid: (map['amountPaid'] as num?)?.toDouble() ?? 0.0,
       balanceDue: (map['balanceDue'] as num?)?.toDouble() ?? 0.0,
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       invoiceTemplateId: map['invoiceTemplateId'],
       primaryBrandColor: map['primaryBrandColor'],
       secondaryBrandColor: map['secondaryBrandColor'],
@@ -159,6 +226,11 @@ class InvoiceModel {
       isPosted: map['isPosted'] ?? false,
       journalEntryId: map['journalEntryId'],
       approvalStatus: map['approvalStatus'],
+      attachments:
+          (map['attachments'] as List?)
+              ?.map((x) => AttachmentModel.fromMap(x))
+              .toList() ??
+          [],
     );
   }
 }

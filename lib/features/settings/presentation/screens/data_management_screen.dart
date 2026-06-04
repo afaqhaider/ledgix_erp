@@ -39,7 +39,12 @@ class DataManagementScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDataSection(BuildContext context, String title, String subtitle, IconData icon) {
+  Widget _buildDataSection(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -48,8 +53,18 @@ class DataManagementScreen extends StatelessWidget {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(icon, size: 40, color: Theme.of(context).primaryColor),
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              leading: Icon(
+                icon,
+                size: 40,
+                color: Theme.of(context).primaryColor,
+              ),
+              title: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
               subtitle: Text(subtitle),
             ),
             const Divider(),
@@ -93,7 +108,10 @@ class DataManagementScreen extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => ImportExportModal(initialModule: module),
+      builder: (context) => ImportExportModal(
+        initialModule: module,
+        companyId: user.companyId!,
+      ),
     );
   }
 }

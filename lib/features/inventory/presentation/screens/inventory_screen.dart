@@ -149,7 +149,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     child: RadioListTile<bool>(
                       title: const Text('Add'),
                       value: true,
+                      // ignore: deprecated_member_use
                       groupValue: isAddition,
+                      // ignore: deprecated_member_use
                       onChanged: (v) => setDialogState(() => isAddition = v!),
                     ),
                   ),
@@ -157,7 +159,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     child: RadioListTile<bool>(
                       title: const Text('Remove'),
                       value: false,
+                      // ignore: deprecated_member_use
                       groupValue: isAddition,
+                      // ignore: deprecated_member_use
                       onChanged: (v) => setDialogState(() => isAddition = v!),
                     ),
                   ),

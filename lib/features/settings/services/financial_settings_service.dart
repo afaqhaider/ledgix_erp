@@ -10,73 +10,150 @@ class FinancialSettingsService {
       return FinancialSettingsModel.fromMap(doc.data()!);
     } else {
       final defaultSettings = FinancialSettingsModel.defaultSettings(companyId);
-      await _firestore.collection('settings').doc(companyId).set(defaultSettings.toMap());
+      await _firestore
+          .collection('settings')
+          .doc(companyId)
+          .set(defaultSettings.toMap());
       return defaultSettings;
     }
   }
 
   Future<void> updateSettings(FinancialSettingsModel settings) async {
-    await _firestore.collection('settings').doc(settings.companyId).set(settings.toMap(), SetOptions(merge: true));
+    await _firestore
+        .collection('settings')
+        .doc(settings.companyId)
+        .set(settings.toMap(), SetOptions(merge: true));
   }
 
-  Future<String> generateNextDocumentNumber(String companyId, String type) async {
+  Future<String> previewNextDocumentNumber(
+    String companyId,
+    String type,
+  ) async {
+    final settings = await getSettings(companyId);
+    String prefix;
+    int currentNumber;
+
+    switch (type) {
+      case 'invoice':
+        prefix = settings.invoicePrefix;
+        currentNumber = settings.nextInvoiceNumber;
+        break;
+      case 'quotation':
+        prefix = settings.quotationPrefix;
+        currentNumber = settings.nextQuotationNumber;
+        break;
+      case 'purchaseOrder':
+        prefix = settings.purchaseOrderPrefix;
+        currentNumber = settings.nextPurchaseOrderNumber;
+        break;
+      case 'receipt':
+      case 'customerPayment':
+        prefix = settings.receiptPrefix;
+        currentNumber = settings.nextReceiptNumber;
+        break;
+      case 'supplierPayment':
+        prefix = settings.supplierPaymentPrefix;
+        currentNumber = settings.nextSupplierPaymentNumber;
+        break;
+      case 'journal':
+        prefix = settings.journalPrefix;
+        currentNumber = settings.nextJournalNumber;
+        break;
+      case 'bill':
+        prefix = settings.billPrefix;
+        currentNumber = settings.nextBillNumber;
+        break;
+      default:
+        throw Exception("Invalid document type: $type");
+    }
+
+    return '$prefix-${currentNumber.toString().padLeft(5, '0')}';
+  }
+
+  /// Gets the next number and increments it within a transaction.
+  /// If [transaction] is provided, it uses it, otherwise starts a new one.
+  Future<String> getNextDocumentNumberAndIncrement(
+    String companyId,
+    String type, {
+    Transaction? transaction,
+  }) async {
     final docRef = _firestore.collection('settings').doc(companyId);
-    
-    return _firestore.runTransaction((transaction) async {
-      final snapshot = await transaction.get(docRef);
-      Map<String, dynamic> data;
-      
-      if (!snapshot.exists) {
-        final defaultSettings = FinancialSettingsModel.defaultSettings(companyId);
-        transaction.set(docRef, defaultSettings.toMap());
-        data = defaultSettings.toMap();
-      } else {
-        data = snapshot.data()!;
-      }
-      String prefix;
-      int currentNumber;
-      String fieldName;
 
-      switch (type) {
-        case 'invoice':
-          prefix = data['invoicePrefix'] ?? 'INV';
-          currentNumber = data['nextInvoiceNumber'] ?? 1;
-          fieldName = 'nextInvoiceNumber';
-          break;
-        case 'quotation':
-          prefix = data['quotationPrefix'] ?? 'QUO';
-          currentNumber = data['nextQuotationNumber'] ?? 1;
-          fieldName = 'nextQuotationNumber';
-          break;
-        case 'purchaseOrder':
-          prefix = data['purchaseOrderPrefix'] ?? 'PO';
-          currentNumber = data['nextPurchaseOrderNumber'] ?? 1;
-          fieldName = 'nextPurchaseOrderNumber';
-          break;
-        case 'customerPayment':
-          prefix = data['customerPaymentPrefix'] ?? 'PAY';
-          currentNumber = data['nextCustomerPaymentNumber'] ?? 1;
-          fieldName = 'nextCustomerPaymentNumber';
-          break;
-        case 'supplierPayment':
-          prefix = data['supplierPaymentPrefix'] ?? 'SPAY';
-          currentNumber = data['nextSupplierPaymentNumber'] ?? 1;
-          fieldName = 'nextSupplierPaymentNumber';
-          break;
-        case 'journal':
-          prefix = data['journalPrefix'] ?? 'JV';
-          currentNumber = data['nextJournalNumber'] ?? 1;
-          fieldName = 'nextJournalNumber';
-          break;
-        default:
-          throw Exception("Invalid document type: $type");
-      }
+    if (transaction != null) {
+      return await _processIncrement(transaction, docRef, companyId, type);
+    } else {
+      return await _firestore.runTransaction((tx) async {
+        return await _processIncrement(tx, docRef, companyId, type);
+      });
+    }
+  }
 
-      final nextNumber = currentNumber + 1;
-      transaction.update(docRef, {fieldName: nextNumber});
+  Future<String> _processIncrement(
+    Transaction tx,
+    DocumentReference docRef,
+    String companyId,
+    String type,
+  ) async {
+    final snapshot = await tx.get(docRef);
+    Map<String, dynamic> data;
 
-      return '$prefix-${currentNumber.toString().padLeft(5, '0')}';
-    });
+    if (!snapshot.exists) {
+      final defaultSettings = FinancialSettingsModel.defaultSettings(companyId);
+      tx.set(docRef, defaultSettings.toMap());
+      data = defaultSettings.toMap();
+    } else {
+      data = snapshot.data()! as Map<String, dynamic>;
+    }
+
+    String prefix;
+    int currentNumber;
+    String fieldName;
+
+    switch (type) {
+      case 'invoice':
+        prefix = data['invoicePrefix'] ?? 'INV';
+        currentNumber = data['nextInvoiceNumber'] ?? 1;
+        fieldName = 'nextInvoiceNumber';
+        break;
+      case 'quotation':
+        prefix = data['quotationPrefix'] ?? 'QUO';
+        currentNumber = data['nextQuotationNumber'] ?? 1;
+        fieldName = 'nextQuotationNumber';
+        break;
+      case 'purchaseOrder':
+        prefix = data['purchaseOrderPrefix'] ?? 'PO';
+        currentNumber = data['nextPurchaseOrderNumber'] ?? 1;
+        fieldName = 'nextPurchaseOrderNumber';
+        break;
+      case 'receipt':
+      case 'customerPayment':
+        prefix = data['receiptPrefix'] ?? data['customerPaymentPrefix'] ?? 'REC';
+        currentNumber = data['nextReceiptNumber'] ?? data['nextCustomerPaymentNumber'] ?? 1;
+        fieldName = 'nextReceiptNumber';
+        break;
+      case 'supplierPayment':
+        prefix = data['supplierPaymentPrefix'] ?? 'SPAY';
+        currentNumber = data['nextSupplierPaymentNumber'] ?? 1;
+        fieldName = 'nextSupplierPaymentNumber';
+        break;
+      case 'journal':
+        prefix = data['journalPrefix'] ?? 'JV';
+        currentNumber = data['nextJournalNumber'] ?? 1;
+        fieldName = 'nextJournalNumber';
+        break;
+      case 'bill':
+        prefix = data['billPrefix'] ?? 'BILL';
+        currentNumber = data['nextBillNumber'] ?? 1;
+        fieldName = 'nextBillNumber';
+        break;
+      default:
+        throw Exception("Invalid document type: $type");
+    }
+
+    final nextNumber = currentNumber + 1;
+    tx.update(docRef, {fieldName: nextNumber});
+
+    return '$prefix-${currentNumber.toString().padLeft(5, '0')}';
   }
 
   Future<bool> isPeriodLocked(String companyId, DateTime date) async {
@@ -84,8 +161,7 @@ class FinancialSettingsService {
     if (!settings.lockPastPeriods) return false;
 
     final periodStr = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-    
-    // If the date's period is lexicographically smaller than the active period, it's considered "past"
+
     return periodStr.compareTo(settings.activeAccountingPeriod) < 0;
   }
 }
