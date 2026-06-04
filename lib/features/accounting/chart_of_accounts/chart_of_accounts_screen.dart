@@ -19,6 +19,42 @@ class ChartOfAccountsScreen extends StatefulWidget {
 
 class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
   final _accountService = AccountService();
+  final Set<String> _expandedAccountIds = {};
+
+  void _toggleExpanded(String accountId) {
+    setState(() {
+      if (_expandedAccountIds.contains(accountId)) {
+        _expandedAccountIds.remove(accountId);
+      } else {
+        _expandedAccountIds.add(accountId);
+      }
+    });
+  }
+
+  List<AccountModel> _buildVisibleAccounts(List<AccountModel> allAccounts) {
+    final List<AccountModel> visibleAccounts = [];
+    final Map<String?, List<AccountModel>> accountsByParent = {};
+
+    for (final account in allAccounts) {
+      accountsByParent.putIfAbsent(account.parentAccountId, () => []).add(account);
+    }
+
+    void addChildren(String? parentId) {
+      final children = accountsByParent[parentId] ?? [];
+      // Sort children by account code
+      children.sort((a, b) => a.accountCode.compareTo(b.accountCode));
+
+      for (final child in children) {
+        visibleAccounts.add(child);
+        if (child.isGroup && _expandedAccountIds.contains(child.id)) {
+          addChildren(child.id);
+        }
+      }
+    }
+
+    addChildren(null);
+    return visibleAccounts;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,9 +104,9 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          final accounts = snapshot.data ?? [];
+          final allAccounts = snapshot.data ?? [];
 
-          if (accounts.isEmpty) {
+          if (allAccounts.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -109,8 +145,10 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
             );
           }
 
+          final visibleAccounts = _buildVisibleAccounts(allAccounts);
+
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             child: Card(
               child: Theme(
                 data: theme.copyWith(dividerColor: Colors.transparent),
@@ -155,31 +193,51 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                       ),
                     ),
                   ],
-                  rows: accounts.map((account) {
+                  rows: visibleAccounts.map((account) {
+                    final bool isExpanded = _expandedAccountIds.contains(account.id);
+                    final bool hasChildren = allAccounts.any((a) => a.parentAccountId == account.id);
+
                     return DataRow(
                       cells: [
                         DataCell(
                           Text(
                             account.accountCode,
                             style: TextStyle(
-                              fontWeight: account.isGroup
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                              fontWeight: account.level == 0 
+                                  ? FontWeight.bold 
+                                  : (account.isGroup ? FontWeight.w600 : FontWeight.normal),
                             ),
                           ),
                         ),
                         DataCell(
                           Padding(
                             padding: EdgeInsets.only(
-                              left: account.level * 16.0,
+                              left: account.level * 24.0,
                             ),
-                            child: Text(
-                              account.accountName,
-                              style: TextStyle(
-                                fontWeight: account.isGroup
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (account.isGroup && hasChildren)
+                                  InkWell(
+                                    onTap: () => _toggleExpanded(account.id),
+                                    child: Icon(
+                                      isExpanded ? Icons.remove_circle_outline : Icons.add_circle_outline,
+                                      size: 18,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(width: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  account.accountName,
+                                  style: TextStyle(
+                                    fontWeight: account.level == 0 
+                                        ? FontWeight.bold 
+                                        : (account.isGroup ? FontWeight.w600 : FontWeight.normal),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -207,25 +265,21 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                           ),
                         ),
                         DataCell(
-                          account.isGroup
-                              ? const Text('-')
-                              : Icon(
-                                  account.allowPosting
-                                      ? Icons.check_circle
-                                      : Icons.cancel,
-                                  color: account.allowPosting
-                                      ? Colors.blue
-                                      : Colors.grey,
-                                  size: 18,
-                                ),
+                          Text(
+                            account.allowPosting ? 'Yes' : 'No',
+                            style: TextStyle(
+                              color: account.allowPosting ? Colors.blue : Colors.grey,
+                              fontWeight: account.allowPosting ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
                         ),
                         DataCell(
                           Text(
                             '${NumberFormat('#,##0.00').format(account.openingBalance)} ${account.openingBalanceType.label.substring(0, 2)}',
                             style: TextStyle(
-                              fontWeight: account.isGroup
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
+                              fontWeight: account.level == 0 
+                                  ? FontWeight.bold 
+                                  : (account.isGroup ? FontWeight.w600 : FontWeight.w500),
                             ),
                           ),
                         ),

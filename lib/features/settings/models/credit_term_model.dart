@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class CreditTermModel {
   final String id;
   final String companyId;

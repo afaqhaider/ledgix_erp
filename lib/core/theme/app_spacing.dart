@@ -1,16 +1,15 @@
-import 'package:flutter/material.dart';
-
 class AppSpacing {
   static const double xs = 4.0;
-  static const double s = 8.0;
-  static const double m = 16.0;
-  static const double l = 24.0;
-  static const double xl = 32.0;
-  static const double xxl = 48.0;
+  static const double sm = 6.0;
+  static const double md = 12.0;
+  static const double lg = 20.0;
+  static const double xl = 28.0;
+  static const double xxl = 40.0;
 
-  static const EdgeInsets pagePadding = EdgeInsets.all(l);
-  static const EdgeInsets cardPadding = EdgeInsets.all(m);
-  static const EdgeInsets formPadding = EdgeInsets.symmetric(vertical: s);
-  
-  static const double borderRadius = 12.0;
+  static const double borderRadius = 6.0;
+  static const double cardPadding = 12.0;
+
+  // Sidebar specific
+  static const double sidebarItemHeight = 40.0;
+  static const double sidebarGap = 4.0;
 }

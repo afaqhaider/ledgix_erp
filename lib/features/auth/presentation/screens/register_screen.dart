@@ -105,12 +105,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         body: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.all(20),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 450),
               child: Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(32),
+                  padding: const EdgeInsets.all(16),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -120,15 +120,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Text(
                           'Create ERP Account',
                           textAlign: TextAlign.center,
-                          style: registerTheme.textTheme.headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? Colors.white
-                                    : theme.colorScheme.primary,
-                              ),
+                          style: registerTheme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : theme.colorScheme.primary,
+                          ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 22),
                         TextFormField(
                           controller: _fullNameController,
                           style: isDark
@@ -143,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ? 'Please enter your full name'
                               : null,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _companyController,
                           style: isDark
@@ -158,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ? 'Please enter your company name'
                               : null,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -182,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -215,7 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _confirmPasswordController,
                           obscureText: _obscurePassword,
@@ -234,11 +233,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 22),
                         ElevatedButton(
                           onPressed: _isLoading ? null : _register,
                           style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
                             backgroundColor: isDark
                                 ? Colors.white
                                 : theme.colorScheme.primary,
@@ -261,7 +260,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               : const Text(
                                   'Create Account',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

@@ -1,0 +1,26 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ledgixerp/core/models/app_user_model.dart';
+
+class UserRepository {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<AppUserModel?> getUser(String uid) async {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    if (doc.exists) {
+      return AppUserModel.fromFirestore(doc);
+    }
+    return null;
+  }
+
+  Future<void> saveUser(AppUserModel user) async {
+    await _firestore.collection('users').doc(user.uid).set(user.toFirestore());
+  }
+
+  Future<List<AppUserModel>> getCompanyUsers(String companyId) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .where('companyIds', arrayContains: companyId)
+        .get();
+    return snapshot.docs.map((doc) => AppUserModel.fromFirestore(doc)).toList();
+  }
+}

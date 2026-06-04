@@ -63,7 +63,7 @@ class _DocsPrefixScreenState extends State<DocsPrefixScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Document Prefixes')),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         children: [
           _buildPrefixField('Invoice Prefix', _invoicePrefixController),
           _buildPrefixField('Quotation Prefix', _quotationPrefixController),

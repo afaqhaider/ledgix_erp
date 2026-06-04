@@ -133,7 +133,7 @@ class _ImportExportModalState extends State<ImportExportModal> {
 
   Widget _buildHeader(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: theme.colorScheme.outlineVariant),
@@ -493,7 +493,7 @@ class _ImportExportModalState extends State<ImportExportModal> {
     final bool hasErrors = _processedRows.any((r) => !r.isValid);
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(color: theme.colorScheme.outlineVariant),

@@ -53,19 +53,38 @@ class JournalService {
       );
     }
 
+    // Validate that none of the accounts are group accounts
+    for (var line in entry.lines) {
+      final accDoc = await _firestore
+          .collection('companies')
+          .doc(entry.companyId)
+          .collection('chartOfAccounts')
+          .doc(line.accountId)
+          .get();
+      
+      if (accDoc.exists) {
+        final isGroup = accDoc.data()?['isGroup'] ?? false;
+        final allowPosting = accDoc.data()?['allowPosting'] ?? true;
+        if (isGroup) {
+          throw Exception('Account "${line.accountName}" is a group account and cannot be posted to.');
+        }
+        if (!allowPosting) {
+          throw Exception('Account "${line.accountName}" does not allow posting.');
+        }
+      }
+    }
+
     await _firestore.runTransaction((transaction) async {
       // 1. Generate final number and increment within transaction
-      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
-        entry.companyId,
-        'journal',
-        transaction: transaction,
-      );
+      final finalNumber = await _settingsService
+          .getNextDocumentNumberAndIncrement(
+            entry.companyId,
+            'journal',
+            transaction: transaction,
+          );
 
       final docRef = _getJournalRef(entry.companyId).doc();
-      final entryWithId = entry.copyWith(
-        id: docRef.id,
-        reference: finalNumber,
-      );
+      final entryWithId = entry.copyWith(id: docRef.id, reference: finalNumber);
 
       // 2. Save entry
       transaction.set(docRef, entryWithId.toMap());
@@ -115,7 +134,7 @@ class JournalService {
         .doc(companyId)
         .collection(collection)
         .doc(sourceId);
-    
+
     tx.update(sourceRef, {'journalEntryId': journalEntryId});
   }
 

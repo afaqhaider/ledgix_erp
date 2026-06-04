@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class ErpSidePane extends StatelessWidget {
@@ -37,10 +36,7 @@ class ErpSidePane extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.cardColor,
             border: Border(
-              left: BorderSide(
-                color: theme.dividerColor,
-                width: 1,
-              ),
+              left: BorderSide(color: theme.dividerColor, width: 1),
             ),
             boxShadow: [
               BoxShadow(
@@ -54,13 +50,12 @@ class ErpSidePane extends StatelessWidget {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: theme.dividerColor,
-                    ),
-                  ),
+                  border: Border(bottom: BorderSide(color: theme.dividerColor)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -68,13 +63,14 @@ class ErpSidePane extends StatelessWidget {
                     Text(
                       title,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close, 
-                        color: theme.iconTheme.color?.withValues(alpha: 0.7), 
-                        size: 20
+                      icon: Icon(
+                        Icons.close,
+                        color: theme.iconTheme.color?.withValues(alpha: 0.7),
+                        size: 20,
                       ),
                       onPressed: onCancel,
                     ),
@@ -84,20 +80,18 @@ class ErpSidePane extends StatelessWidget {
               // Body
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(18),
                   child: child,
                 ),
               ),
               // Footer
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.05),
-                  border: Border(
-                    top: BorderSide(
-                      color: theme.dividerColor,
-                    ),
-                  ),
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.2)
+                      : Colors.grey.withValues(alpha: 0.05),
+                  border: Border(top: BorderSide(color: theme.dividerColor)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -105,10 +99,18 @@ class ErpSidePane extends StatelessWidget {
                     TextButton(
                       onPressed: onCancel,
                       style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        foregroundColor: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                       ),
-                      child: const Text('Cancel', style: TextStyle(fontSize: 13)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontSize: 13),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
@@ -116,7 +118,10 @@ class ErpSidePane extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -179,7 +184,7 @@ class ErpGlassModal extends StatelessWidget {
       insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       child: Container(
         width: width,
-        constraints: const BoxConstraints(maxHeight: 800),
+        constraints: const BoxConstraints(maxHeight: 720),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
@@ -197,7 +202,7 @@ class ErpGlassModal extends StatelessWidget {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+              padding: const EdgeInsets.fromLTRB(18, 14, 12, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -208,7 +213,11 @@ class ErpGlassModal extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close, color: theme.iconTheme.color?.withValues(alpha: 0.7), size: 20),
+                    icon: Icon(
+                      Icons.close,
+                      color: theme.iconTheme.color?.withValues(alpha: 0.7),
+                      size: 20,
+                    ),
                     onPressed: onCancel,
                   ),
                 ],
@@ -218,20 +227,28 @@ class ErpGlassModal extends StatelessWidget {
             // Body
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(18),
                 child: child,
               ),
             ),
             Divider(height: 1, color: theme.dividerColor),
             // Footer
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
                     onPressed: onCancel,
-                    child: Text('Cancel', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -239,7 +256,10 @@ class ErpGlassModal extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -253,7 +273,13 @@ class ErpGlassModal extends StatelessWidget {
                               color: Colors.white,
                             ),
                           )
-                        : Text(saveLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        : Text(
+                            saveLabel,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -267,29 +293,38 @@ class ErpGlassModal extends StatelessWidget {
 
 class ErpFormStyle {
   static TextStyle labelStyle(BuildContext context) => TextStyle(
-    fontSize: 12,
+    fontSize: 11,
     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
     fontWeight: FontWeight.w500,
   );
 
-  static TextStyle inputStyle(BuildContext context) => TextStyle(
-    fontSize: 13,
-    color: Theme.of(context).colorScheme.onSurface,
-  );
+  static TextStyle inputStyle(BuildContext context) =>
+      TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface);
 
   static TextStyle sectionHeaderStyle(BuildContext context) => TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
     color: Theme.of(context).colorScheme.onSurface,
     letterSpacing: 0.5,
   );
 
-  static InputDecoration inputDecoration(BuildContext context, String label, {IconData? icon, String? prefixText}) {
+  static InputDecoration inputDecoration(
+    BuildContext context,
+    String label, {
+    IconData? icon,
+    String? prefixText,
+  }) {
     final theme = Theme.of(context);
     return InputDecoration(
       labelText: label,
       labelStyle: labelStyle(context),
-      prefixIcon: icon != null ? Icon(icon, size: 18, color: theme.iconTheme.color?.withValues(alpha: 0.3)) : null,
+      prefixIcon: icon != null
+          ? Icon(
+              icon,
+              size: 18,
+              color: theme.iconTheme.color?.withValues(alpha: 0.3),
+            )
+          : null,
       prefixText: prefixText,
       prefixStyle: inputStyle(context),
       border: OutlineInputBorder(
@@ -304,9 +339,11 @@ class ErpFormStyle {
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       isDense: true,
-      fillColor: theme.brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.01),
+      fillColor: theme.brightness == Brightness.dark
+          ? Colors.white.withValues(alpha: 0.03)
+          : Colors.black.withValues(alpha: 0.01),
       filled: true,
     );
   }
@@ -325,10 +362,10 @@ Future<T?> showErpSidePane<T>({
     pageBuilder: (context, animation, secondaryAnimation) => builder,
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1, 0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
         child: child,
       );
     },

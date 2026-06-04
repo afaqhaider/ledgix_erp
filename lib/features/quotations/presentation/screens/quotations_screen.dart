@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
-import 'package:ledgixerp/core/theme/app_spacing.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/quotations/models/quotation_model.dart';
 import 'package:ledgixerp/features/quotations/services/quotation_service.dart';
@@ -10,7 +9,6 @@ import 'package:ledgixerp/features/quotations/services/quotation_pdf_service.dar
 import 'package:ledgixerp/features/quotations/presentation/screens/add_quotation_screen.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
-import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 
 class QuotationsScreen extends StatefulWidget {
@@ -64,7 +62,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                   );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('New Quotation'),
+                label: const Text('Add New'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: Colors.white,
@@ -109,9 +107,11 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              child: DataTable(
+            padding: const EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Card(
+                child: DataTable(
                 horizontalMargin: 24,
                 columnSpacing: 32,
                 columns: const [
@@ -166,13 +166,14 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                     cells: [
                       DataCell(Text(quo.quotationNumber)),
                       DataCell(Text(quo.customerName)),
+                      DataCell(Text(AppFormatters.date(quo.quotationDate))),
                       DataCell(
                         Text(
-                          AppFormatters.date(quo.quotationDate),
+                          AppFormatters.currency(
+                            quo.totalAmount,
+                            symbol: _company?.baseCurrency,
+                          ),
                         ),
-                      ),
-                      DataCell(
-                        Text(AppFormatters.currency(quo.totalAmount, symbol: _company?.baseCurrency)),
                       ),
                       DataCell(
                         Container(
@@ -255,8 +256,9 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                 }).toList(),
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }
@@ -293,20 +295,13 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
 
   Future<void> _submitForApproval(QuotationModel quo) async {
     try {
-      final request = ApprovalRequestModel(
-        id: '',
+      await _approvalService.submitForApproval(
+        user: widget.user,
         companyId: widget.user.companyId!,
         sourceType: 'quotation',
         sourceId: quo.id,
         sourceNumber: quo.quotationNumber,
-        requestedByUserId: widget.user.uid,
-        requestedByUserName: widget.user.fullName,
-        requestedAt: DateTime.now(),
-      );
-
-      await _approvalService.submitForApproval(
-        request,
-        requesterRole: widget.user.role,
+        amount: quo.totalAmount,
       );
 
       if (mounted) {

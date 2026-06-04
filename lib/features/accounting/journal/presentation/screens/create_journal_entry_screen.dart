@@ -41,7 +41,12 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
 
   void _listenToAccounts() {
     _accountService.getAccounts(widget.user.companyId!).listen((accounts) {
-      if (mounted) setState(() => _accounts = accounts);
+      if (mounted) {
+        setState(() {
+          // Only allow posting to non-group accounts that allow posting
+          _accounts = accounts.where((a) => !a.isGroup && a.allowPosting).toList();
+        });
+      }
     });
   }
 
@@ -152,7 +157,7 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
@@ -160,7 +165,7 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
             children: [
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
                       Expanded(

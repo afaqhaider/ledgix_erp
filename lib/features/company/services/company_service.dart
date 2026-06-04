@@ -65,20 +65,88 @@ class CompanyService {
         .update(company.toMap());
   }
 
-  Future<String?> uploadLogo(String companyId, dynamic file) async {
+  Future<String?> resolveLogoUrl(String? logoUrl) async {
+    final value = logoUrl?.trim();
+    if (value == null || value.isEmpty) return null;
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+
     try {
-      final storageRef = _storage.ref().child('companies/$companyId/logo.png');
-      UploadTask uploadTask;
+      if (value.startsWith('gs://')) {
+        return await _storage.refFromURL(value).getDownloadURL();
+      }
+      return await _storage.ref().child(value).getDownloadURL();
+    } catch (e) {
+      debugPrint('Error resolving logo URL: $e');
+      return null;
+    }
+  }
+
+  Future<String> uploadLogo(
+    String companyId,
+    Object? file, {
+    String? fileName,
+    String? contentType,
+  }) async {
+    try {
+      if (file == null) {
+        throw ArgumentError('No logo file was selected.');
+      }
+
+      final extension = _logoExtension(fileName, contentType);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final storageRef = _storage.ref().child(
+        'companies/$companyId/branding/logo_$timestamp.$extension',
+      );
+      final metadata = SettableMetadata(
+        contentType: contentType ?? _contentTypeForExtension(extension),
+        cacheControl: 'public,max-age=60',
+      );
+
+      late final UploadTask uploadTask;
       if (kIsWeb) {
-        uploadTask = storageRef.putData(file as Uint8List);
+        if (file is! Uint8List) {
+          throw ArgumentError('Logo upload data is not available.');
+        }
+        uploadTask = storageRef.putData(file, metadata);
       } else {
-        uploadTask = storageRef.putFile(file as File);
+        if (file is! File) {
+          throw ArgumentError('Logo file is not available.');
+        }
+        uploadTask = storageRef.putFile(file, metadata);
       }
       final snapshot = await uploadTask;
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
       debugPrint('Error uploading logo: $e');
-      return null;
+      throw Exception('Could not upload the company logo. Please try again.');
+    }
+  }
+
+  String _logoExtension(String? fileName, String? contentType) {
+    final lowerName = fileName?.toLowerCase() ?? '';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+      return 'jpg';
+    }
+    if (lowerName.endsWith('.webp')) return 'webp';
+    if (lowerName.endsWith('.gif')) return 'gif';
+    if (contentType == 'image/jpeg') return 'jpg';
+    if (contentType == 'image/webp') return 'webp';
+    if (contentType == 'image/gif') return 'gif';
+    return 'png';
+  }
+
+  String _contentTypeForExtension(String extension) {
+    switch (extension) {
+      case 'jpg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      case 'gif':
+        return 'image/gif';
+      default:
+        return 'image/png';
     }
   }
 

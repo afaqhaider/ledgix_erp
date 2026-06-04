@@ -7,6 +7,7 @@ class POLineItemModel {
   final String? productId;
   final String? accountId;
   final String description;
+  final String? unit;
   final double quantity;
   final double unitPrice;
   final double vatRate;
@@ -18,6 +19,7 @@ class POLineItemModel {
     this.productId,
     this.accountId,
     required this.description,
+    this.unit,
     required this.quantity,
     required this.unitPrice,
     required this.vatRate,
@@ -31,6 +33,7 @@ class POLineItemModel {
       'productId': productId,
       'accountId': accountId,
       'description': description,
+      'unit': unit,
       'quantity': quantity,
       'unitPrice': unitPrice,
       'vatRate': vatRate,
@@ -45,6 +48,7 @@ class POLineItemModel {
       productId: map['productId'],
       accountId: map['accountId'],
       description: map['description'] ?? '',
+      unit: map['unit'],
       quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
       unitPrice: (map['unitPrice'] as num?)?.toDouble() ?? 0.0,
       vatRate: (map['vatRate'] as num?)?.toDouble() ?? 0.0,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
-import 'package:ledgixerp/core/theme/app_spacing.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/purchase_orders/models/purchase_order_model.dart';
 import 'package:ledgixerp/features/purchase_orders/services/purchase_order_service.dart';
@@ -10,7 +9,6 @@ import 'package:ledgixerp/features/purchase_orders/services/po_pdf_service.dart'
 import 'package:ledgixerp/features/purchase_orders/presentation/screens/add_purchase_order_screen.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
-import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
@@ -42,20 +40,13 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
   Future<void> _submitForApproval(PurchaseOrderModel po) async {
     try {
-      final request = ApprovalRequestModel(
-        id: '',
+      await _approvalService.submitForApproval(
+        user: widget.user,
         companyId: widget.user.companyId!,
-        sourceType: 'purchaseOrder',
+        sourceType: 'purchase_order',
         sourceId: po.id,
         sourceNumber: po.poNumber,
-        requestedByUserId: widget.user.uid,
-        requestedByUserName: widget.user.fullName,
-        requestedAt: DateTime.now(),
-      );
-
-      await _approvalService.submitForApproval(
-        request,
-        requesterRole: widget.user.role,
+        amount: po.totalAmount,
       );
 
       if (mounted) {
@@ -97,7 +88,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('New PO'),
+                label: const Text('Add New'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: Colors.white,
@@ -142,9 +133,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              child: DataTable(
+            padding: const EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Card(
+                child: DataTable(
                 horizontalMargin: 24,
                 columnSpacing: 32,
                 columns: const [
@@ -196,11 +189,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     cells: [
                       DataCell(Text(po.poNumber)),
                       DataCell(Text(po.supplierName)),
+                      DataCell(Text(AppFormatters.date(po.poDate))),
                       DataCell(
-                        Text(AppFormatters.date(po.poDate)),
-                      ),
-                      DataCell(
-                        Text(AppFormatters.currency(po.totalAmount, symbol: _company?.baseCurrency)),
+                        Text(
+                          AppFormatters.currency(
+                            po.totalAmount,
+                            symbol: _company?.baseCurrency,
+                          ),
+                        ),
                       ),
                       DataCell(
                         Container(
@@ -272,8 +268,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 }).toList(),
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }

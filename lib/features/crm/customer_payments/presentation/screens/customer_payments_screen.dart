@@ -6,12 +6,10 @@ import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/crm/customer_payments/models/customer_payment_model.dart';
 import 'package:ledgixerp/features/crm/customer_payments/services/customer_payment_service.dart';
-import 'package:ledgixerp/features/crm/customer_payments/presentation/screens/add_customer_payment_screen.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
-import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
-
-import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:ledgixerp/features/crm/customer_payments/presentation/screens/add_customer_payment_screen.dart';
 
 class CustomerPaymentsScreen extends StatefulWidget {
   final AppUser user;
@@ -42,20 +40,13 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
 
   Future<void> _submitForApproval(CustomerPaymentModel payment) async {
     try {
-      final request = ApprovalRequestModel(
-        id: '',
+      await _approvalService.submitForApproval(
+        amount: payment.amount,
+        user: widget.user,
         companyId: widget.user.companyId!,
-        sourceType: 'customerPayment',
+        sourceType: 'customer_payment',
         sourceId: payment.id,
         sourceNumber: payment.paymentNumber,
-        requestedByUserId: widget.user.uid,
-        requestedByUserName: widget.user.fullName,
-        requestedAt: DateTime.now(),
-      );
-
-      await _approvalService.submitForApproval(
-        request,
-        requesterRole: widget.user.role,
       );
 
       if (mounted) {
@@ -130,16 +121,14 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  showErpSidePane(
+                  SidePanel.show(
                     context: context,
-                    builder: AddCustomerPaymentScreen(
-                      user: widget.user,
-                      isPane: true,
-                    ),
+                    title: 'Add New Receipt',
+                    child: AddCustomerPaymentScreen(user: widget.user),
                   );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('Add Receipt'),
+                label: const Text('Add New'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: Colors.white,
@@ -184,9 +173,11 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              child: DataTable(
+            padding: const EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Card(
+                child: DataTable(
                 horizontalMargin: 24,
                 columnSpacing: 32,
                 columns: const [
@@ -245,16 +236,24 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
                     cells: [
                       DataCell(Text(payment.paymentNumber)),
                       DataCell(Text(payment.customerName)),
+                      DataCell(Text(AppFormatters.date(payment.paymentDate))),
                       DataCell(
                         Text(
-                          AppFormatters.date(payment.paymentDate),
+                          AppFormatters.currency(
+                            payment.amount,
+                            symbol: _company?.baseCurrency,
+                          ),
                         ),
                       ),
-                      DataCell(
-                        Text(AppFormatters.currency(payment.amount, symbol: _company?.baseCurrency)),
-                      ),
                       DataCell(_buildStatusBadge(payment)),
-                      DataCell(Text(payment.paymentMethod == CustomerPaymentMethod.bankTransfer ? 'Bank Transfer' : payment.paymentMethod.name.toUpperCase())),
+                      DataCell(
+                        Text(
+                          payment.paymentMethod ==
+                                  CustomerPaymentMethod.bankTransfer
+                              ? 'Bank Transfer'
+                              : payment.paymentMethod.name.toUpperCase(),
+                        ),
+                      ),
                       DataCell(
                         payment.approvalStatus == null
                             ? TextButton(
@@ -327,8 +326,9 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
                 }).toList(),
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }
@@ -394,7 +394,7 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(

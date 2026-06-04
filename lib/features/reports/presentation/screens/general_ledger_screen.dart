@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:ledgixerp/core/auth/app_user.dart';
-import '../../services/reporting_service.dart';
-import '../../../accounting/chart_of_accounts/account_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/core/theme/app_text_styles.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
+import '../../services/financial_report_service.dart';
 
 class GeneralLedgerScreen extends StatefulWidget {
-  final AppUser user;
-  const GeneralLedgerScreen({super.key, required this.user});
+  final String companyId;
+  const GeneralLedgerScreen({super.key, required this.companyId});
 
   @override
   State<GeneralLedgerScreen> createState() => _GeneralLedgerScreenState();
 }
 
 class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
-  final _reportingService = ReportingService();
+  final _reportService = FinancialReportService();
   final _firestore = FirebaseFirestore.instance;
 
   AccountModel? _selectedAccount;
@@ -23,18 +24,13 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
   List<Map<String, dynamic>> _entries = [];
   bool _isLoading = false;
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
   Future<void> _loadEntries() async {
     if (_selectedAccount == null) return;
 
     setState(() => _isLoading = true);
     try {
-      final entries = await _reportingService.getLedgerEntries(
-        widget.user.companyId!,
+      final entries = await _reportService.getGeneralLedger(
+        widget.companyId,
         _selectedAccount!.id,
         _startDate,
         _endDate,
@@ -44,7 +40,7 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error loading ledger: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -53,17 +49,32 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('General Ledger')),
+      appBar: AppBar(
+        title: const Text('General Ledger'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _selectedAccount != null ? _loadEntries : null,
+          ),
+          IconButton(icon: const Icon(Icons.download), onPressed: () {}),
+        ],
+      ),
       body: Column(
         children: [
           _buildFilters(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
+                : _selectedAccount == null
+                ? const Center(
+                    child: Text('Please select an account to view the ledger.'),
+                  )
                 : _entries.isEmpty
                 ? const Center(
-                    child: Text('No entries found for the selected criteria.'),
+                    child: Text('No entries found for the selected period.'),
                   )
                 : _buildLedgerTable(),
           ),
@@ -73,18 +84,26 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
   }
 
   Widget _buildFilters() {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
-      color: Theme.of(context).primaryColor.withValues(alpha: 0.05),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
+      ),
       child: Column(
         children: [
           StreamBuilder<QuerySnapshot>(
             stream: _firestore
+                .collection('companies')
+                .doc(widget.companyId)
                 .collection('accounts')
-                .where('companyId', isEqualTo: widget.user.companyId)
+                .where('isActive', isEqualTo: true)
+                .where('allowPosting', isEqualTo: true)
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const LinearProgressIndicator();
+
               final accounts = snapshot.data!.docs
                   .map(
                     (doc) => AccountModel.fromMap(
@@ -94,11 +113,13 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
                   )
                   .toList();
 
+              accounts.sort((a, b) => a.accountCode.compareTo(b.accountCode));
+
               return DropdownButtonFormField<AccountModel>(
                 initialValue: _selectedAccount,
                 decoration: const InputDecoration(
                   labelText: 'Select Account',
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.account_tree_outlined),
                 ),
                 items: accounts
                     .map(
@@ -115,7 +136,7 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
@@ -141,10 +162,10 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Period',
-                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.calendar_month),
                     ),
                     child: Text(
-                      '${DateFormat('dd/MM/yy').format(_startDate)} - ${DateFormat('dd/MM/yy').format(_endDate)}',
+                      '${AppFormatters.date(_startDate)} - ${AppFormatters.date(_endDate)}',
                     ),
                   ),
                 ),
@@ -157,57 +178,91 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
   }
 
   Widget _buildLedgerTable() {
-    final currencyFormat = NumberFormat.simpleCurrency();
-    double runningBalance = 0; // Ideally should start with opening balance
-
     return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Description')),
-            DataColumn(label: Text('Ref')),
+          headingRowColor: WidgetStateProperty.all(
+            Theme.of(context).colorScheme.surface,
+          ),
+          columnSpacing: 24,
+          columns: [
+            const DataColumn(label: Text('Date')),
+            const DataColumn(label: Text('Description')),
+            const DataColumn(label: Text('Ref')),
             DataColumn(
-              label: Text('Debit', textAlign: TextAlign.right),
-              numeric: true,
+              label: Container(
+                width: 100,
+                alignment: Alignment.centerRight,
+                child: const Text('Debit'),
+              ),
             ),
             DataColumn(
-              label: Text('Credit', textAlign: TextAlign.right),
-              numeric: true,
+              label: Container(
+                width: 100,
+                alignment: Alignment.centerRight,
+                child: const Text('Credit'),
+              ),
             ),
             DataColumn(
-              label: Text('Balance', textAlign: TextAlign.right),
-              numeric: true,
+              label: Container(
+                width: 120,
+                alignment: Alignment.centerRight,
+                child: const Text('Balance'),
+              ),
             ),
           ],
           rows: _entries.map((e) {
             final debit = e['debit'] as double;
             final credit = e['credit'] as double;
-
-            // Adjust balance based on account type
-            if (_selectedAccount!.accountType == AccountType.asset ||
-                _selectedAccount!.accountType == AccountType.expense ||
-                _selectedAccount!.accountType == AccountType.costOfSales) {
-              runningBalance += (debit - credit);
-            } else {
-              runningBalance += (credit - debit);
-            }
+            final balance = e['balance'] as double;
+            final isOpening = e['description'] == 'Opening Balance';
 
             return DataRow(
               cells: [
+                DataCell(Text(AppFormatters.date(e['date'] as DateTime))),
                 DataCell(
-                  Text(DateFormat('dd MMM yy').format(e['date'] as DateTime)),
+                  SizedBox(
+                    width: 250,
+                    child: Text(
+                      e['description'] ?? '',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
-                DataCell(Text(e['description'] ?? '')),
                 DataCell(Text(e['reference'] ?? '')),
-                DataCell(Text(debit > 0 ? currencyFormat.format(debit) : '')),
-                DataCell(Text(credit > 0 ? currencyFormat.format(credit) : '')),
                 DataCell(
-                  Text(
-                    currencyFormat.format(runningBalance),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  Container(
+                    width: 100,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      debit > 0 ? AppFormatters.currency(debit) : '',
+                      style: AppTextStyles.amount,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    width: 100,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      credit > 0 ? AppFormatters.currency(credit) : '',
+                      style: AppTextStyles.amount,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    width: 120,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      AppFormatters.currency(balance),
+                      style: AppTextStyles.amount.copyWith(
+                        fontWeight: isOpening
+                            ? FontWeight.normal
+                            : FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],

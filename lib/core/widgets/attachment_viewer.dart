@@ -63,7 +63,10 @@ class AttachmentViewer extends StatelessWidget {
   }
 }
 
-void showAttachmentDialog(BuildContext context, List<AttachmentModel> attachments) {
+void showAttachmentDialog(
+  BuildContext context,
+  List<AttachmentModel> attachments,
+) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(

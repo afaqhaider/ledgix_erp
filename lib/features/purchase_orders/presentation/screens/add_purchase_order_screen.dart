@@ -9,12 +9,13 @@ import 'package:ledgixerp/widgets/searchable_selector.dart';
 import 'package:ledgixerp/features/suppliers/presentation/widgets/add_supplier_dialog.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
-import 'package:ledgixerp/features/inventory/models/product_model.dart';
+import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/settings/models/credit_term_model.dart';
 import 'package:ledgixerp/features/settings/services/terms_service.dart';
 import 'package:ledgixerp/features/settings/presentation/widgets/add_credit_term_dialog.dart';
-import 'package:ledgixerp/features/inventory/presentation/widgets/add_product_dialog.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
+import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_item_pane.dart';
 import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
@@ -22,7 +23,11 @@ import 'package:ledgixerp/widgets/erp_ui_components.dart';
 class AddPurchaseOrderScreen extends StatefulWidget {
   final AppUser user;
   final bool isPane;
-  const AddPurchaseOrderScreen({super.key, required this.user, this.isPane = false});
+  const AddPurchaseOrderScreen({
+    super.key,
+    required this.user,
+    this.isPane = false,
+  });
 
   @override
   State<AddPurchaseOrderScreen> createState() => _AddPurchaseOrderScreenState();
@@ -46,7 +51,7 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
 
   List<SupplierModel> _allSuppliers = [];
   List<AccountModel> _allAccounts = [];
-  List<ProductModel> _allProducts = [];
+  List<InventoryItemModel> _allProducts = [];
   List<CreditTermModel> _allTerms = [];
   final List<POLineItemModel> _items = [];
   bool _isLoading = false;
@@ -66,24 +71,27 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
     _accountService.getAccounts(widget.user.companyId!).listen((accounts) {
       if (mounted) {
         setState(() {
-          _allAccounts = accounts.where((a) => 
-            a.accountType == AccountType.expense || 
-            a.accountType == AccountType.asset || 
-            a.accountType == AccountType.costOfSales
-          ).toList();
+          _allAccounts = accounts
+              .where(
+                (a) =>
+                    a.accountType == AccountType.expense ||
+                    a.accountType == AccountType.asset ||
+                    a.accountType == AccountType.costOfSales,
+              )
+              .toList();
         });
       }
     });
-    _inventoryService.getProducts(widget.user.companyId!).listen((products) {
+    _inventoryService.getInventoryItems(widget.user.companyId!).listen((
+      products,
+    ) {
       if (mounted) setState(() => _allProducts = products);
     });
     _termsService.getCreditTerms(widget.user.companyId!).listen((terms) {
       if (mounted) {
         setState(() {
           _allTerms = terms;
-          if (_selectedTerm == null) {
-            _selectedTerm = terms.where((t) => t.isDefault).firstOrNull;
-          }
+          _selectedTerm ??= terms.where((t) => t.isDefault).firstOrNull;
         });
       }
     });
@@ -214,14 +222,16 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
   void _showAddCreditTermDialog() {
     showDialog(
       context: context,
-      builder: (context) => AddCreditTermDialog(companyId: widget.user.companyId!),
+      builder: (context) =>
+          AddCreditTermDialog(companyId: widget.user.companyId!),
     );
   }
 
   void _showAddProductDialog() {
-    showDialog(
+    SidePanel.show(
       context: context,
-      builder: (context) => AddProductDialog(companyId: widget.user.companyId!),
+      title: 'New Inventory Item',
+      child: AddInventoryItemPane(user: widget.user),
     );
   }
 
@@ -233,13 +243,19 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('PO Information', style: ErpFormStyle.sectionHeaderStyle(context)),
+          Text(
+            'PO Information',
+            style: ErpFormStyle.sectionHeaderStyle(context),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: InputDecorator(
-                  decoration: ErpFormStyle.inputDecoration(context, 'PO Number'),
+                  decoration: ErpFormStyle.inputDecoration(
+                    context,
+                    'PO Number',
+                  ),
                   child: Text(
                     'Next number: $_poNumber',
                     style: ErpFormStyle.inputStyle(context).copyWith(
@@ -262,7 +278,11 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     if (date != null) setState(() => _poDate = date);
                   },
                   child: InputDecorator(
-                    decoration: ErpFormStyle.inputDecoration(context, 'PO Date', icon: Icons.calendar_today),
+                    decoration: ErpFormStyle.inputDecoration(
+                      context,
+                      'PO Date',
+                      icon: Icons.calendar_today,
+                    ),
                     child: Text(
                       DateFormat('yyyy-MM-dd').format(_poDate),
                       style: ErpFormStyle.inputStyle(context),
@@ -310,7 +330,11 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     if (date != null) setState(() => _deliveryDate = date);
                   },
                   child: InputDecorator(
-                    decoration: ErpFormStyle.inputDecoration(context, 'Delivery Date', icon: Icons.local_shipping_outlined),
+                    decoration: ErpFormStyle.inputDecoration(
+                      context,
+                      'Delivery Date',
+                      icon: Icons.local_shipping_outlined,
+                    ),
                     child: Text(
                       DateFormat('yyyy-MM-dd').format(_deliveryDate),
                       style: ErpFormStyle.inputStyle(context),
@@ -332,13 +356,19 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
             style: TextButton.styleFrom(foregroundColor: Colors.blueAccent),
           ),
           const SizedBox(height: 32),
-          Text('Notes & Attachments', style: ErpFormStyle.sectionHeaderStyle(context)),
+          Text(
+            'Notes & Attachments',
+            style: ErpFormStyle.sectionHeaderStyle(context),
+          ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _notesController,
             maxLines: 3,
             style: ErpFormStyle.inputStyle(context),
-            decoration: ErpFormStyle.inputDecoration(context, 'Internal Notes / Remarks'),
+            decoration: ErpFormStyle.inputDecoration(
+              context,
+              'Internal Notes / Remarks',
+            ),
           ),
           const SizedBox(height: 16),
           AttachmentSection(
@@ -377,7 +407,7 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(20),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1000),
@@ -396,16 +426,52 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
           ),
           child: Row(
             children: [
-              Expanded(flex: 4, child: Text('Product / Account', style: ErpFormStyle.labelStyle(context))),
-              Expanded(flex: 1, child: Text('Qty', style: ErpFormStyle.labelStyle(context), textAlign: TextAlign.center)),
-              Expanded(flex: 2, child: Text('Unit Price', style: ErpFormStyle.labelStyle(context), textAlign: TextAlign.center)),
-              Expanded(flex: 1, child: Text('VAT%', style: ErpFormStyle.labelStyle(context), textAlign: TextAlign.center)),
-              Expanded(flex: 2, child: Text('Total', style: ErpFormStyle.labelStyle(context), textAlign: TextAlign.right)),
+              Expanded(
+                flex: 4,
+                child: Text(
+                  'Product / Account',
+                  style: ErpFormStyle.labelStyle(context),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  'Qty',
+                  style: ErpFormStyle.labelStyle(context),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Unit Price',
+                  style: ErpFormStyle.labelStyle(context),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  'VAT%',
+                  style: ErpFormStyle.labelStyle(context),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Total',
+                  style: ErpFormStyle.labelStyle(context),
+                  textAlign: TextAlign.right,
+                ),
+              ),
               const SizedBox(width: 40),
             ],
           ),
@@ -428,18 +494,23 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     labelText: '',
                     items: [..._allProducts, ..._allAccounts],
                     itemLabelBuilder: (val) {
-                      if (val is ProductModel) return '${val.sku} - ${val.name}';
-                      if (val is AccountModel) return '${val.accountCode} - ${val.accountName}';
+                      if (val is InventoryItemModel)
+                        return '${val.itemCode} - ${val.itemName}';
+                      if (val is AccountModel)
+                        return '${val.accountCode} - ${val.accountName}';
                       return '';
                     },
                     onSelected: (val) {
-                      if (val is ProductModel) {
+                      if (val is InventoryItemModel) {
                         _updateItem(
                           index,
                           productId: val.id,
-                          accountId: val.expenseAccountId ?? val.assetAccountId ?? '',
-                          desc: val.description ?? val.name,
-                          price: val.costPrice,
+                          accountId:
+                              val.expenseAccountId ??
+                              val.inventoryAccountId ??
+                              '',
+                          desc: val.itemName,
+                          price: val.purchasePrice,
                         );
                       } else if (val is AccountModel) {
                         _updateItem(
@@ -451,9 +522,13 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     },
                     addLabel: 'Add Product',
                     onAdd: _showAddProductDialog,
-                    initialValue: item.productId != null 
-                        ? _allProducts.where((p) => p.id == item.productId).firstOrNull
-                        : _allAccounts.where((a) => a.id == item.accountId).firstOrNull,
+                    initialValue: item.productId != null
+                        ? _allProducts
+                              .where((p) => p.id == item.productId)
+                              .firstOrNull
+                        : _allAccounts
+                              .where((a) => a.id == item.accountId)
+                              .firstOrNull,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -463,9 +538,16 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     initialValue: item.quantity.toString(),
                     style: ErpFormStyle.inputStyle(context),
                     textAlign: TextAlign.center,
-                    decoration: ErpFormStyle.inputDecoration(context, '').copyWith(contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4)),
+                    decoration: ErpFormStyle.inputDecoration(context, '')
+                        .copyWith(
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 4,
+                          ),
+                        ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => _updateItem(index, qty: double.tryParse(v) ?? 0),
+                    onChanged: (v) =>
+                        _updateItem(index, qty: double.tryParse(v) ?? 0),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -475,9 +557,16 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     initialValue: item.unitPrice.toString(),
                     style: ErpFormStyle.inputStyle(context),
                     textAlign: TextAlign.center,
-                    decoration: ErpFormStyle.inputDecoration(context, '').copyWith(contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4)),
+                    decoration: ErpFormStyle.inputDecoration(context, '')
+                        .copyWith(
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 4,
+                          ),
+                        ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => _updateItem(index, price: double.tryParse(v) ?? 0),
+                    onChanged: (v) =>
+                        _updateItem(index, price: double.tryParse(v) ?? 0),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -487,9 +576,16 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     initialValue: item.vatRate.toString(),
                     style: ErpFormStyle.inputStyle(context),
                     textAlign: TextAlign.center,
-                    decoration: ErpFormStyle.inputDecoration(context, '').copyWith(contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4)),
+                    decoration: ErpFormStyle.inputDecoration(context, '')
+                        .copyWith(
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 4,
+                          ),
+                        ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => _updateItem(index, vat: double.tryParse(v) ?? 0),
+                    onChanged: (v) =>
+                        _updateItem(index, vat: double.tryParse(v) ?? 0),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -500,12 +596,18 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     child: Text(
                       NumberFormat('#,##0.00').format(item.lineTotal),
                       textAlign: TextAlign.right,
-                      style: ErpFormStyle.inputStyle(context).copyWith(fontWeight: FontWeight.bold),
+                      style: ErpFormStyle.inputStyle(
+                        context,
+                      ).copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close, color: theme.iconTheme.color?.withValues(alpha: 0.3), size: 18),
+                  icon: Icon(
+                    Icons.close,
+                    color: theme.iconTheme.color?.withValues(alpha: 0.3),
+                    size: 18,
+                  ),
                   onPressed: () => _removeItem(index),
                 ),
               ],
@@ -523,9 +625,11 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
       alignment: Alignment.centerRight,
       child: Container(
         width: 300,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.01),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.03)
+              : Colors.black.withValues(alpha: 0.01),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: theme.dividerColor),
         ),
@@ -535,7 +639,7 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
             const SizedBox(height: 12),
             _buildSummaryRow('VAT Amount', _totalVat),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               child: Divider(height: 1, color: theme.dividerColor),
             ),
             _buildSummaryRow('Total Amount', _totalAmount, isBold: true),
@@ -552,7 +656,9 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
       children: [
         Text(
           label,
-          style: isBold ? ErpFormStyle.sectionHeaderStyle(context) : ErpFormStyle.labelStyle(context),
+          style: isBold
+              ? ErpFormStyle.sectionHeaderStyle(context)
+              : ErpFormStyle.labelStyle(context),
         ),
         Text(
           NumberFormat('#,##0.00').format(value),

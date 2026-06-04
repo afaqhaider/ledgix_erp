@@ -2,9 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum CustomerPaymentMethod { cash, bankTransfer, card, cheque, online }
 
-enum ReceiptType { 
-  againstRef('Against Ref'), 
-  onAccount('On Account'), 
+enum ReceiptType {
+  againstRef('Against Ref'),
+  onAccount('On Account'),
   advance('Advance');
 
   final String label;
@@ -28,11 +28,12 @@ class PaymentAllocation {
     'amount': amount,
   };
 
-  factory PaymentAllocation.fromMap(Map<String, dynamic> map) => PaymentAllocation(
-    invoiceId: map['invoiceId'] ?? '',
-    invoiceNumber: map['invoiceNumber'] ?? '',
-    amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
-  );
+  factory PaymentAllocation.fromMap(Map<String, dynamic> map) =>
+      PaymentAllocation(
+        invoiceId: map['invoiceId'] ?? '',
+        invoiceNumber: map['invoiceNumber'] ?? '',
+        amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+      );
 }
 
 class CustomerPaymentModel {
@@ -163,7 +164,8 @@ class CustomerPaymentModel {
           .map((e) => PaymentAllocation.fromMap(e as Map<String, dynamic>))
           .toList(),
       bankAccountId: map['bankAccountId'],
-      paymentDate: (map['paymentDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      paymentDate:
+          (map['paymentDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       paymentMethod: CustomerPaymentMethod.values.firstWhere(
         (e) => e.name == map['paymentMethod'],
         orElse: () => CustomerPaymentMethod.bankTransfer,

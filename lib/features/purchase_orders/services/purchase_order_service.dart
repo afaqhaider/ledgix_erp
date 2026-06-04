@@ -43,17 +43,15 @@ class PurchaseOrderService {
 
     await _firestore.runTransaction((transaction) async {
       // 1. Generate final number and increment within transaction
-      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
-        po.companyId,
-        'purchaseOrder',
-        transaction: transaction,
-      );
+      final finalNumber = await _settingsService
+          .getNextDocumentNumberAndIncrement(
+            po.companyId,
+            'purchaseOrder',
+            transaction: transaction,
+          );
 
       final docRef = _getPORef(po.companyId).doc();
-      final finalPO = po.copyWith(
-        id: docRef.id,
-        poNumber: finalNumber,
-      );
+      final finalPO = po.copyWith(id: docRef.id, poNumber: finalNumber);
 
       // 2. Save PO
       transaction.set(docRef, finalPO.toMap());

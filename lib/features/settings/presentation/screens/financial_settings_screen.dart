@@ -132,7 +132,10 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
             children: [
               Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: _loadSettings, child: const Text('Retry')),
+              ElevatedButton(
+                onPressed: _loadSettings,
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
@@ -149,7 +152,7 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           children: [
             _buildSectionHeader('Accounting Period'),
             const SizedBox(height: 16),
@@ -183,10 +186,7 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
             _buildPrefixField('Invoice Prefix', _invoicePrefixController),
             _buildPrefixField('Quotation Prefix', _quotationPrefixController),
             _buildPrefixField('Purchase Order Prefix', _poPrefixController),
-            _buildPrefixField(
-              'Receipt Prefix',
-              _receiptPrefixController,
-            ),
+            _buildPrefixField('Receipt Prefix', _receiptPrefixController),
             _buildPrefixField(
               'Supplier Payment Prefix',
               _suppPayPrefixController,
@@ -195,10 +195,7 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
               'Journal Voucher Prefix',
               _journalPrefixController,
             ),
-            _buildPrefixField(
-              'Vendor Bill Prefix',
-              _billPrefixController,
-            ),
+            _buildPrefixField('Vendor Bill Prefix', _billPrefixController),
           ],
         ),
       ),

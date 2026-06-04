@@ -23,7 +23,9 @@ class ExportService {
     for (var i = 0; i < headers.length; i++) {
       sheet
           .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-          .value = TextCellValue(headers[i]);
+          .value = TextCellValue(
+        headers[i],
+      );
     }
 
     // Add data
@@ -34,7 +36,9 @@ class ExportService {
             .cell(
               CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row + 1),
             )
-            .value = _toCellValue(value);
+            .value = _toCellValue(
+          value,
+        );
       }
     }
 
@@ -43,7 +47,10 @@ class ExportService {
 
     if (kIsWeb) {
       // For web, use printing package to 'print' (download) the bytes
-      await Printing.sharePdf(bytes: Uint8List.fromList(fileBytes), filename: '$fileName.xlsx');
+      await Printing.sharePdf(
+        bytes: Uint8List.fromList(fileBytes),
+        filename: '$fileName.xlsx',
+      );
     } else {
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/$fileName.xlsx');
@@ -72,7 +79,7 @@ class ExportService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
+        margin: const pw.EdgeInsets.all(20),
         build: (pw.Context context) {
           return [
             _buildHeader(title, subTitle),
@@ -137,7 +144,10 @@ class ExportService {
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.end,
               children: [
-                pw.Text('${e.key}: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  '${e.key}: ',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
                 pw.Text(e.value),
               ],
             ),

@@ -6,8 +6,8 @@ class SearchableSelector<T> extends StatefulWidget {
   final String Function(T) itemLabelBuilder;
   final T? initialValue;
   final Function(T?) onSelected;
-  final String addLabel;
-  final VoidCallback onAdd;
+  final String? addLabel;
+  final VoidCallback? onAdd;
   final String? Function(String?)? validator;
   final String? hintText;
   final bool autofocus;
@@ -18,8 +18,8 @@ class SearchableSelector<T> extends StatefulWidget {
     required this.items,
     required this.itemLabelBuilder,
     required this.onSelected,
-    required this.addLabel,
-    required this.onAdd,
+    this.addLabel,
+    this.onAdd,
     this.initialValue,
     this.validator,
     this.hintText,
@@ -94,7 +94,7 @@ class _SearchableSelectorState<T> extends State<SearchableSelector<T>> {
   void _openOverlay() {
     if (_isOpened) return;
     _overlayEntry = _createOverlayEntry();
-    
+
     // Ensure we are not in the middle of a build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && !_isOpened) {
@@ -187,31 +187,33 @@ class _SearchableSelectorState<T> extends State<SearchableSelector<T>> {
                       },
                     ),
                   ),
-                  const Divider(height: 1),
-                  ListTile(
-                    dense: true,
-                    tileColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                    leading: Icon(
-                      Icons.add_circle_outline,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
-                    title: Text(
-                      widget.addLabel,
-                      style: TextStyle(
+                  if (widget.addLabel != null && widget.onAdd != null) ...[
+                    const Divider(height: 1),
+                    ListTile(
+                      dense: true,
+                      tileColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                      leading: Icon(
+                        Icons.add_circle_outline,
                         color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        size: 20,
                       ),
+                      title: Text(
+                        widget.addLabel!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      onTap: () {
+                        _closeOverlay();
+                        _focusNode.unfocus();
+                        widget.onAdd!();
+                      },
                     ),
-                    onTap: () {
-                      _closeOverlay();
-                      _focusNode.unfocus();
-                      widget.onAdd();
-                    },
-                  ),
+                  ],
                 ],
               ),
             ),

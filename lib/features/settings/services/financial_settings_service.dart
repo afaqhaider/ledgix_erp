@@ -127,8 +127,10 @@ class FinancialSettingsService {
         break;
       case 'receipt':
       case 'customerPayment':
-        prefix = data['receiptPrefix'] ?? data['customerPaymentPrefix'] ?? 'REC';
-        currentNumber = data['nextReceiptNumber'] ?? data['nextCustomerPaymentNumber'] ?? 1;
+        prefix =
+            data['receiptPrefix'] ?? data['customerPaymentPrefix'] ?? 'REC';
+        currentNumber =
+            data['nextReceiptNumber'] ?? data['nextCustomerPaymentNumber'] ?? 1;
         fieldName = 'nextReceiptNumber';
         break;
       case 'supplierPayment':

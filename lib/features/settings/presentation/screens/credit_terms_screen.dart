@@ -29,7 +29,9 @@ class _CreditTermsScreenState extends State<CreditTermsScreen> {
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name (e.g. Net 30)'),
+                decoration: const InputDecoration(
+                  labelText: 'Name (e.g. Net 30)',
+                ),
               ),
               TextField(
                 controller: daysController,
@@ -44,7 +46,10 @@ class _CreditTermsScreenState extends State<CreditTermsScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 final newTerm = CreditTermModel(
@@ -75,13 +80,17 @@ class _CreditTermsScreenState extends State<CreditTermsScreen> {
       appBar: AppBar(
         title: const Text('Credit Terms'),
         actions: [
-          IconButton(icon: const Icon(Icons.add), onPressed: () => _showAddDialog()),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _showAddDialog(),
+          ),
         ],
       ),
       body: StreamBuilder<List<CreditTermModel>>(
         stream: _service.getCreditTerms(widget.user.companyId!),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
           final terms = snapshot.data!;
           return ListView.builder(
             itemCount: terms.length,
@@ -90,7 +99,9 @@ class _CreditTermsScreenState extends State<CreditTermsScreen> {
               return ListTile(
                 title: Text(term.name),
                 subtitle: Text('${term.days} days'),
-                trailing: term.isDefault ? const Chip(label: Text('Default')) : null,
+                trailing: term.isDefault
+                    ? const Chip(label: Text('Default'))
+                    : null,
                 onTap: () => _showAddDialog(term),
               );
             },

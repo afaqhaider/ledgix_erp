@@ -49,7 +49,11 @@ class MigrationConfig {
           ),
           FieldDefinition(key: 'email', label: 'Email'),
           FieldDefinition(key: 'phone', label: 'Phone'),
-          FieldDefinition(key: 'trnVatNumber', label: 'TRN / VAT Number', aliases: ['VAT NO', 'TRN Number', 'TRN']),
+          FieldDefinition(
+            key: 'trnVatNumber',
+            label: 'TRN / VAT Number',
+            aliases: ['VAT NO', 'TRN Number', 'TRN'],
+          ),
           FieldDefinition(key: 'address', label: 'Address'),
           FieldDefinition(key: 'country', label: 'Country'),
         ];

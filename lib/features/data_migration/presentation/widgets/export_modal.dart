@@ -28,7 +28,7 @@ class _ExportModalState extends State<ExportModal> {
       backgroundColor: Colors.transparent,
       child: Container(
         width: 400,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(24),

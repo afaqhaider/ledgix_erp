@@ -4,6 +4,7 @@ import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
 import 'package:ledgixerp/features/banking/models/bank_account_model.dart';
 import 'package:ledgixerp/features/banking/services/bank_account_service.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/features/banking/presentation/widgets/add_bank_account_dialog.dart';
 
 class BankAccountsScreen extends StatefulWidget {
@@ -33,10 +34,12 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  showDialog(
+                  SidePanel.show(
                     context: context,
-                    builder: (context) =>
-                        AddBankAccountDialog(companyId: widget.user.companyId!),
+                    title: 'Add Bank/Cash Account',
+                    child: AddBankAccountDialog(
+                      companyId: widget.user.companyId!,
+                    ),
                   );
                 },
                 icon: const Icon(Icons.add),
@@ -59,7 +62,7 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             itemCount: accounts.length,
             itemBuilder: (context, index) {
               final account = accounts[index];

@@ -4,6 +4,7 @@ import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
 import 'package:ledgixerp/features/suppliers/models/supplier_model.dart';
 import 'package:ledgixerp/features/suppliers/services/supplier_service.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/features/suppliers/presentation/widgets/add_supplier_dialog.dart';
 import 'package:ledgixerp/features/data_migration/presentation/widgets/import_export_modal.dart';
 import 'package:ledgixerp/features/data_migration/presentation/widgets/export_modal.dart';
@@ -47,7 +48,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
             ElevatedButton.icon(
               onPressed: () => _showAddSupplierDialog(context),
               icon: const Icon(Icons.person_add),
-              label: const Text('Add Supplier'),
+              label: const Text('Add New'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,
                 foregroundColor: Colors.white,
@@ -100,9 +101,11 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              child: DataTable(
+            padding: const EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Card(
+                child: DataTable(
                 horizontalMargin: 24,
                 columnSpacing: 40,
                 columns: const [
@@ -203,8 +206,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                 }).toList(),
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }
@@ -256,10 +260,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   }
 
   void _showAddSupplierDialog(BuildContext context) {
-    showDialog(
+    SidePanel.show(
       context: context,
-      builder: (context) =>
-          AddSupplierDialog(companyId: widget.user.companyId!),
+      title: 'Add New Supplier',
+      child: AddSupplierDialog(companyId: widget.user.companyId!),
     );
   }
 

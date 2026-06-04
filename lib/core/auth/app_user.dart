@@ -25,8 +25,8 @@ class AppUser {
       companyName: map['companyName'] ?? '',
       companyId: map['companyId'],
       role: UserRole.values.firstWhere(
-        (e) => e.name == (map['role'] ?? 'dataEntry'),
-        orElse: () => UserRole.dataEntry,
+        (e) => e.name == (map['role'] ?? 'employee'),
+        orElse: () => UserRole.employee,
       ),
     );
   }

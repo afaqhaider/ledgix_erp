@@ -320,13 +320,13 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
         final uploadedUrl = await _companyService.uploadLogo(
           companyId,
           kIsWeb ? _logoBytes : File(_logoFile!.path),
+          fileName: _logoFile!.name,
+          contentType: _logoFile!.mimeType,
         );
-        if (uploadedUrl != null) {
-          debugPrint('CompanySetup: Updating company with logo URL...');
-          await _companyService.updateCompany(
-            company.copyWith(companyLogoUrl: uploadedUrl).copyWithId(companyId),
-          );
-        }
+        debugPrint('CompanySetup: Updating company with logo URL...');
+        await _companyService.updateCompany(
+          company.copyWith(companyLogoUrl: uploadedUrl).copyWithId(companyId),
+        );
       }
 
       debugPrint(
@@ -452,7 +452,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
 
   Widget _buildHeader(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(20),
       width: double.infinity,
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),

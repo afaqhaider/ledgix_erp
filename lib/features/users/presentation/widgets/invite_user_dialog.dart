@@ -22,7 +22,7 @@ class _InviteUserDialogState extends State<InviteUserDialog> {
 
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
-  UserRole _selectedRole = UserRole.dataEntry;
+  UserRole _selectedRole = UserRole.employee;
   bool _isLoading = false;
 
   @override

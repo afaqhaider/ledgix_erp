@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
@@ -47,33 +48,23 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   Future<void> _submitForApproval() async {
     setState(() => _isPosting = true);
     try {
-      final request = ApprovalRequestModel(
-        id: '',
+      await _approvalService.submitForApproval(
+        user: widget.user,
         companyId: widget.user.companyId!,
-        sourceType: 'salesInvoice',
+        sourceType: 'sales_invoice',
         sourceId: _currentInvoice.id,
         sourceNumber: _currentInvoice.invoiceNumber,
-        requestedByUserId: widget.user.uid,
-        requestedByUserName: widget.user.fullName,
-        requestedAt: DateTime.now(),
-      );
-
-      await _approvalService.submitForApproval(
-        request,
-        requesterRole: widget.user.role,
+        amount: _currentInvoice.totalAmount,
       );
 
       // Local update for immediate feedback
       setState(() {
-        _currentInvoice = InvoiceModel.fromMap(
-          _currentInvoice.toMap()..['approvalStatus'] = 'pending',
-          _currentInvoice.id,
-        );
+        _currentInvoice = _currentInvoice.copyWith(approvalStatus: 'pending');
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Processing approval/submission...')),
+          const SnackBar(content: Text('Invoice submitted for approval')),
         );
       }
     } catch (e) {
@@ -236,7 +227,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 800),
-          margin: const EdgeInsets.all(32),
+          margin: const EdgeInsets.all(20),
           child: Card(
             elevation: 4,
             shape: RoundedRectangleBorder(
@@ -463,6 +454,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   ),
 
                   const SizedBox(height: 64),
+                  _buildApprovalHistory(),
+                  const SizedBox(height: 32),
                   const Divider(),
                   const SizedBox(height: 16),
                   const Center(
@@ -480,6 +473,93 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildApprovalHistory() {
+    return StreamBuilder<List<ApprovalRequestModel>>(
+      stream: FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.user.companyId)
+          .collection('approval_requests')
+          .where('sourceId', isEqualTo: _currentInvoice.id)
+          .snapshots()
+          .map(
+            (snap) => snap.docs
+                .map((doc) => ApprovalRequestModel.fromMap(doc.data(), doc.id))
+                .toList(),
+          ),
+      builder: (context, snapshot) {
+        final requests = snapshot.data ?? [];
+        if (requests.isEmpty) return const SizedBox.shrink();
+
+        final request = requests.first; // Assume one request per doc for now
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Approval History',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            ...request.history.map(
+              (h) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      h.action == ApprovalStatus.approved
+                          ? Icons.check_circle
+                          : (h.action == ApprovalStatus.rejected
+                                ? Icons.cancel
+                                : Icons.replay),
+                      size: 16,
+                      color: h.action == ApprovalStatus.approved
+                          ? Colors.green
+                          : (h.action == ApprovalStatus.rejected
+                                ? Colors.red
+                                : Colors.orange),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${h.action.name.toUpperCase()} by ${h.userName}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (h.comments != null && h.comments!.isNotEmpty)
+                            Text(
+                              '"${h.comments}"',
+                              style: const TextStyle(
+                                fontStyle: FontStyle.italic,
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          Text(
+                            DateFormat('dd MMM yyyy HH:mm').format(h.timestamp),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

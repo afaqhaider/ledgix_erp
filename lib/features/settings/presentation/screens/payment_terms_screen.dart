@@ -44,7 +44,10 @@ class _PaymentTermsScreenState extends State<PaymentTermsScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 final newTerm = PaymentTermModel(
@@ -58,7 +61,7 @@ class _PaymentTermsScreenState extends State<PaymentTermsScreen> {
                   await _service.addPaymentTerm(newTerm);
                 } else {
                   // TODO: Add updatePaymentTerm to service if needed, for now just add
-                  await _service.addPaymentTerm(newTerm); 
+                  await _service.addPaymentTerm(newTerm);
                 }
                 if (mounted) Navigator.pop(context);
               },
@@ -76,13 +79,17 @@ class _PaymentTermsScreenState extends State<PaymentTermsScreen> {
       appBar: AppBar(
         title: const Text('Payment Terms (Quotations)'),
         actions: [
-          IconButton(icon: const Icon(Icons.add), onPressed: () => _showAddDialog()),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _showAddDialog(),
+          ),
         ],
       ),
       body: StreamBuilder<List<PaymentTermModel>>(
         stream: _service.getPaymentTerms(widget.user.companyId!),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
           final terms = snapshot.data!;
           return ListView.builder(
             itemCount: terms.length,
@@ -91,7 +98,9 @@ class _PaymentTermsScreenState extends State<PaymentTermsScreen> {
               return ListTile(
                 title: Text(term.name),
                 subtitle: Text('${term.days} days'),
-                trailing: term.isDefault ? const Chip(label: Text('Default')) : null,
+                trailing: term.isDefault
+                    ? const Chip(label: Text('Default'))
+                    : null,
                 onTap: () => _showAddDialog(term),
               );
             },

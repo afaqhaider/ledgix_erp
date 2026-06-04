@@ -134,7 +134,7 @@ class AccountService {
       level: 2,
     );
     addAcc(
-      code: '1200',
+      code: '1130',
       name: 'Accounts Receivable',
       type: AccountType.asset,
       category: AccountCategory.accountsReceivable,

@@ -11,7 +11,7 @@ import 'package:ledgixerp/core/audit/audit_service.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
-import 'package:ledgixerp/features/inventory/models/product_model.dart';
+import '../../inventory/models/inventory_models.dart';
 
 class AccountingPostingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -90,11 +90,14 @@ class AccountingPostingService {
     // Inventory & COGS logic
     double totalCogs = 0.0;
     final batch = _firestore.batch();
-    
+
     for (var item in invoice.items) {
       if (item.productId != null && item.productId!.isNotEmpty) {
-        final product = await _inventoryService.getProduct(companyId, item.productId!);
-        if (product.type == ProductType.storable) {
+        final product = await _inventoryService.getItem(
+          companyId,
+          item.productId!,
+        );
+        if (product.itemType == InventoryItemType.stock) {
           final itemCogs = await _inventoryService.recordSale(
             companyId: companyId,
             productId: item.productId!,
@@ -107,29 +110,41 @@ class AccountingPostingService {
     }
 
     if (totalCogs > 0) {
-      final cogsAccount = await _findAccount(companyId, 'Cost of Goods Sold', AccountType.costOfSales);
-      final inventoryAccount = await _findAccount(companyId, 'Inventory Asset', AccountType.asset);
-      
+      final cogsAccount = await _findAccount(
+        companyId,
+        'Cost of Goods Sold',
+        AccountType.costOfSales,
+      );
+      final inventoryAccount = await _findAccount(
+        companyId,
+        'Inventory Asset',
+        AccountType.asset,
+      );
+
       _validatePostable(cogsAccount);
       _validatePostable(inventoryAccount);
 
-      lines.add(JournalLineModel(
-        accountId: cogsAccount.id,
-        accountName: cogsAccount.accountName,
-        accountCode: cogsAccount.accountCode,
-        debit: totalCogs,
-        credit: 0,
-        memo: 'COGS for Invoice ${invoice.invoiceNumber}',
-      ));
+      lines.add(
+        JournalLineModel(
+          accountId: cogsAccount.id,
+          accountName: cogsAccount.accountName,
+          accountCode: cogsAccount.accountCode,
+          debit: totalCogs,
+          credit: 0,
+          memo: 'COGS for Invoice ${invoice.invoiceNumber}',
+        ),
+      );
 
-      lines.add(JournalLineModel(
-        accountId: inventoryAccount.id,
-        accountName: inventoryAccount.accountName,
-        accountCode: inventoryAccount.accountCode,
-        debit: 0,
-        credit: totalCogs,
-        memo: 'Inventory reduction for Invoice ${invoice.invoiceNumber}',
-      ));
+      lines.add(
+        JournalLineModel(
+          accountId: inventoryAccount.id,
+          accountName: inventoryAccount.accountName,
+          accountCode: inventoryAccount.accountCode,
+          debit: 0,
+          credit: totalCogs,
+          memo: 'Inventory reduction for Invoice ${invoice.invoiceNumber}',
+        ),
+      );
     }
 
     final journalEntry = JournalEntryModel(
@@ -155,7 +170,7 @@ class AccountingPostingService {
         .doc(companyId)
         .collection('journalEntries')
         .doc();
-    
+
     final entryData = journalEntry.toMap();
     entryData['id'] = jeRef.id;
     batch.set(jeRef, entryData);
@@ -262,7 +277,7 @@ class AccountingPostingService {
         .doc(companyId)
         .collection('journalEntries')
         .doc();
-    
+
     final entryData = journalEntry.toMap();
     entryData['id'] = jeRef.id;
     batch.set(jeRef, entryData);
@@ -369,7 +384,7 @@ class AccountingPostingService {
         .doc(companyId)
         .collection('journalEntries')
         .doc();
-    
+
     final entryData = journalEntry.toMap();
     entryData['id'] = jeRef.id;
     batch.set(jeRef, entryData);
@@ -454,8 +469,11 @@ class AccountingPostingService {
 
     for (var item in bill.items) {
       if (item.productId != null && item.productId!.isNotEmpty) {
-        final product = await _inventoryService.getProduct(companyId, item.productId!);
-        if (product.type == ProductType.storable) {
+        final product = await _inventoryService.getItem(
+          companyId,
+          item.productId!,
+        );
+        if (product.itemType == InventoryItemType.stock) {
           await _inventoryService.recordPurchase(
             companyId: companyId,
             productId: item.productId!,
@@ -538,7 +556,7 @@ class AccountingPostingService {
         .doc(companyId)
         .collection('journalEntries')
         .doc();
-    
+
     final entryData = journalEntry.toMap();
     entryData['id'] = jeRef.id;
     batch.set(jeRef, entryData);
@@ -579,7 +597,9 @@ class AccountingPostingService {
         .get();
 
     if (snapshot.docs.isEmpty) {
-      throw Exception('Required account "$name" not found in Chart of Accounts. Please create it first.');
+      throw Exception(
+        'Required account "$name" not found in Chart of Accounts. Please create it first.',
+      );
     }
 
     return AccountModel.fromMap(
@@ -623,16 +643,22 @@ class AccountingPostingService {
     double totalCredit = lines.fold(0.0, (acc, line) => acc + line.credit);
 
     if ((totalDebit - totalCredit).abs() > 0.001) {
-      throw Exception('Journal entry is not balanced. Dr: $totalDebit, Cr: $totalCredit');
+      throw Exception(
+        'Journal entry is not balanced. Dr: $totalDebit, Cr: $totalCredit',
+      );
     }
   }
 
   void _validatePostable(AccountModel account) {
     if (account.isGroup) {
-      throw Exception('Account "${account.accountName}" is a group account and cannot be posted to.');
+      throw Exception(
+        'Account "${account.accountName}" is a group account and cannot be posted to.',
+      );
     }
     if (!account.allowPosting) {
-      throw Exception('Account "${account.accountName}" does not allow posting.');
+      throw Exception(
+        'Account "${account.accountName}" does not allow posting.',
+      );
     }
     if (!account.isActive) {
       throw Exception('Account "${account.accountName}" is inactive.');

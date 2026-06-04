@@ -81,7 +81,7 @@ class _AttachmentSectionState extends State<AttachmentSection> {
 
   Future<void> _removeAttachment(int index) async {
     final attachment = _attachments[index];
-    
+
     // 1) Delete from Firebase Storage
     await _attachmentService.deleteAttachment(attachment.url);
 
@@ -97,9 +97,9 @@ class _AttachmentSectionState extends State<AttachmentSection> {
       await launchUrl(uri);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open file')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not open file')));
       }
     }
   }
@@ -120,13 +120,20 @@ class _AttachmentSectionState extends State<AttachmentSection> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid),
+              border: Border.all(
+                color: Colors.grey.shade400,
+                style: BorderStyle.solid,
+              ),
               borderRadius: BorderRadius.circular(8),
               color: Colors.grey.shade50,
             ),
             child: Column(
               children: [
-                Icon(Icons.cloud_upload_outlined, size: 32, color: Colors.grey.shade600),
+                Icon(
+                  Icons.cloud_upload_outlined,
+                  size: 32,
+                  color: Colors.grey.shade600,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'Click to upload or drag and drop files here',

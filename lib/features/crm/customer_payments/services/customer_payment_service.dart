@@ -44,15 +44,17 @@ class CustomerPaymentService {
 
     await _firestore.runTransaction((transaction) async {
       // 1. ALL READS FIRST (WEB REQUIREMENT)
-      
+
       // Get settings snapshot for number generation
-      final settingsRef = _firestore.collection('settings').doc(payment.companyId);
+      final settingsRef = _firestore
+          .collection('settings')
+          .doc(payment.companyId);
       final settingsSnap = await transaction.get(settingsRef);
-      
+
       // Get all invoice snapshots
       final List<DocumentSnapshot> invoiceSnaps = [];
       final List<String> invoiceIds = [];
-      
+
       if (payment.allocations.isNotEmpty) {
         for (var allocation in payment.allocations) {
           invoiceIds.add(allocation.invoiceId);
@@ -71,13 +73,14 @@ class CustomerPaymentService {
       }
 
       // 2. ALL WRITES AFTER
-      
+
       // Generate final number and increment
-      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
-        payment.companyId,
-        'receipt',
-        transaction: transaction,
-      );
+      final finalNumber = await _settingsService
+          .getNextDocumentNumberAndIncrement(
+            payment.companyId,
+            'receipt',
+            transaction: transaction,
+          );
 
       final payRef = _getRef(payment.companyId).doc();
       final paymentToSave = payment.copyWith(
@@ -160,7 +163,7 @@ class CustomerPaymentService {
       }
 
       // 2. ALL WRITES AFTER
-      
+
       // Reverse allocations
       for (var i = 0; i < invoiceIds.length; i++) {
         final invSnap = invoiceSnaps[i];

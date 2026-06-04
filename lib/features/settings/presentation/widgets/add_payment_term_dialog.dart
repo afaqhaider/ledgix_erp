@@ -13,7 +13,7 @@ class AddPaymentTermDialog extends StatefulWidget {
 class _AddPaymentTermDialogState extends State<AddPaymentTermDialog> {
   final _formKey = GlobalKey<FormState>();
   final _termsService = TermsService();
-  
+
   String _name = '';
   int _days = 0;
   bool _isDefault = false;
@@ -37,7 +37,10 @@ class _AddPaymentTermDialogState extends State<AddPaymentTermDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -92,7 +95,11 @@ class _AddPaymentTermDialogState extends State<AddPaymentTermDialog> {
         ElevatedButton(
           onPressed: _isLoading ? null : _save,
           child: _isLoading
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Text('Save'),
         ),
       ],

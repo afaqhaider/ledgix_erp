@@ -1,86 +1,45 @@
 import 'package:ledgixerp/core/auth/permission.dart';
 
 enum UserRole {
-  owner(100),
-  financeManager(80),
-  controller(60),
-  admin(50),
-  accountant(40),
-  dataEntry(20);
+  superAdmin('Super Admin', 1000),
+  owner('Owner', 100),
+  generalManager('General Manager', 80),
+  accountant('Accountant', 60),
+  cashier('Cashier', 40),
+  sales('Sales', 40),
+  purchase('Purchase', 40),
+  storekeeper('Storekeeper', 40),
+  hr('HR', 40),
+  employee('Employee', 10);
 
+  final String label;
   final int rank;
-  const UserRole(this.rank);
+  const UserRole(this.label, this.rank);
 
-  Set<AppPermission> get defaultPermissions {
-    switch (this) {
-      case UserRole.owner:
-        return AppPermission.values.toSet();
-      case UserRole.financeManager:
-        return {...AppPermission.values.toSet()}
-          ..remove(AppPermission.manageCompany);
-      case UserRole.controller:
-        return {
-          AppPermission.viewDashboard,
-          AppPermission.viewAccounting,
-          AppPermission.manageAccounting,
-          AppPermission.viewCustomers,
-          AppPermission.manageCustomers,
-          AppPermission.viewSuppliers,
-          AppPermission.manageSuppliers,
-          AppPermission.viewInvoices,
-          AppPermission.manageInvoices,
-          AppPermission.viewBills,
-          AppPermission.manageBills,
-          AppPermission.viewReports,
-          AppPermission.approveTransactions,
-          AppPermission.viewApprovals,
-        };
-      case UserRole.admin:
-        return {
-          AppPermission.viewDashboard,
-          AppPermission.manageUsers,
-          AppPermission.viewAccounting,
-          AppPermission.manageAccounting,
-          AppPermission.viewCustomers,
-          AppPermission.manageCustomers,
-          AppPermission.viewSuppliers,
-          AppPermission.manageSuppliers,
-          AppPermission.viewInvoices,
-          AppPermission.manageInvoices,
-          AppPermission.viewBills,
-          AppPermission.manageBills,
-          AppPermission.viewReports,
-          AppPermission.manageSettings,
-          AppPermission.viewApprovals,
-        };
-      case UserRole.accountant:
-        return {
-          AppPermission.viewDashboard,
-          AppPermission.viewAccounting,
-          AppPermission.manageAccounting,
-          AppPermission.viewCustomers,
-          AppPermission.manageCustomers,
-          AppPermission.viewSuppliers,
-          AppPermission.manageSuppliers,
-          AppPermission.viewInvoices,
-          AppPermission.manageInvoices,
-          AppPermission.viewBills,
-          AppPermission.manageBills,
-          AppPermission.viewReports,
-          AppPermission.viewApprovals,
-        };
-      case UserRole.dataEntry:
-        return {
-          AppPermission.viewDashboard,
-          AppPermission.viewCustomers,
-          AppPermission.viewSuppliers,
-          AppPermission.viewInvoices,
-          AppPermission.viewBills,
-          AppPermission.viewAccounting,
-        };
+  bool hasPermission(AppPermission permission) {
+    if (this == UserRole.superAdmin || this == UserRole.owner) return true;
+
+    // Basic logic for other roles
+    switch (permission) {
+      case AppPermission.viewDashboard:
+        return true;
+      case AppPermission.viewReports:
+        return rank >= UserRole.accountant.rank;
+      case AppPermission.manageSettings:
+      case AppPermission.manageUsers:
+        return rank >= UserRole.generalManager.rank;
+      case AppPermission.viewAccounting:
+      case AppPermission.manageAccounting:
+        return rank >= UserRole.accountant.rank;
+      default:
+        return rank >= 40; // Functional roles have most view/edit permissions
     }
   }
 
-  bool hasPermission(AppPermission permission) =>
-      defaultPermissions.contains(permission);
+  static UserRole fromName(String name) {
+    return UserRole.values.firstWhere(
+      (e) => e.name == name || e.label == name,
+      orElse: () => UserRole.employee,
+    );
+  }
 }

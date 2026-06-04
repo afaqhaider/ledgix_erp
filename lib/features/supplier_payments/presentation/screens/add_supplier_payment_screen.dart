@@ -12,17 +12,16 @@ import 'package:ledgixerp/features/supplier_payments/services/supplier_payment_s
 import 'package:ledgixerp/widgets/searchable_selector.dart';
 import 'package:ledgixerp/features/suppliers/presentation/widgets/add_supplier_dialog.dart';
 import 'package:ledgixerp/features/banking/presentation/widgets/add_bank_account_dialog.dart';
-
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
-import 'package:ledgixerp/theme/app_theme.dart';
-import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/core/services/document_number_service.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
 
 class AddSupplierPaymentScreen extends StatefulWidget {
   final AppUser user;
-  final bool isPane;
-  const AddSupplierPaymentScreen({super.key, required this.user, this.isPane = false});
+  const AddSupplierPaymentScreen({super.key, required this.user});
 
   @override
   State<AddSupplierPaymentScreen> createState() =>
@@ -36,12 +35,12 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
   final _poService = PurchaseOrderService();
   final _bankService = BankAccountService();
   final _companyService = CompanyService();
+  final _docNumberService = DocumentNumberService();
 
   final _amountController = TextEditingController();
   final _referenceController = TextEditingController();
   final _notesController = TextEditingController();
 
-  String _paymentNumber = 'Loading...';
   SupplierModel? _selectedSupplier;
   CompanyModel? _company;
   PurchaseOrderModel? _selectedPO;
@@ -57,7 +56,6 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
     _loadCompany();
     _listenToMasterData();
   }
@@ -80,15 +78,6 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
     });
   }
 
-  Future<void> _loadInitialData() async {
-    final number = await _paymentService.generateNextPaymentNumber(
-      widget.user.companyId!,
-    );
-    if (mounted) {
-      setState(() => _paymentNumber = number);
-    }
-  }
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSupplier == null) {
@@ -106,10 +95,15 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
 
     setState(() => _isLoading = true);
     try {
+      final nextNumber = await _docNumberService.getNextNumber(
+        widget.user.companyId!,
+        'payment',
+      );
+
       final payment = SupplierPaymentModel(
         id: '',
         companyId: widget.user.companyId!,
-        paymentNumber: 'AUTO',
+        paymentNumber: nextNumber,
         supplierId: _selectedSupplier!.id,
         supplierName: _selectedSupplier!.supplierName,
         purchaseOrderId: _selectedPO?.id,
@@ -143,46 +137,15 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
     }
   }
 
-  void _showAddSupplierDialog() {
-    showDialog(
-      context: context,
-      builder: (context) =>
-          AddSupplierDialog(companyId: widget.user.companyId!),
-    );
-  }
-
-  void _showAddBankAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (context) =>
-          AddBankAccountDialog(companyId: widget.user.companyId!),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final content = Form(
+    return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('General Information', style: ErpFormStyle.sectionHeaderStyle(context)),
-          const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                child: InputDecorator(
-                  decoration: ErpFormStyle.inputDecoration(context, 'Payment Number'),
-                  child: Text(
-                    'Next number: $_paymentNumber',
-                    style: ErpFormStyle.inputStyle(context).copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blueAccent,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: InkWell(
                   onTap: () async {
@@ -192,38 +155,38 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
                     );
-                    if (date != null) {
-                      setState(() => _paymentDate = date);
-                    }
+                    if (date != null) setState(() => _paymentDate = date);
                   },
                   child: InputDecorator(
-                    decoration: ErpFormStyle.inputDecoration(context, 'Payment Date', icon: Icons.calendar_today),
-                    child: Text(
-                      DateFormat('yyyy-MM-dd').format(_paymentDate),
-                      style: ErpFormStyle.inputStyle(context),
+                    decoration: const InputDecoration(
+                      labelText: 'Payment Date',
+                      prefixIcon: Icon(Icons.calendar_today),
+                      border: OutlineInputBorder(),
                     ),
+                    child: Text(DateFormat('dd-MMM-yyyy').format(_paymentDate)),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           SearchableSelector<SupplierModel>(
             labelText: 'Supplier',
             items: _allSuppliers,
             itemLabelBuilder: (s) => s.supplierName,
-            onSelected: (val) {
-              setState(() {
-                _selectedSupplier = val;
-                _selectedPO = null;
-              });
-            },
+            onSelected: (val) => setState(() {
+              _selectedSupplier = val;
+              _selectedPO = null;
+            }),
             addLabel: 'Add New Supplier',
-            onAdd: _showAddSupplierDialog,
+            onAdd: () => SidePanel.show(
+              context: context,
+              title: 'Add Supplier',
+              child: AddSupplierDialog(companyId: widget.user.companyId!),
+            ),
             initialValue: _selectedSupplier,
-            validator: (v) => _selectedSupplier == null ? 'Required' : null,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           SearchableSelector<PurchaseOrderModel>(
             labelText: 'Link to Purchase Order (Optional)',
             items: _allPOs
@@ -232,102 +195,93 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
             itemLabelBuilder: (po) =>
                 '${po.poNumber} (${AppFormatters.currency(po.totalAmount, symbol: _company?.baseCurrency)})',
             onSelected: (val) => setState(() => _selectedPO = val),
-            addLabel: 'Create New PO',
-            onAdd: () {},
             initialValue: _selectedPO,
           ),
-          const SizedBox(height: 24),
-          Text('Payment Details', style: ErpFormStyle.sectionHeaderStyle(context)),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
                 child: TextFormField(
                   controller: _amountController,
-                  style: ErpFormStyle.inputStyle(context),
-                  decoration: ErpFormStyle.inputDecoration(
-                    context,
-                    'Amount',
+                  decoration: InputDecoration(
+                    labelText: 'Amount',
                     prefixText: '${_company?.baseCurrency ?? 'AED'} ',
+                    border: const OutlineInputBorder(),
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) {
-                    if (v!.isEmpty) return 'Required';
-                    if (double.tryParse(v) == null) return 'Invalid amount';
-                    return null;
-                  },
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: DropdownButtonFormField<PaymentMethod>(
-                  value: _paymentMethod,
-                  style: ErpFormStyle.inputStyle(context),
-                  decoration: ErpFormStyle.inputDecoration(context, 'Method'),
-                  dropdownColor: Theme.of(context).colorScheme.surface,
-                  items: PaymentMethod.values.map((method) {
-                    return DropdownMenuItem(
-                      value: method,
-                      child: Text(
-                        method.name.toUpperCase(),
-                        style: ErpFormStyle.inputStyle(context),
-                      ),
-                    );
-                  }).toList(),
+                  initialValue: _paymentMethod,
+                  decoration: const InputDecoration(
+                    labelText: 'Method',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: PaymentMethod.values
+                      .map(
+                        (method) => DropdownMenuItem(
+                          value: method,
+                          child: Text(method.name.toUpperCase()),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (val) => setState(() => _paymentMethod = val!),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           SearchableSelector<BankAccountModel>(
             labelText: 'Paid From (Bank/Cash)',
             items: _allBankAccounts,
             itemLabelBuilder: (a) => a.accountName,
             onSelected: (val) => setState(() => _selectedBankAccount = val),
-            addLabel: 'Add Bank Account',
-            onAdd: _showAddBankAccountDialog,
             initialValue: _selectedBankAccount,
-            validator: (v) => _selectedBankAccount == null ? 'Required' : null,
+            onAdd: () => SidePanel.show(
+              context: context,
+              title: 'Add Bank Account',
+              child: AddBankAccountDialog(companyId: widget.user.companyId!),
+            ),
+            addLabel: 'Add Bank Account',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           TextFormField(
             controller: _referenceController,
-            style: ErpFormStyle.inputStyle(context),
-            decoration: ErpFormStyle.inputDecoration(context, 'Reference / Cheque #'),
+            decoration: const InputDecoration(
+              labelText: 'Reference / Cheque #',
+              border: OutlineInputBorder(),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           TextFormField(
             controller: _notesController,
             maxLines: 2,
-            style: ErpFormStyle.inputStyle(context),
-            decoration: ErpFormStyle.inputDecoration(context, 'Notes'),
+            decoration: const InputDecoration(
+              labelText: 'Notes',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Save Payment'),
+            ),
           ),
         ],
-      ),
-    );
-
-    if (widget.isPane) {
-      return ErpSidePane(
-        title: 'Add Supplier Payment',
-        onCancel: () => Navigator.pop(context),
-        onSave: _save,
-        isLoading: _isLoading,
-        saveLabel: 'Save Payment',
-        child: content,
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Add Supplier Payment')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: content,
-          ),
-        ),
       ),
     );
   }

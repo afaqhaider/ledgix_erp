@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
+import 'package:fl_chart/fl_chart.dart';
+import 'package:ledgixerp/core/theme/app_colors.dart';
 
 class DashboardChart extends StatelessWidget {
   final String title;
+  final bool isLineChart;
   final List<double> data;
   final List<String> labels;
+
+  static const _lineAccent = Color(0xFF5B8DEF);
+  static const _barAccent = Color(0xFF6F93D2);
+  static const _barAlternateAccent = Color(0xFFE29A43);
 
   const DashboardChart({
     super.key,
     required this.title,
+    this.isLineChart = true,
     required this.data,
     required this.labels,
   });
@@ -16,72 +23,206 @@ class DashboardChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark
+        ? AppColors.darkCard.withValues(alpha: 0.82)
+        : Colors.white.withValues(alpha: 0.72);
+    final borderColor = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.9)
+        : Colors.white.withValues(alpha: 0.86);
 
-    // Ensure maxVal is at least 1.0 to avoid division by zero (NaN)
-    final maxValue = data.isEmpty ? 1.0 : data.reduce((a, b) => a > b ? a : b);
-    final maxVal = math.max(1.0, maxValue);
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.05)),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.18)
+                : const Color(0xFF94A3B8).withValues(alpha: 0.16),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              height: 200,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(data.length, (index) {
-                  final heightFactor = data[index] / maxVal;
-                  // Guard against NaN just in case, though maxVal >= 1.0 handles it
-                  final barHeight =
-                      (140 * (heightFactor.isNaN ? 0.0 : heightFactor))
-                          .toDouble();
+              _buildPeriodSelector(isDark),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 200,
+            child: isLineChart
+                ? _buildLineChart(isDark)
+                : _buildBarChart(isDark),
+          ),
+        ],
+      ),
+    );
+  }
 
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        width: 30,
-                        height: barHeight,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              theme.colorScheme.primary,
-                              theme.colorScheme.primary.withValues(alpha: 0.6),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        labels[index],
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-              ),
+  Widget _buildPeriodSelector(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.grey[200]!,
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            'This Month',
+            style: TextStyle(
+              fontSize: 11,
+              color: isDark ? AppColors.darkTextSecondary : Colors.grey[600],
             ),
-          ],
+          ),
+          const Icon(Icons.arrow_drop_down, size: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLineChart(bool isDark) {
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: isDark ? Colors.white10 : Colors.grey[200]!,
+            strokeWidth: 1,
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 22,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() >= 0 && value.toInt() < labels.length) {
+                  return Text(
+                    labels[value.toInt()],
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[500] : Colors.grey[600],
+                      fontSize: 10,
+                    ),
+                  );
+                }
+                return const Text('');
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  '${(value / 1000).toStringAsFixed(0)}k',
+                  style: TextStyle(
+                    color: isDark ? Colors.grey[500] : Colors.grey[600],
+                    fontSize: 10,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: List.generate(
+              data.length,
+              (index) => FlSpot(index.toDouble(), data[index]),
+            ),
+            isCurved: true,
+            color: _lineAccent,
+            barWidth: 2,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: _lineAccent.withValues(alpha: 0.12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarChart(bool isDark) {
+    return BarChart(
+      BarChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() >= 0 && value.toInt() < labels.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      labels[value.toInt()],
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[500] : Colors.grey[600],
+                        fontSize: 10,
+                      ),
+                    ),
+                  );
+                }
+                return const Text('');
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(
+          data.length,
+          (index) => BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: data[index],
+                color: index % 2 == 0 ? _barAccent : _barAlternateAccent,
+                width: 16,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ],
+          ),
         ),
       ),
     );

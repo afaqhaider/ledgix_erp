@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isLogoImage() {
+      return request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /companies/{companyId}/branding/{fileName} {
+      allow read: if true;
+      allow create, update: if signedIn() && isLogoImage();
+      allow delete: if signedIn();
+    }
+
+    match /companies/{companyId}/{fileName} {
+      allow read: if true;
+      allow create, update: if signedIn()
+        && fileName.matches('logo\\..*')
+        && isLogoImage();
+      allow delete: if signedIn() && fileName.matches('logo\\..*');
+    }
+  }
+}

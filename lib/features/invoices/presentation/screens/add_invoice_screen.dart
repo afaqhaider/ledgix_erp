@@ -9,7 +9,7 @@ import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.da
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
 import 'package:ledgixerp/features/crm/customers/presentation/widgets/add_customer_dialog.dart';
-import 'package:ledgixerp/features/inventory/models/product_model.dart';
+import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/settings/models/credit_term_model.dart';
 import 'package:ledgixerp/features/settings/services/terms_service.dart';
@@ -17,7 +17,8 @@ import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 
 import 'package:ledgixerp/features/settings/presentation/widgets/add_credit_term_dialog.dart';
-import 'package:ledgixerp/features/inventory/presentation/widgets/add_product_dialog.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
+import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_item_pane.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
 class AddInvoiceScreen extends StatefulWidget {
@@ -46,7 +47,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
 
   List<CustomerModel> _allCustomers = [];
   List<AccountModel> _allAccounts = [];
-  List<ProductModel> _allProducts = [];
+  List<InventoryItemModel> _allProducts = [];
   List<CreditTermModel> _allTerms = [];
   final List<InvoiceLineItemModel> _items = [];
   bool _isLoading = false;
@@ -66,14 +67,19 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
     _accountService.getAccounts(widget.user.companyId!).listen((accounts) {
       if (mounted) {
         setState(() {
-          _allAccounts = accounts.where((a) => 
-            a.accountType == AccountType.income || 
-            a.accountType == AccountType.otherIncome
-          ).toList();
+          _allAccounts = accounts
+              .where(
+                (a) =>
+                    a.accountType == AccountType.income ||
+                    a.accountType == AccountType.otherIncome,
+              )
+              .toList();
         });
       }
     });
-    _inventoryService.getProducts(widget.user.companyId!).listen((products) {
+    _inventoryService.getInventoryItems(widget.user.companyId!).listen((
+      products,
+    ) {
       if (mounted) setState(() => _allProducts = products);
     });
     _termsService.getCreditTerms(widget.user.companyId!).listen((terms) {
@@ -100,7 +106,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _invoiceService.generateNextInvoiceNumber(
+    final number = await _invoiceService.previewNextInvoiceNumber(
       widget.user.companyId!,
     );
     if (mounted) {
@@ -138,6 +144,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
     String? accountId,
     String? accountName,
     String? desc,
+    String? unit,
     double? qty,
     double? price,
     double? vat,
@@ -156,6 +163,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
         accountId: accountId ?? item.accountId,
         accountName: accountName ?? item.accountName,
         description: desc ?? item.description,
+        unit: unit ?? item.unit,
         quantity: newQty,
         unitPrice: newPrice,
         vatRate: newVatRate,
@@ -194,7 +202,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
       final invoice = InvoiceModel(
         id: '',
         companyId: widget.user.companyId!,
-        invoiceNumber: 'AUTO', // Service handles the actual number
+        invoiceNumber: 'AUTO',
         customerId: _selectedCustomer!.id,
         customerName: _selectedCustomer!.name,
         invoiceDate: _invoiceDate,
@@ -204,12 +212,18 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
         vatAmount: _totalVat,
         totalAmount: _totalAmount,
         balanceDue: _totalAmount,
-        attachments: _attachments,
         createdAt: DateTime.now(),
+        attachments: _attachments,
       );
 
       await _invoiceService.addInvoice(invoice);
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        if (widget.isPane) {
+          Navigator.pop(context, true);
+        } else {
+          Navigator.pop(context);
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -235,175 +249,190 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   void _showAddCreditTermDialog() {
     showDialog(
       context: context,
-      builder: (context) => AddCreditTermDialog(companyId: widget.user.companyId!),
+      builder: (context) =>
+          AddCreditTermDialog(companyId: widget.user.companyId!),
     );
   }
 
   void _showAddProductDialog() {
-    showDialog(
+    SidePanel.show(
       context: context,
-      builder: (context) => AddProductDialog(companyId: widget.user.companyId!),
+      title: 'New Inventory Item',
+      child: AddInventoryItemPane(user: widget.user),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final content = Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Invoice Details', style: ErpFormStyle.sectionHeaderStyle(context)),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: InputDecorator(
-                  decoration: ErpFormStyle.inputDecoration(context, 'Document Number'),
-                  child: Text(
-                    'Next number: $_previewNumber',
-                    style: ErpFormStyle.inputStyle(context).copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blueAccent,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _invoiceDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (date != null) {
-                      setState(() => _invoiceDate = date);
-                      _updateDueDate();
-                    }
-                  },
-                  child: InputDecorator(
-                    decoration: ErpFormStyle.inputDecoration(context, 'Invoice Date', icon: Icons.calendar_today),
-                    child: Text(
-                      DateFormat('yyyy-MM-dd').format(_invoiceDate),
-                      style: ErpFormStyle.inputStyle(context),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SearchableSelector<CustomerModel>(
-            labelText: 'Customer',
-            items: _allCustomers,
-            itemLabelBuilder: (c) => c.name,
-            onSelected: (val) => setState(() => _selectedCustomer = val),
-            addLabel: 'Add New Customer',
-            onAdd: _showAddCustomerDialog,
-            initialValue: _selectedCustomer,
-            validator: (v) => _selectedCustomer == null ? 'Required' : null,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: SearchableSelector<CreditTermModel>(
-                  labelText: 'Credit Terms',
-                  items: _allTerms,
-                  itemLabelBuilder: (t) => t.name,
-                  onSelected: (val) {
-                    setState(() {
-                      _selectedTerm = val;
-                      _updateDueDate();
-                    });
-                  },
-                  addLabel: 'Add New Term',
-                  onAdd: _showAddCreditTermDialog,
-                  initialValue: _selectedTerm,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _dueDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (date != null) setState(() => _dueDate = date);
-                  },
-                  child: InputDecorator(
-                    decoration: ErpFormStyle.inputDecoration(context, 'Due Date', icon: Icons.event),
-                    child: Text(
-                      DateFormat('yyyy-MM-dd').format(_dueDate),
-                      style: ErpFormStyle.inputStyle(context),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          Text('Line Items', style: ErpFormStyle.sectionHeaderStyle(context)),
-          const SizedBox(height: 16),
-          _buildItemsTable(),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: _addItem,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add Line Item', style: TextStyle(fontSize: 13)),
-            style: TextButton.styleFrom(foregroundColor: Colors.blueAccent),
-          ),
-          const SizedBox(height: 32),
-          Text('Attachments', style: ErpFormStyle.sectionHeaderStyle(context)),
-          const SizedBox(height: 16),
-          AttachmentSection(
-            companyId: widget.user.companyId!,
-            folder: 'invoices',
-            onAttachmentsChanged: (attachments) {
-              _attachments = attachments;
-            },
-          ),
-          const SizedBox(height: 32),
-          _buildSummarySection(),
-        ],
-      ),
-    );
-
-    if (widget.isPane) {
-      return ErpSidePane(
-        title: 'New Sales Invoice',
-        onCancel: () => Navigator.pop(context),
-        onSave: _save,
-        isLoading: _isLoading,
-        saveLabel: 'Create Invoice',
-        child: content,
-      );
-    }
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create New Invoice'),
+        title: const Text('Create New Sales Invoice'),
         actions: [
           ElevatedButton(
             onPressed: _isLoading ? null : _save,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Save Invoice'),
           ),
           const SizedBox(width: 16),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1000),
-            child: content,
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InputDecorator(
+                              decoration: ErpFormStyle.inputDecoration(
+                                context,
+                                'Invoice Number',
+                              ),
+                              child: Text(
+                                'Next number: $_previewNumber',
+                                style: ErpFormStyle.inputStyle(context)
+                                    .copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blueAccent,
+                                    ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 2,
+                            child: SearchableSelector<CustomerModel>(
+                              labelText: 'Select Customer',
+                              items: _allCustomers,
+                              itemLabelBuilder: (c) => c.name,
+                              onSelected: (val) =>
+                                  setState(() => _selectedCustomer = val),
+                              addLabel: 'Add New Customer',
+                              onAdd: _showAddCustomerDialog,
+                              initialValue: _selectedCustomer,
+                              validator: (v) =>
+                                  _selectedCustomer == null ? 'Required' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildDatePicker(
+                              label: 'Invoice Date',
+                              selectedDate: _invoiceDate,
+                              onTap: (date) {
+                                setState(() => _invoiceDate = date);
+                                _updateDueDate();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: SearchableSelector<CreditTermModel>(
+                              labelText: 'Payment Terms',
+                              items: _allTerms,
+                              itemLabelBuilder: (t) => t.name,
+                              onSelected: (val) {
+                                setState(() {
+                                  _selectedTerm = val;
+                                  _updateDueDate();
+                                });
+                              },
+                              addLabel: 'Add New Term',
+                              onAdd: _showAddCreditTermDialog,
+                              initialValue: _selectedTerm,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildDatePicker(
+                              label: 'Due Date',
+                              selectedDate: _dueDate,
+                              onTap: (date) => setState(() => _dueDate = date),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Invoice Items',
+                style: ErpFormStyle.sectionHeaderStyle(context),
+              ),
+              const SizedBox(height: 16),
+              _buildItemsTable(),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _addItem,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Item'),
+              ),
+              const SizedBox(height: 32),
+              AttachmentSection(
+                companyId: widget.user.companyId!,
+                folder: 'invoices',
+                onAttachmentsChanged: (attachments) {
+                  _attachments = attachments;
+                },
+              ),
+              const SizedBox(height: 32),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Spacer(),
+                  _buildSummarySection(),
+                ],
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDatePicker({
+    required String label,
+    required DateTime selectedDate,
+    required Function(DateTime) onTap,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final date = await showDatePicker(
+          context: context,
+          initialDate: selectedDate,
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+        );
+        if (date != null) onTap(date);
+      },
+      child: InputDecorator(
+        decoration: ErpFormStyle.inputDecoration(
+          context,
+          label,
+          icon: Icons.calendar_today,
+        ),
+        child: Text(
+          DateFormat('yyyy-MM-dd').format(selectedDate),
+          style: ErpFormStyle.inputStyle(context),
         ),
       ),
     );
@@ -412,129 +441,157 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   Widget _buildItemsTable() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    return Column(
+    return Table(
+      columnWidths: const {
+        0: FlexColumnWidth(4),
+        1: FlexColumnWidth(1),
+        2: FlexColumnWidth(2),
+        3: FlexColumnWidth(1),
+        4: FlexColumnWidth(2),
+        5: IntrinsicColumnWidth(),
+      },
       children: [
-        // Table Header
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        TableRow(
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
           ),
-          child: Row(
-            children: [
-              Expanded(flex: 4, child: Text('Product / Service', style: ErpFormStyle.labelStyle(context))),
-              Expanded(flex: 1, child: Text('Qty', style: ErpFormStyle.labelStyle(context), textAlign: TextAlign.center)),
-              Expanded(flex: 2, child: Text('Unit Price', style: ErpFormStyle.labelStyle(context), textAlign: TextAlign.center)),
-              Expanded(flex: 1, child: Text('VAT%', style: ErpFormStyle.labelStyle(context), textAlign: TextAlign.center)),
-              Expanded(flex: 2, child: Text('Total', style: ErpFormStyle.labelStyle(context), textAlign: TextAlign.right)),
-              const SizedBox(width: 40),
-            ],
-          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'Product / Account',
+                style: ErpFormStyle.labelStyle(context),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text('Qty', style: ErpFormStyle.labelStyle(context)),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'Unit Price',
+                style: ErpFormStyle.labelStyle(context),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text('VAT%', style: ErpFormStyle.labelStyle(context)),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'Total',
+                textAlign: TextAlign.right,
+                style: ErpFormStyle.labelStyle(context),
+              ),
+            ),
+            const Padding(padding: EdgeInsets.all(8), child: Text('')),
+          ],
         ),
-        // Table Rows
         ..._items.asMap().entries.map((entry) {
           int index = entry.key;
           InvoiceLineItemModel item = entry.value;
 
-          return Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: theme.dividerColor)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: SearchableSelector<dynamic>(
-                    labelText: '',
-                    items: [..._allProducts, ..._allAccounts],
-                    itemLabelBuilder: (val) {
-                      if (val is ProductModel) return '${val.sku} - ${val.name}';
-                      if (val is AccountModel) return '${val.accountCode} - ${val.accountName}';
-                      return '';
-                    },
-                    onSelected: (val) {
-                      if (val is ProductModel) {
-                        _updateItem(
-                          index,
-                          productId: val.id,
-                          accountId: val.incomeAccountId ?? '',
-                          accountName: val.name,
-                          desc: val.description ?? val.name,
-                          price: val.salePrice,
-                        );
-                      } else if (val is AccountModel) {
-                        _updateItem(
-                          index,
-                          accountId: val.id,
-                          accountName: val.accountName,
-                          desc: val.accountName,
-                        );
-                      }
-                    },
-                    addLabel: 'Add Product',
-                    onAdd: _showAddProductDialog,
-                    initialValue: item.productId != null 
-                        ? _allProducts.where((p) => p.id == item.productId).firstOrNull
-                        : _allAccounts.where((a) => a.id == item.accountId).firstOrNull,
-                  ),
+          return TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(4),
+                child: SearchableSelector<dynamic>(
+                  labelText: '',
+                  items: [..._allProducts, ..._allAccounts],
+                  itemLabelBuilder: (val) {
+                    if (val is InventoryItemModel) {
+                      return '${val.itemCode} - ${val.itemName}';
+                    }
+                    if (val is AccountModel) {
+                      return '${val.accountCode} - ${val.accountName}';
+                    }
+                    return '';
+                  },
+                  onSelected: (val) {
+                    if (val is InventoryItemModel) {
+                      _updateItem(
+                        index,
+                        productId: val.id,
+                        accountId: val.incomeAccountId ?? '',
+                        accountName: val.itemName,
+                        desc: val.itemName,
+                        unit: val.defaultUomId,
+                        price: val.salesPrice,
+                      );
+                    } else if (val is AccountModel) {
+                      _updateItem(
+                        index,
+                        accountId: val.id,
+                        accountName: val.accountName,
+                        desc: val.accountName,
+                      );
+                    }
+                  },
+                  addLabel: 'Add Product',
+                  onAdd: _showAddProductDialog,
+                  initialValue: item.productId != null
+                      ? _allProducts
+                          .where((p) => p.id == item.productId)
+                          .firstOrNull
+                      : _allAccounts
+                          .where((a) => a.id == item.accountId)
+                          .firstOrNull,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 1,
-                  child: TextFormField(
-                    initialValue: item.quantity.toString(),
-                    style: ErpFormStyle.inputStyle(context),
-                    textAlign: TextAlign.center,
-                    decoration: ErpFormStyle.inputDecoration(context, '').copyWith(contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4)),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) => _updateItem(index, qty: double.tryParse(v) ?? 0),
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(4),
+                child: TextFormField(
+                  initialValue: item.quantity.toString(),
+                  style: ErpFormStyle.inputStyle(context),
+                  decoration: ErpFormStyle.inputDecoration(context, ''),
+                  keyboardType: TextInputType.number,
+                  onChanged: (v) =>
+                      _updateItem(index, qty: double.tryParse(v) ?? 0),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    initialValue: item.unitPrice.toString(),
-                    style: ErpFormStyle.inputStyle(context),
-                    textAlign: TextAlign.center,
-                    decoration: ErpFormStyle.inputDecoration(context, '').copyWith(contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4)),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) => _updateItem(index, price: double.tryParse(v) ?? 0),
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(4),
+                child: TextFormField(
+                  initialValue: item.unitPrice.toString(),
+                  style: ErpFormStyle.inputStyle(context),
+                  decoration: ErpFormStyle.inputDecoration(context, ''),
+                  keyboardType: TextInputType.number,
+                  onChanged: (v) =>
+                      _updateItem(index, price: double.tryParse(v) ?? 0),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 1,
-                  child: TextFormField(
-                    initialValue: item.vatRate.toString(),
-                    style: ErpFormStyle.inputStyle(context),
-                    textAlign: TextAlign.center,
-                    decoration: ErpFormStyle.inputDecoration(context, '').copyWith(contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4)),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) => _updateItem(index, vat: double.tryParse(v) ?? 0),
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(4),
+                child: TextFormField(
+                  initialValue: item.vatRate.toString(),
+                  style: ErpFormStyle.inputStyle(context),
+                  decoration: ErpFormStyle.inputDecoration(context, ''),
+                  keyboardType: TextInputType.number,
+                  onChanged: (v) =>
+                      _updateItem(index, vat: double.tryParse(v) ?? 0),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      NumberFormat('#,##0.00').format(item.lineTotal),
-                      textAlign: TextAlign.right,
-                      style: ErpFormStyle.inputStyle(context).copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  NumberFormat('#,##0.00').format(item.lineTotal),
+                  textAlign: TextAlign.right,
+                  style: ErpFormStyle.inputStyle(context),
                 ),
-                IconButton(
-                  icon: Icon(Icons.close, color: theme.iconTheme.color?.withValues(alpha: 0.3), size: 18),
-                  onPressed: () => _removeItem(index),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.close,
+                  color: theme.iconTheme.color?.withValues(alpha: 0.3),
+                  size: 18,
                 ),
-              ],
-            ),
+                onPressed: () => _removeItem(index),
+              ),
+            ],
           );
         }),
       ],
@@ -544,28 +601,24 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   Widget _buildSummarySection() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        width: 300,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.01),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Column(
-          children: [
-            _buildSummaryRow('Subtotal', _totalSubtotal),
-            const SizedBox(height: 12),
-            _buildSummaryRow('VAT Amount', _totalVat),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Divider(height: 1, color: theme.dividerColor),
-            ),
-            _buildSummaryRow('Total Amount', _totalAmount, isBold: true),
-          ],
-        ),
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.black.withValues(alpha: 0.01),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        children: [
+          _buildSummaryRow('Subtotal', _totalSubtotal),
+          const SizedBox(height: 8),
+          _buildSummaryRow('VAT Amount', _totalVat),
+          Divider(height: 24, color: theme.dividerColor),
+          _buildSummaryRow('Total Amount', _totalAmount, isBold: true),
+        ],
       ),
     );
   }
@@ -577,7 +630,9 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
       children: [
         Text(
           label,
-          style: isBold ? ErpFormStyle.sectionHeaderStyle(context) : ErpFormStyle.labelStyle(context),
+          style: isBold
+              ? ErpFormStyle.sectionHeaderStyle(context)
+              : ErpFormStyle.labelStyle(context),
         ),
         Text(
           NumberFormat('#,##0.00').format(value),

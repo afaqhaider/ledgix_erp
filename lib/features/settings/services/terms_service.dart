@@ -16,7 +16,10 @@ class TermsService {
   Stream<List<CreditTermModel>> getCreditTerms(String companyId) {
     return _getCreditTermsRef(companyId).snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
-        return CreditTermModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        return CreditTermModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       }).toList();
     });
   }
@@ -36,9 +39,9 @@ class TermsService {
   }
 
   Future<void> _clearDefaultCreditTerm(String companyId) async {
-    final query = await _getCreditTermsRef(companyId)
-        .where('isDefault', isEqualTo: true)
-        .get();
+    final query = await _getCreditTermsRef(
+      companyId,
+    ).where('isDefault', isEqualTo: true).get();
     for (var doc in query.docs) {
       await doc.reference.update({'isDefault': false});
     }
@@ -55,7 +58,10 @@ class TermsService {
   Stream<List<PaymentTermModel>> getPaymentTerms(String companyId) {
     return _getPaymentTermsRef(companyId).snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
-        return PaymentTermModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        return PaymentTermModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       }).toList();
     });
   }
@@ -68,9 +74,9 @@ class TermsService {
   }
 
   Future<void> _clearDefaultPaymentTerm(String companyId) async {
-    final query = await _getPaymentTermsRef(companyId)
-        .where('isDefault', isEqualTo: true)
-        .get();
+    final query = await _getPaymentTermsRef(
+      companyId,
+    ).where('isDefault', isEqualTo: true).get();
     for (var doc in query.docs) {
       await doc.reference.update({'isDefault': false});
     }

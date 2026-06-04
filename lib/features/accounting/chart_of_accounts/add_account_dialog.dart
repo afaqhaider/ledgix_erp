@@ -143,7 +143,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<AccountType>(
-                    value: _selectedType,
+                    initialValue: _selectedType,
                     style: ErpFormStyle.inputStyle(context),
                     decoration: ErpFormStyle.inputDecoration(
                       context,
@@ -153,7 +153,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     items: AccountType.values.map((type) {
                       return DropdownMenuItem(
                         value: type,
-                        child: Text(type.label, style: ErpFormStyle.inputStyle(context)),
+                        child: Text(
+                          type.label,
+                          style: ErpFormStyle.inputStyle(context),
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {
@@ -169,7 +172,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<AccountCategory>(
-                    value: _selectedCategory,
+                    initialValue: _selectedCategory,
                     style: ErpFormStyle.inputStyle(context),
                     decoration: ErpFormStyle.inputDecoration(
                       context,
@@ -179,7 +182,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     items: AccountCategory.values.map((cat) {
                       return DropdownMenuItem(
                         value: cat,
-                        child: Text(cat.label, style: ErpFormStyle.inputStyle(context)),
+                        child: Text(
+                          cat.label,
+                          style: ErpFormStyle.inputStyle(context),
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {
@@ -193,7 +199,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             ),
             const SizedBox(height: 20),
             DropdownButtonFormField<AccountModel?>(
-              value: _parentAccount,
+              initialValue: _parentAccount,
               style: ErpFormStyle.inputStyle(context),
               decoration: ErpFormStyle.inputDecoration(
                 context,
@@ -203,12 +209,18 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               items: [
                 DropdownMenuItem<AccountModel?>(
                   value: null,
-                  child: Text('None (Top Level)', style: ErpFormStyle.inputStyle(context)),
+                  child: Text(
+                    'None (Top Level)',
+                    style: ErpFormStyle.inputStyle(context),
+                  ),
                 ),
                 ..._allAccounts.where((a) => a.isGroup).map((acc) {
                   return DropdownMenuItem(
                     value: acc,
-                    child: Text('${acc.accountCode} - ${acc.accountName}', style: ErpFormStyle.inputStyle(context)),
+                    child: Text(
+                      '${acc.accountCode} - ${acc.accountName}',
+                      style: ErpFormStyle.inputStyle(context),
+                    ),
                   );
                 }),
               ],
@@ -219,10 +231,21 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               children: [
                 Expanded(
                   child: SwitchListTile(
-                    title: Text('Is Group?', style: theme.textTheme.bodySmall?.copyWith(fontSize: 13)),
-                    subtitle: Text('Cannot post to groups', style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                    title: Text(
+                      'Is Group?',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      'Cannot post to groups',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                    ),
                     value: _isGroup,
-                    activeColor: Colors.blueAccent,
+                    activeThumbColor: Colors.blueAccent,
                     onChanged: (val) => setState(() {
                       _isGroup = val;
                       if (_isGroup) {
@@ -236,9 +259,12 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                 const SizedBox(width: 24),
                 Expanded(
                   child: SwitchListTile(
-                    title: Text('Allow Posting?', style: theme.textTheme.bodySmall?.copyWith(fontSize: 13)),
+                    title: Text(
+                      'Allow Posting?',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 13),
+                    ),
                     value: _allowPosting,
-                    activeColor: Colors.blueAccent,
+                    activeThumbColor: Colors.blueAccent,
                     onChanged: _isGroup
                         ? null
                         : (val) => setState(() => _allowPosting = val),
@@ -250,7 +276,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             const SizedBox(height: 24),
             Divider(color: theme.dividerColor),
             const SizedBox(height: 20),
-            Text('Opening Balance', style: ErpFormStyle.sectionHeaderStyle(context)),
+            Text(
+              'Opening Balance',
+              style: ErpFormStyle.sectionHeaderStyle(context),
+            ),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -265,7 +294,9 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                       'Amount',
                       icon: Icons.account_balance_wallet_outlined,
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     validator: (v) {
                       if (_isGroup && (double.tryParse(v ?? '0') ?? 0) != 0) {
                         return 'Must be 0 for groups';
@@ -277,33 +308,40 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<BalanceType>(
-                    value: _balanceType,
+                    initialValue: _balanceType,
                     style: ErpFormStyle.inputStyle(context),
                     decoration: ErpFormStyle.inputDecoration(context, 'Type'),
                     items: BalanceType.values.map((type) {
                       return DropdownMenuItem(
                         value: type,
-                        child: Text(type.label, style: ErpFormStyle.inputStyle(context)),
+                        child: Text(
+                          type.label,
+                          style: ErpFormStyle.inputStyle(context),
+                        ),
                       );
                     }).toList(),
-                    onChanged: _isGroup ? null : (val) => setState(() => _balanceType = val!),
+                    onChanged: _isGroup
+                        ? null
+                        : (val) => setState(() => _balanceType = val!),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             InkWell(
-              onTap: _isGroup ? null : () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _openingDate,
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() => _openingDate = picked);
-                }
-              },
+              onTap: _isGroup
+                  ? null
+                  : () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _openingDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setState(() => _openingDate = picked);
+                      }
+                    },
               child: InputDecorator(
                 decoration: ErpFormStyle.inputDecoration(
                   context,

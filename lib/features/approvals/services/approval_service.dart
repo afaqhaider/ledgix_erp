@@ -1,266 +1,246 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/core/audit/audit_service.dart';
-import 'package:ledgixerp/features/notifications/services/notification_service.dart';
-import 'package:ledgixerp/features/notifications/models/notification_model.dart';
-import 'package:ledgixerp/core/auth/user_role.dart';
+import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
+import 'package:ledgixerp/features/approvals/models/approval_rule_model.dart';
 
 class ApprovalService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final _db = FirebaseFirestore.instance;
   final _auditService = AuditService();
-  final _notificationService = NotificationService();
 
-  CollectionReference _getRef(String companyId) {
-    return _firestore
+  // Rules Management
+  Stream<List<ApprovalRuleModel>> getRules(String companyId) {
+    return _db
         .collection('companies')
         .doc(companyId)
-        .collection('approvals');
-  }
-
-  Stream<List<ApprovalRequestModel>> getPendingApprovals(String companyId) {
-    return _getRef(companyId)
-        .where('status', isEqualTo: ApprovalStatus.pending.name)
-        .orderBy('requestedAt', descending: true)
+        .collection('approval_rules')
         .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            return ApprovalRequestModel.fromMap(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            );
-          }).toList();
-        });
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ApprovalRuleModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
-  Stream<List<ApprovalRequestModel>> getMyRequests(
-    String companyId,
-    String userId,
-  ) {
-    return _getRef(companyId)
-        .where('requestedByUserId', isEqualTo: userId)
-        .orderBy('requestedAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            return ApprovalRequestModel.fromMap(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            );
-          }).toList();
-        });
-  }
+  Future<void> saveRule(ApprovalRuleModel rule) async {
+    final docRef = _db
+        .collection('companies')
+        .doc(rule.companyId)
+        .collection('approval_rules')
+        .doc(rule.id.isEmpty ? null : rule.id);
 
-  Future<void> submitForApproval(
-    ApprovalRequestModel request, {
-    required UserRole requesterRole,
-  }) async {
-    // 1. AUTO-APPROVE Logic: If requester is Owner or Finance Manager (rank >= 80)
-    if (requesterRole.rank >= 80) {
-      await _autoApprove(request);
-      return;
+    final data = rule.toMap();
+    if (rule.id.isEmpty) {
+      data['id'] = docRef.id;
     }
+    await docRef.set(data, SetOptions(merge: true));
+  }
 
-    final batch = _firestore.batch();
-
-    // 2. Create approval request
-    final docRef = _getRef(request.companyId).doc();
-    batch.set(docRef, request.toMap()..['id'] = docRef.id);
-
-    // 3. Update source document status to 'pendingApproval'
-    final sourceCollection = _getCollectionForType(request.sourceType);
-    batch.update(
-      _firestore
-          .collection('companies')
-          .doc(request.companyId)
-          .collection(sourceCollection)
-          .doc(request.sourceId),
-      {'approvalStatus': ApprovalStatus.pending.name},
-    );
-
-    await batch.commit();
-
-    // 4. Notify higher roles (Hierarchical Escalation)
-    final superiorsSnap = await _firestore
-        .collection('users')
-        .where('companyId', isEqualTo: request.companyId)
+  // Approval Process
+  Future<ApprovalRuleModel?> findMatchingRule({
+    required String companyId,
+    required ApprovalModule module,
+    required double amount,
+  }) async {
+    final snapshot = await _db
+        .collection('companies')
+        .doc(companyId)
+        .collection('approval_rules')
+        .where('module', isEqualTo: module.name)
+        .where('isEnabled', isEqualTo: true)
         .get();
 
-    for (var doc in superiorsSnap.docs) {
-      final userData = doc.data();
-      final roleName = userData['role'] ?? 'dataEntry';
-      final role = UserRole.values.firstWhere(
-        (e) => e.name == roleName,
-        orElse: () => UserRole.dataEntry,
-      );
+    final rules = snapshot.docs
+        .map((doc) => ApprovalRuleModel.fromMap(doc.data(), doc.id))
+        .toList();
 
-      if (role.rank > requesterRole.rank &&
-          doc.id != request.requestedByUserId) {
-        await _notificationService.sendNotification(
-          userId: doc.id,
-          companyId: request.companyId,
-          title: 'Approval Required',
-          message:
-              '${request.requestedByUserName} submitted ${request.sourceType} ${request.sourceNumber} for review.',
-          type: NotificationType.approval,
-          relatedDocId: docRef.id,
-          relatedDocType: 'approval',
-        );
+    for (var rule in rules) {
+      if (amount >= rule.minAmount && amount <= rule.maxAmount) {
+        return rule;
       }
     }
-
-    await _auditService.log(
-      companyId: request.companyId,
-      userId: request.requestedByUserId,
-      userName: request.requestedByUserName,
-      actionType: 'submit_approval',
-      module: 'approvals',
-      documentId: docRef.id,
-      documentNumber: request.sourceNumber,
-      description:
-          'Submitted ${request.sourceType} ${request.sourceNumber} for approval',
-    );
+    return null;
   }
 
-  Future<void> _autoApprove(ApprovalRequestModel request) async {
-    final batch = _firestore.batch();
-    final sourceCollection = _getCollectionForType(request.sourceType);
-
-    batch.update(
-      _firestore
-          .collection('companies')
-          .doc(request.companyId)
-          .collection(sourceCollection)
-          .doc(request.sourceId),
-      {'approvalStatus': ApprovalStatus.approved.name},
-    );
-
-    final docRef = _getRef(request.companyId).doc();
-    batch.set(
-      docRef,
-      request.toMap()..addAll({
-        'id': docRef.id,
-        'status': ApprovalStatus.approved.name,
-        'approverUserId': request.requestedByUserId,
-        'approverUserName': '${request.requestedByUserName} (Auto)',
-        'actionedAt': FieldValue.serverTimestamp(),
-        'notes': 'Auto-approved based on role rank.',
-      }),
-    );
-
-    await batch.commit();
-
-    await _auditService.log(
-      companyId: request.companyId,
-      userId: request.requestedByUserId,
-      userName: request.requestedByUserName,
-      actionType: 'auto_approve',
-      module: 'approvals',
-      documentId: request.sourceId,
-      documentNumber: request.sourceNumber,
-      description:
-          'Auto-approved ${request.sourceType} ${request.sourceNumber}',
-    );
-  }
-
-  Future<void> actionApproval({
+  Future<String?> submitForApproval({
+    required AppUser user,
     required String companyId,
-    required String approvalId,
-    required String approverId,
-    required String approverName,
-    required ApprovalStatus status,
     required String sourceType,
     required String sourceId,
-    String? sourceNumber,
-    String? notes,
+    required String sourceNumber,
+    required double amount,
   }) async {
-    final batch = _firestore.batch();
+    final module = _getModuleFromType(sourceType);
+    if (module == null) return null;
 
-    batch.update(_getRef(companyId).doc(approvalId), {
-      'status': status.name,
-      'approverUserId': approverId,
-      'approverUserName': approverName,
-      'actionedAt': FieldValue.serverTimestamp(),
-      'notes': notes,
-    });
-
-    final collectionName = _getCollectionForType(sourceType);
-
-    batch.update(
-      _firestore
-          .collection('companies')
-          .doc(companyId)
-          .collection(collectionName)
-          .doc(sourceId),
-      {'approvalStatus': status.name},
+    final rule = await findMatchingRule(
+      companyId: companyId,
+      module: module,
+      amount: amount,
     );
 
-    await batch.commit();
-
-    final reqSnap = await _getRef(companyId).doc(approvalId).get();
-    if (reqSnap.exists) {
-      final reqData = reqSnap.data() as Map<String, dynamic>;
-      final requestedByUserId = reqData['requestedByUserId'];
-
-      await _notificationService.sendNotification(
-        userId: requestedByUserId,
-        companyId: companyId,
-        title: status == ApprovalStatus.approved
-            ? 'Request Approved'
-            : 'Request Rejected',
-        message:
-            'Your ${reqData['sourceType']} request (${reqData['sourceNumber']}) was ${status.name} by $approverName.',
-        type: NotificationType.approval,
-        relatedDocId: sourceId,
-        relatedDocType: sourceType,
-      );
+    if (rule == null || rule.requiredApproverRoles.isEmpty) {
+      return null; // No approval required
     }
+
+    final docRef = _db
+        .collection('companies')
+        .doc(companyId)
+        .collection('approval_requests')
+        .doc();
+
+    final request = ApprovalRequestModel(
+      id: docRef.id,
+      companyId: companyId,
+      sourceType: sourceType,
+      sourceId: sourceId,
+      sourceNumber: sourceNumber,
+      amount: amount,
+      requestedByUserId: user.uid,
+      requestedByUserName: user.fullName,
+      requestedAt: DateTime.now(),
+      status: ApprovalStatus.pending,
+      currentApproverRoleId: rule.requiredApproverRoles.first.name,
+    );
+
+    await docRef.set(request.toMap());
+
+    // Update source document status
+    await _db
+        .collection('companies')
+        .doc(companyId)
+        .collection(_getCollectionName(sourceType))
+        .doc(sourceId)
+        .update({'approvalStatus': 'pending', 'approvalRequestId': docRef.id});
 
     await _auditService.log(
       companyId: companyId,
-      userId: approverId,
-      userName: approverName,
-      actionType: status == ApprovalStatus.approved ? 'approve' : 'reject',
-      module: 'approvals',
-      documentId: approvalId,
-      documentNumber: sourceNumber,
+      userId: user.uid,
+      userName: user.fullName,
+      actionType: 'approval_requested',
+      module: sourceType,
+      documentId: sourceId,
+      description: 'Submitted $sourceNumber for approval (Amount: $amount)',
+    );
+
+    return docRef.id;
+  }
+
+  Future<void> takeAction({
+    required AppUser user,
+    required String requestId,
+    required ApprovalStatus action,
+    String? comments,
+  }) async {
+    final docRef = _db
+        .collection('companies')
+        .doc(user.companyId!)
+        .collection('approval_requests')
+        .doc(requestId);
+
+    final snapshot = await docRef.get();
+    if (!snapshot.exists) return;
+
+    final request = ApprovalRequestModel.fromMap(snapshot.data()!, requestId);
+
+    final historyItem = ApprovalHistoryItem(
+      userId: user.uid,
+      userName: user.fullName,
+      action: action,
+      timestamp: DateTime.now(),
+      comments: comments,
+    );
+
+    final updatedHistory = [...request.history, historyItem];
+
+    await docRef.update({
+      'status': action.name,
+      'history': updatedHistory.map((e) => e.toMap()).toList(),
+      'currentApproverRoleId': null, // For now simplified to one level
+    });
+
+    // Update source document
+    String mappedStatus = 'draft';
+    if (action == ApprovalStatus.approved) mappedStatus = 'approved';
+    if (action == ApprovalStatus.rejected) mappedStatus = 'rejected';
+    if (action == ApprovalStatus.returned) mappedStatus = 'correction';
+
+    await _db
+        .collection('companies')
+        .doc(user.companyId!)
+        .collection(_getCollectionName(request.sourceType))
+        .doc(request.sourceId)
+        .update({'approvalStatus': mappedStatus});
+
+    await _auditService.log(
+      companyId: user.companyId!,
+      userId: user.uid,
+      userName: user.fullName,
+      actionType: 'approval_${action.name}',
+      module: request.sourceType,
+      documentId: request.sourceId,
       description:
-          '${status == ApprovalStatus.approved ? 'Approved' : 'Rejected'} $sourceType $sourceNumber',
+          '${action.name.toUpperCase()} document ${request.sourceNumber}. Comments: $comments',
     );
   }
 
-  String _getCollectionForType(String sourceType) {
-    switch (sourceType) {
-      case 'salesInvoice':
-        return 'salesInvoices';
+  Stream<List<ApprovalRequestModel>> getPendingRequests(
+    String companyId,
+    String roleName,
+  ) {
+    return _db
+        .collection('companies')
+        .doc(companyId)
+        .collection('approval_requests')
+        .where('status', isEqualTo: 'pending')
+        .where('currentApproverRoleId', isEqualTo: roleName)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ApprovalRequestModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
+  ApprovalModule? _getModuleFromType(String type) {
+    switch (type) {
       case 'quotation':
-        return 'quotations';
-      case 'purchaseOrder':
-        return 'purchaseOrders';
-      case 'supplierPayment':
-        return 'supplierPayments';
-      case 'customerPayment':
-        return 'customerPayments';
-      case 'journalEntry':
-        return 'journalEntries';
-      case 'supplierBill':
-        return 'supplierBills';
+        return ApprovalModule.quotations;
+      case 'sales_invoice':
+        return ApprovalModule.salesInvoices;
+      case 'customer_payment':
+        return ApprovalModule.customerPayments;
+      case 'purchase_order':
+        return ApprovalModule.purchaseOrders;
+      case 'supplier_payment':
+        return ApprovalModule.supplierPayments;
+      case 'journal_entry':
+        return ApprovalModule.journalEntries;
+      case 'supplier_bill':
+        return ApprovalModule.supplierBills;
       default:
-        throw 'Unknown source type: $sourceType';
+        return null;
     }
   }
 
-  Future<ApprovalRequestModel?> getRequestBySource(
-    String companyId,
-    String sourceId,
-  ) async {
-    final snapshot = await _getRef(
-      companyId,
-    ).where('sourceId', isEqualTo: sourceId).limit(1).get();
-
-    if (snapshot.docs.isEmpty) return null;
-    return ApprovalRequestModel.fromMap(
-      snapshot.docs.first.data() as Map<String, dynamic>,
-      snapshot.docs.first.id,
-    );
+  String _getCollectionName(String type) {
+    switch (type) {
+      case 'quotation':
+        return 'quotations';
+      case 'sales_invoice':
+        return 'invoices';
+      case 'customer_payment':
+        return 'customer_payments';
+      case 'purchase_order':
+        return 'purchase_orders';
+      case 'supplier_payment':
+        return 'supplier_payments';
+      case 'journal_entry':
+        return 'journal_entries';
+      case 'supplier_bill':
+        return 'supplier_bills';
+      default:
+        return type;
+    }
   }
 }

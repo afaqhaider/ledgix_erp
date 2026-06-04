@@ -115,7 +115,8 @@ class SupplierPaymentModel {
       purchaseOrderId: map['purchaseOrderId'],
       purchaseOrderNumber: map['purchaseOrderNumber'],
       bankAccountId: map['bankAccountId'],
-      paymentDate: (map['paymentDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      paymentDate:
+          (map['paymentDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       paymentMethod: PaymentMethod.values.firstWhere(
         (e) => e.name == map['paymentMethod'],
         orElse: () => PaymentMethod.bank,

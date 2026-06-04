@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/features/auth/presentation/screens/register_screen.dart';
@@ -29,25 +30,58 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (mounted) {
-        String errorMessage = 'An error occurred. Please try again.';
-        if (e.toString().contains('user-not-found')) {
-          errorMessage = 'No user found for that email.';
-        } else if (e.toString().contains('wrong-password')) {
-          errorMessage = 'Wrong password provided.';
-        } else if (e.toString().contains('invalid-email')) {
-          errorMessage = 'The email address is badly formatted.';
+        if (e is FirebaseAuthException &&
+            {
+              'invalid-credential',
+              'user-not-found',
+              'wrong-password',
+            }.contains(e.code)) {
+          _passwordController.clear();
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        await _showLoginErrorDialog(_friendlyLoginError(e));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String _friendlyLoginError(Object error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-credential':
+        case 'user-not-found':
+        case 'wrong-password':
+          return 'The email or password you entered is incorrect. Please check your details and try again.';
+        case 'invalid-email':
+          return 'Please enter a valid email address.';
+        case 'user-disabled':
+          return 'This account has been disabled. Please contact your administrator.';
+        case 'too-many-requests':
+          return 'Too many sign-in attempts. Please wait a moment and try again.';
+        case 'network-request-failed':
+          return 'We could not connect to the sign-in service. Please check your internet connection and try again.';
+      }
+    }
+
+    return 'We could not sign you in right now. Please try again.';
+  }
+
+  Future<void> _showLoginErrorDialog(String message) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.lock_outline_rounded),
+        title: const Text('Sign-in failed'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Try Again'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -92,12 +126,12 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: loginTheme.scaffoldBackgroundColor,
         body: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.all(20),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(32),
+                  padding: const EdgeInsets.all(16),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -106,16 +140,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Icon(
                           Icons.account_balance_wallet,
-                          size: 48,
+                          size: 38,
                           color: isDark
                               ? Colors.white
                               : theme.colorScheme.primary,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 18),
                         Text(
                           'LedGix ERP',
                           textAlign: TextAlign.center,
-                          style: loginTheme.textTheme.headlineMedium?.copyWith(
+                          style: loginTheme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: isDark
                                 ? Colors.white
@@ -130,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: isDark ? Colors.white70 : Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 22),
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -154,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -189,11 +223,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 18),
                         ElevatedButton(
                           onPressed: _isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
                             backgroundColor: isDark
                                 ? Colors.white
                                 : theme.colorScheme.primary,
@@ -216,12 +250,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text(
                                   'Login',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 18),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

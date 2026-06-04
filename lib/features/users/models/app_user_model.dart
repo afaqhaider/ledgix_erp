@@ -48,7 +48,7 @@ class CompanyUserModel {
       email: map['email'] ?? '',
       role: UserRole.values.firstWhere(
         (e) => e.name == map['role'],
-        orElse: () => UserRole.dataEntry,
+        orElse: () => UserRole.employee,
       ),
       status: UserStatus.values.firstWhere(
         (e) => e.name == map['status'],

@@ -12,7 +12,7 @@ class DataManagementScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Data Management')),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         children: [
           _buildDataSection(
             context,
@@ -108,10 +108,8 @@ class DataManagementScreen extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => ImportExportModal(
-        initialModule: module,
-        companyId: user.companyId!,
-      ),
+      builder: (context) =>
+          ImportExportModal(initialModule: module, companyId: user.companyId!),
     );
   }
 }

@@ -40,9 +40,9 @@ class _FinancialPeriodScreenState extends State<FinancialPeriodScreen> {
     );
     await _service.updateSettings(updated);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Financial period updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Financial period updated')));
     }
   }
 
@@ -53,7 +53,7 @@ class _FinancialPeriodScreenState extends State<FinancialPeriodScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Financial Period')),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         children: [
           TextFormField(
             controller: _activePeriodController,
@@ -66,7 +66,9 @@ class _FinancialPeriodScreenState extends State<FinancialPeriodScreen> {
           SwitchListTile(
             title: const Text('Lock Past Periods'),
             value: _settings.lockPastPeriods,
-            onChanged: (val) => setState(() => _settings = _settings.copyWith(lockPastPeriods: val)),
+            onChanged: (val) => setState(
+              () => _settings = _settings.copyWith(lockPastPeriods: val),
+            ),
           ),
           const SizedBox(height: 24),
           ElevatedButton(onPressed: _save, child: const Text('Save')),

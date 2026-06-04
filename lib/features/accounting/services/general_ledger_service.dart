@@ -27,10 +27,12 @@ class GeneralLedgerService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _accountService = AccountService();
 
-  Future<Map<String, AccountBalance>> calculateBalances(String companyId) async {
+  Future<Map<String, AccountBalance>> calculateBalances(
+    String companyId,
+  ) async {
     // 1. Get all accounts
     final accounts = await _accountService.getAccounts(companyId).first;
-    
+
     // 2. Get all journal entries (posted)
     final journalEntriesSnap = await _firestore
         .collection('companies')
@@ -39,9 +41,9 @@ class GeneralLedgerService {
         .where('status', isEqualTo: 'posted')
         .get();
 
-    final journalEntries = journalEntriesSnap.docs.map((doc) => 
-      JournalEntryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)
-    ).toList();
+    final journalEntries = journalEntriesSnap.docs
+        .map((doc) => JournalEntryModel.fromMap(doc.data(), doc.id))
+        .toList();
 
     Map<String, double> debits = {};
     Map<String, double> credits = {};
@@ -70,7 +72,7 @@ class GeneralLedgerService {
     for (var acc in accounts) {
       double totalD = debits[acc.id] ?? 0;
       double totalC = credits[acc.id] ?? 0;
-      
+
       // Calculate net balance based on normal balance type
       double net;
       if (acc.normalBalance == BalanceType.debit) {

@@ -99,14 +99,16 @@ class FinancialSettingsModel {
       invoicePrefix: map['invoicePrefix'] ?? 'INV',
       quotationPrefix: map['quotationPrefix'] ?? 'QUO',
       purchaseOrderPrefix: map['purchaseOrderPrefix'] ?? 'PO',
-      receiptPrefix: map['receiptPrefix'] ?? map['customerPaymentPrefix'] ?? 'REC',
+      receiptPrefix:
+          map['receiptPrefix'] ?? map['customerPaymentPrefix'] ?? 'REC',
       supplierPaymentPrefix: map['supplierPaymentPrefix'] ?? 'SPAY',
       journalPrefix: map['journalPrefix'] ?? 'JV',
       billPrefix: map['billPrefix'] ?? 'BILL',
       nextInvoiceNumber: map['nextInvoiceNumber'] ?? 1,
       nextQuotationNumber: map['nextQuotationNumber'] ?? 1,
       nextPurchaseOrderNumber: map['nextPurchaseOrderNumber'] ?? 1,
-      nextReceiptNumber: map['nextReceiptNumber'] ?? map['nextCustomerPaymentNumber'] ?? 1,
+      nextReceiptNumber:
+          map['nextReceiptNumber'] ?? map['nextCustomerPaymentNumber'] ?? 1,
       nextSupplierPaymentNumber: map['nextSupplierPaymentNumber'] ?? 1,
       nextJournalNumber: map['nextJournalNumber'] ?? 1,
       nextBillNumber: map['nextBillNumber'] ?? 1,
@@ -147,8 +149,7 @@ class FinancialSettingsModel {
       invoicePrefix: invoicePrefix ?? this.invoicePrefix,
       quotationPrefix: quotationPrefix ?? this.quotationPrefix,
       purchaseOrderPrefix: purchaseOrderPrefix ?? this.purchaseOrderPrefix,
-      receiptPrefix:
-          receiptPrefix ?? this.receiptPrefix,
+      receiptPrefix: receiptPrefix ?? this.receiptPrefix,
       supplierPaymentPrefix:
           supplierPaymentPrefix ?? this.supplierPaymentPrefix,
       journalPrefix: journalPrefix ?? this.journalPrefix,
@@ -157,8 +158,7 @@ class FinancialSettingsModel {
       nextQuotationNumber: nextQuotationNumber ?? this.nextQuotationNumber,
       nextPurchaseOrderNumber:
           nextPurchaseOrderNumber ?? this.nextPurchaseOrderNumber,
-      nextReceiptNumber:
-          nextReceiptNumber ?? this.nextReceiptNumber,
+      nextReceiptNumber: nextReceiptNumber ?? this.nextReceiptNumber,
       nextSupplierPaymentNumber:
           nextSupplierPaymentNumber ?? this.nextSupplierPaymentNumber,
       nextJournalNumber: nextJournalNumber ?? this.nextJournalNumber,

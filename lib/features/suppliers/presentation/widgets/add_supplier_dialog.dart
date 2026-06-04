@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/suppliers/models/supplier_model.dart';
 import 'package:ledgixerp/features/suppliers/services/supplier_service.dart';
-
-import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:ledgixerp/core/services/document_number_service.dart';
+import 'package:ledgixerp/core/theme/app_spacing.dart';
 
 class AddSupplierDialog extends StatefulWidget {
   final String companyId;
@@ -27,40 +27,31 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
 
   BalanceType _balanceType = BalanceType.credit;
   bool _isLoading = false;
-  String _generatedCode = 'Loading...';
 
   final _supplierService = SupplierService();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadNextCode();
-  }
-
-  Future<void> _loadNextCode() async {
-    final code = await _supplierService.generateNextSupplierCode(
-      widget.companyId,
-    );
-    if (mounted) {
-      setState(() => _generatedCode = code);
-    }
-  }
+  final _docNumberService = DocumentNumberService();
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
     try {
+      // Consume the document number ONLY on save
+      final nextCode = await _docNumberService.getNextNumber(
+        widget.companyId,
+        'supplier',
+      );
+
       final supplier = SupplierModel(
         id: '',
         companyId: widget.companyId,
-        supplierCode: _generatedCode,
+        supplierCode: nextCode,
         supplierName: _nameController.text.trim(),
         contactPerson: _contactController.text.trim().isEmpty
             ? null
             : _contactController.text.trim(),
         email: _emailController.text.trim().isEmpty
-            ? 'no-email@temporary.com'
+            ? ''
             : _emailController.text.trim(),
         phone: _phoneController.text.trim().isEmpty
             ? null
@@ -97,140 +88,157 @@ class _AddSupplierDialogState extends State<AddSupplierDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return ErpGlassModal(
-      title: 'Add New Supplier',
-      width: 700,
-      onCancel: () => Navigator.pop(context),
-      onSave: _save,
-      isLoading: _isLoading,
-      saveLabel: 'Save Supplier',
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: InputDecorator(
-                    decoration: ErpFormStyle.inputDecoration(context, 'Supplier Code'),
-                    child: Text(_generatedCode, style: ErpFormStyle.inputStyle(context)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: _nameController,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'Supplier/Company Name'),
-                    validator: (v) => v!.isEmpty ? 'Required' : null,
-                  ),
-                ),
-              ],
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Supplier/Company Name',
+              border: OutlineInputBorder(),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _contactController,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'Contact Person'),
+            validator: (v) => v!.isEmpty ? 'Required' : null,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _contactController,
+                  decoration: const InputDecoration(
+                    labelText: 'Contact Person',
+                    border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _emailController,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'Email Address'),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return null;
-                      if (!RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
-                        return 'Invalid email';
-                      }
-                      return null;
-                    },
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email Address',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return null;
+                    if (!RegExp(
+                      r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$',
+                    ).hasMatch(v)) {
+                      return 'Invalid email';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    border: OutlineInputBorder(),
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: TextFormField(
+                  controller: _trnController,
+                  decoration: const InputDecoration(
+                    labelText: 'TRN / VAT Number',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _countryController,
+                  decoration: const InputDecoration(
+                    labelText: 'Country',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  controller: _addressController,
+                  decoration: const InputDecoration(
+                    labelText: 'Address',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const Text(
+            'Opening Balance',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  controller: _balanceController,
+                  decoration: const InputDecoration(
+                    labelText: 'Balance Amount',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: DropdownButtonFormField<BalanceType>(
+                  initialValue: _balanceType,
+                  decoration: const InputDecoration(
+                    labelText: 'Type',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: BalanceType.values.map((type) {
+                    return DropdownMenuItem(
+                      value: type,
+                      child: Text(type.label),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _balanceType = val!),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Save Supplier'),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _phoneController,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'Phone Number'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _trnController,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'TRN / VAT Number'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _countryController,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'Country'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: _addressController,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'Address'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Text('Opening Balance', style: ErpFormStyle.sectionHeaderStyle(context)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: _balanceController,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'Balance Amount'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<BalanceType>(
-                    value: _balanceType,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(context, 'Type'),
-                    items: BalanceType.values.map((type) {
-                      return DropdownMenuItem(
-                        value: type,
-                        child: Text(type.label),
-                      );
-                    }).toList(),
-                    onChanged: (val) => setState(() => _balanceType = val!),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

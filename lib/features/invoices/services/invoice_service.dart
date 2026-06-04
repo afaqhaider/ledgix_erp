@@ -1,12 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
+import 'package:ledgixerp/features/approvals/services/approval_service.dart';
+import 'package:ledgixerp/features/approvals/models/approval_rule_model.dart';
 import '../../settings/services/financial_settings_service.dart';
 
 class InvoiceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _settingsService = FinancialSettingsService();
   final _inventoryService = InventoryService();
+  final _approvalService = ApprovalService();
 
   CollectionReference _getInvoicesRef(String companyId) {
     return _firestore
@@ -23,6 +26,13 @@ class InvoiceService {
         return InvoiceModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
       }).toList();
     });
+  }
+
+  Future<String> previewNextInvoiceNumber(String companyId) async {
+    return await _settingsService.previewNextDocumentNumber(
+      companyId,
+      'invoice',
+    );
   }
 
   Future<String> generateNextInvoiceNumber(String companyId) async {
@@ -43,14 +53,15 @@ class InvoiceService {
 
     await _firestore.runTransaction((transaction) async {
       // 1. Generate the actual document number and increment counter within transaction
-      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
-        invoice.companyId,
-        'invoice',
-        transaction: transaction,
-      );
+      final finalNumber = await _settingsService
+          .getNextDocumentNumberAndIncrement(
+            invoice.companyId,
+            'invoice',
+            transaction: transaction,
+          );
 
       final docRef = _getInvoicesRef(invoice.companyId).doc();
-      
+
       final invoiceToSave = invoice.copyWith(
         id: docRef.id,
         invoiceNumber: finalNumber,
@@ -70,6 +81,22 @@ class InvoiceService {
       doc.id,
     );
     if (invoice.isPosted) throw Exception('Invoice already posted');
+
+    // ENFORCE APPROVAL
+    if (invoice.approvalStatus != 'approved') {
+      // Check if it actually needs approval
+      final rule = await _approvalService.findMatchingRule(
+        companyId: companyId,
+        module: ApprovalModule.salesInvoices,
+        amount: invoice.totalAmount,
+      );
+
+      if (rule != null && rule.requiredApproverRoles.isNotEmpty) {
+        throw Exception(
+          'This invoice requires approval before it can be posted.',
+        );
+      }
+    }
 
     // 1. Process Inventory Updates and Calculate COGS
     for (var item in invoice.items) {

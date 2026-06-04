@@ -5,7 +5,6 @@ import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.da
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
-import 'package:ledgixerp/theme/app_theme.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
 class AddBankAccountDialog extends StatefulWidget {
@@ -69,9 +68,9 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
               validator: (v) => v!.isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: 20),
-            
+
             DropdownButtonFormField<BankAccountType>(
-              value: _type,
+              initialValue: _type,
               dropdownColor: Theme.of(context).colorScheme.surface,
               style: ErpFormStyle.inputStyle(context),
               decoration: ErpFormStyle.inputDecoration(
@@ -101,7 +100,7 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
                     .where((a) => a.accountType == AccountType.asset)
                     .toList();
                 return DropdownButtonFormField<String>(
-                  value: _selectedChartAccountId,
+                  initialValue: _selectedChartAccountId,
                   dropdownColor: Theme.of(context).colorScheme.surface,
                   style: ErpFormStyle.inputStyle(context),
                   decoration: ErpFormStyle.inputDecoration(
@@ -120,8 +119,7 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
                         ),
                       )
                       .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedChartAccountId = v),
+                  onChanged: (v) => setState(() => _selectedChartAccountId = v),
                   validator: (v) => v == null ? 'Required' : null,
                 );
               },
@@ -172,7 +170,9 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
             TextFormField(
               controller: _openingBalanceController,
               style: ErpFormStyle.inputStyle(context),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: ErpFormStyle.inputDecoration(
                 context,
                 'Opening Balance',
@@ -221,12 +221,12 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.redAccent,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

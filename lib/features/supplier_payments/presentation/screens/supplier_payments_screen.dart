@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
-import 'package:ledgixerp/core/theme/app_spacing.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/supplier_payments/models/supplier_payment_model.dart';
 import 'package:ledgixerp/features/supplier_payments/services/supplier_payment_service.dart';
-import 'package:ledgixerp/features/supplier_payments/presentation/screens/add_supplier_payment_screen.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
-import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
-
-import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:ledgixerp/features/supplier_payments/presentation/screens/add_supplier_payment_screen.dart';
 
 class SupplierPaymentsScreen extends StatefulWidget {
   final AppUser user;
@@ -43,20 +40,13 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
 
   Future<void> _submitForApproval(SupplierPaymentModel payment) async {
     try {
-      final request = ApprovalRequestModel(
-        id: '',
+      await _approvalService.submitForApproval(
+        user: widget.user,
         companyId: widget.user.companyId!,
-        sourceType: 'supplierPayment',
+        sourceType: 'supplier_payment',
         sourceId: payment.id,
         sourceNumber: payment.paymentNumber,
-        requestedByUserId: widget.user.uid,
-        requestedByUserName: widget.user.fullName,
-        requestedAt: DateTime.now(),
-      );
-
-      await _approvalService.submitForApproval(
-        request,
-        requesterRole: widget.user.role,
+        amount: payment.amount,
       );
 
       if (mounted) {
@@ -131,16 +121,14 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  showErpSidePane(
+                  SidePanel.show(
                     context: context,
-                    builder: AddSupplierPaymentScreen(
-                      user: widget.user,
-                      isPane: true,
-                    ),
+                    title: 'Add Supplier Payment',
+                    child: AddSupplierPaymentScreen(user: widget.user),
                   );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('Add Payment'),
+                label: const Text('Add New'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: Colors.white,
@@ -185,9 +173,11 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              child: DataTable(
+            padding: const EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Card(
+                child: DataTable(
                 horizontalMargin: 24,
                 columnSpacing: 32,
                 columns: const [
@@ -240,13 +230,14 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
                     cells: [
                       DataCell(Text(payment.paymentNumber)),
                       DataCell(Text(payment.supplierName)),
+                      DataCell(Text(AppFormatters.date(payment.paymentDate))),
                       DataCell(
                         Text(
-                          AppFormatters.date(payment.paymentDate),
+                          AppFormatters.currency(
+                            payment.amount,
+                            symbol: _company?.baseCurrency,
+                          ),
                         ),
-                      ),
-                      DataCell(
-                        Text(AppFormatters.currency(payment.amount, symbol: _company?.baseCurrency)),
                       ),
                       DataCell(Text(payment.paymentMethod.name.toUpperCase())),
                       DataCell(
@@ -307,8 +298,9 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
                 }).toList(),
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }

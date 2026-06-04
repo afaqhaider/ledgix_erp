@@ -5,7 +5,6 @@ import 'package:ledgixerp/core/auth/permission.dart';
 import 'package:ledgixerp/features/accounting/journal/models/journal_entry_model.dart';
 import 'package:ledgixerp/features/accounting/journal/services/journal_service.dart';
 import 'package:ledgixerp/features/accounting/journal/presentation/screens/create_journal_entry_screen.dart';
-import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 
 class JournalEntriesScreen extends StatefulWidget {
@@ -22,20 +21,18 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
 
   Future<void> _submitForApproval(JournalEntryModel entry) async {
     try {
-      final request = ApprovalRequestModel(
-        id: '',
-        companyId: widget.user.companyId!,
-        sourceType: 'journalEntry',
-        sourceId: entry.id,
-        sourceNumber: entry.reference,
-        requestedByUserId: widget.user.uid,
-        requestedByUserName: widget.user.fullName,
-        requestedAt: DateTime.now(),
+      final totalAmount = entry.lines.fold(
+        0.0,
+        (sum, line) => sum + line.debit,
       );
 
       await _approvalService.submitForApproval(
-        request,
-        requesterRole: widget.user.role,
+        amount: totalAmount,
+        user: widget.user,
+        companyId: widget.user.companyId!,
+        sourceType: 'journal_entry',
+        sourceId: entry.id,
+        sourceNumber: entry.reference,
       );
 
       if (mounted) {
@@ -164,7 +161,7 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             itemCount: entries.length,
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {

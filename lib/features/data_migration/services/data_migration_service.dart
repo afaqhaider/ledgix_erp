@@ -99,35 +99,39 @@ class DataMigrationService {
 
       final docRef = collection.doc();
       final data = Map<String, dynamic>.from(row.data);
-      
+
       // Add common fields
       data['id'] = docRef.id;
       data['companyId'] = companyId;
       data['createdAt'] = FieldValue.serverTimestamp();
-      
+
       // Module specific defaults/fixes
       if (module == MigrationModule.suppliers) {
         data['openingBalanceType'] = data['openingBalanceType'] ?? 'credit';
-        data['openingBalance'] = double.tryParse(data['openingBalance']?.toString() ?? '0') ?? 0.0;
+        data['openingBalance'] =
+            double.tryParse(data['openingBalance']?.toString() ?? '0') ?? 0.0;
         data['isActive'] = data['isActive'] ?? true;
         data['portalAccessEnabled'] = false;
         data['portalUserIds'] = [];
         data['invitedEmails'] = [];
       } else if (module == MigrationModule.customers) {
         data['isActive'] = data['isActive'] ?? true;
-        data['openingBalance'] = double.tryParse(data['openingBalance']?.toString() ?? '0') ?? 0.0;
+        data['openingBalance'] =
+            double.tryParse(data['openingBalance']?.toString() ?? '0') ?? 0.0;
         data['portalAccessEnabled'] = false;
         data['portalUserIds'] = [];
         data['invitedEmails'] = [];
       } else if (module == MigrationModule.inventory) {
         data['type'] = data['type'] ?? 'storable';
         data['uom'] = data['uom'] ?? 'Units';
-        data['salePrice'] = double.tryParse(data['salePrice']?.toString() ?? '0') ?? 0.0;
-        data['costPrice'] = double.tryParse(data['costPrice']?.toString() ?? '0') ?? 0.0;
+        data['salePrice'] =
+            double.tryParse(data['salePrice']?.toString() ?? '0') ?? 0.0;
+        data['costPrice'] =
+            double.tryParse(data['costPrice']?.toString() ?? '0') ?? 0.0;
         data['stockQuantity'] = 0.0;
         data['stockBatches'] = [];
       }
-      
+
       batch.set(docRef, data);
     }
 
@@ -149,4 +153,3 @@ class DataMigrationService {
     }
   }
 }
-

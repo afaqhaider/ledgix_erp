@@ -44,14 +44,15 @@ class SupplierPaymentService {
 
     await _firestore.runTransaction((transaction) async {
       // 1. Generate the actual document number and increment counter within transaction
-      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
-        payment.companyId,
-        'supplierPayment',
-        transaction: transaction,
-      );
+      final finalNumber = await _settingsService
+          .getNextDocumentNumberAndIncrement(
+            payment.companyId,
+            'supplierPayment',
+            transaction: transaction,
+          );
 
       final docRef = _getPaymentsRef(payment.companyId).doc();
-      
+
       final paymentToSave = payment.copyWith(
         id: docRef.id,
         paymentNumber: finalNumber,

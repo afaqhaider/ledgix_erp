@@ -4,7 +4,6 @@ import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
 import 'package:ledgixerp/features/suppliers/models/bill_model.dart';
 import 'package:ledgixerp/features/suppliers/services/bill_service.dart';
-import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 import 'package:ledgixerp/features/suppliers/presentation/screens/add_bill_screen.dart';
 import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
@@ -27,20 +26,13 @@ class _BillsScreenState extends State<BillsScreen> {
 
   Future<void> _submitForApproval(BillModel bill) async {
     try {
-      final request = ApprovalRequestModel(
-        id: '',
+      await _approvalService.submitForApproval(
+        user: widget.user,
         companyId: widget.user.companyId!,
-        sourceType: 'supplierBill',
+        sourceType: 'supplier_bill',
         sourceId: bill.id,
         sourceNumber: bill.billNumber,
-        requestedByUserId: widget.user.uid,
-        requestedByUserName: widget.user.fullName,
-        requestedAt: DateTime.now(),
-      );
-
-      await _approvalService.submitForApproval(
-        request,
-        requesterRole: widget.user.role,
+        amount: bill.totalAmount,
       );
 
       if (mounted) {
@@ -114,14 +106,11 @@ class _BillsScreenState extends State<BillsScreen> {
                 onPressed: () {
                   showErpSidePane(
                     context: context,
-                    builder: AddBillScreen(
-                      user: widget.user,
-                      isPane: true,
-                    ),
+                    builder: AddBillScreen(user: widget.user, isPane: true),
                   );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('New Bill'),
+                label: const Text('Add New'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: Colors.white,
@@ -166,9 +155,11 @@ class _BillsScreenState extends State<BillsScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              child: DataTable(
+            padding: const EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Card(
+                child: DataTable(
                 horizontalMargin: 24,
                 columnSpacing: 32,
                 columns: const [
@@ -304,11 +295,10 @@ class _BillsScreenState extends State<BillsScreen> {
                                   color: Colors.blueGrey,
                                 ),
                                 tooltip: 'View Attachments',
-                                onPressed:
-                                    () => showAttachmentDialog(
-                                      context,
-                                      bill.attachments,
-                                    ),
+                                onPressed: () => showAttachmentDialog(
+                                  context,
+                                  bill.attachments,
+                                ),
                               ),
                           ],
                         ),
@@ -318,8 +308,9 @@ class _BillsScreenState extends State<BillsScreen> {
                 }).toList(),
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }

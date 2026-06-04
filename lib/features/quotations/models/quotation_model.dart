@@ -8,6 +8,7 @@ class QuotationLineItemModel {
   final String accountId;
   final String accountName;
   final String description;
+  final String? unit;
   final double quantity;
   final double unitPrice;
   final double vatRate;
@@ -20,6 +21,7 @@ class QuotationLineItemModel {
     required this.accountId,
     required this.accountName,
     required this.description,
+    this.unit,
     required this.quantity,
     required this.unitPrice,
     required this.vatRate,
@@ -34,6 +36,7 @@ class QuotationLineItemModel {
       'accountId': accountId,
       'accountName': accountName,
       'description': description,
+      'unit': unit,
       'quantity': quantity,
       'unitPrice': unitPrice,
       'vatRate': vatRate,
@@ -49,6 +52,7 @@ class QuotationLineItemModel {
       accountId: map['accountId'] ?? '',
       accountName: map['accountName'] ?? '',
       description: map['description'] ?? '',
+      unit: map['unit'],
       quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
       unitPrice: (map['unitPrice'] as num?)?.toDouble() ?? 0.0,
       vatRate: (map['vatRate'] as num?)?.toDouble() ?? 0.0,

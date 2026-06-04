@@ -47,11 +47,12 @@ class QuotationService {
 
     await _firestore.runTransaction((transaction) async {
       // 1. Generate final number and increment within transaction
-      final finalNumber = await _settingsService.getNextDocumentNumberAndIncrement(
-        quotation.companyId,
-        'quotation',
-        transaction: transaction,
-      );
+      final finalNumber = await _settingsService
+          .getNextDocumentNumberAndIncrement(
+            quotation.companyId,
+            'quotation',
+            transaction: transaction,
+          );
 
       final docRef = _getQuoRef(quotation.companyId).doc();
       final finalQuotation = quotation.copyWith(
@@ -108,8 +109,12 @@ class QuotationService {
     );
 
     await _invoiceService.addInvoice(invoice);
-    
+
     // Update the quotation status
-    await updateQuotationStatus(quotation.companyId, quotation.id, QuotationStatus.converted);
+    await updateQuotationStatus(
+      quotation.companyId,
+      quotation.id,
+      QuotationStatus.converted,
+    );
   }
 }

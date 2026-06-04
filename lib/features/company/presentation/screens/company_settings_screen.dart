@@ -351,11 +351,12 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
       String? logoUrl = _company!.companyLogoUrl;
 
       if (_newLogoFile != null) {
-        final uploadedUrl = await _companyService.uploadLogo(
+        logoUrl = await _companyService.uploadLogo(
           _company!.id,
           kIsWeb ? _newLogoBytes : File(_newLogoFile!.path),
+          fileName: _newLogoFile!.name,
+          contentType: _newLogoFile!.mimeType,
         );
-        if (uploadedUrl != null) logoUrl = uploadedUrl;
       }
 
       final updatedCompany = _company!.copyWith(
@@ -389,6 +390,11 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
 
       await _companyService.updateCompany(updatedCompany);
       if (mounted) {
+        setState(() {
+          _company = updatedCompany;
+          _newLogoFile = null;
+          _newLogoBytes = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Settings saved successfully!')),
         );
@@ -460,7 +466,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
@@ -564,12 +570,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                                         File(_newLogoFile!.path),
                                         fit: BoxFit.contain,
                                       ))
-                              : (_company!.companyLogoUrl != null
-                                    ? Image.network(
-                                        _company!.companyLogoUrl!,
-                                        fit: BoxFit.contain,
-                                      )
-                                    : const Icon(Icons.business, size: 48)),
+                              : _buildSavedLogoPreview(theme),
                         ),
                         TextButton(
                           onPressed: _pickLogo,
@@ -720,7 +721,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   Widget _buildSection(ThemeData theme, String title, Widget content) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -735,6 +736,47 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSavedLogoPreview(ThemeData theme) {
+    final logoUrl = _company!.companyLogoUrl;
+    if (logoUrl == null || logoUrl.trim().isEmpty) {
+      return _buildLogoFallback(theme);
+    }
+
+    return FutureBuilder<String?>(
+      future: _companyService.resolveLogoUrl(logoUrl),
+      builder: (context, snapshot) {
+        final resolvedUrl = snapshot.data;
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+        if (resolvedUrl == null || resolvedUrl.isEmpty) {
+          return _buildLogoFallback(theme);
+        }
+        return Image.network(
+          resolvedUrl,
+          key: ValueKey(resolvedUrl),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) =>
+              _buildLogoFallback(theme),
+        );
+      },
+    );
+  }
+
+  Widget _buildLogoFallback(ThemeData theme) {
+    return Icon(
+      Icons.business_rounded,
+      size: 48,
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
     );
   }
 

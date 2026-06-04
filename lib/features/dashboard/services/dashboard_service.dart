@@ -13,6 +13,8 @@ class DashboardStats {
   final int pendingInvoicesCount;
   final int overdueInvoicesCount;
   final int pendingApprovalsCount;
+  final int approvedTodayCount;
+  final int rejectedDocsCount;
 
   DashboardStats({
     this.totalRevenue = 0,
@@ -21,6 +23,8 @@ class DashboardStats {
     this.pendingInvoicesCount = 0,
     this.overdueInvoicesCount = 0,
     this.pendingApprovalsCount = 0,
+    this.approvedTodayCount = 0,
+    this.rejectedDocsCount = 0,
   });
 }
 
@@ -28,90 +32,122 @@ class DashboardService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<DashboardStats> getDashboardStats(String companyId) {
-    // Listen to multiple collections and combine them
-    final invoicesStream = _firestore
-        .collection('companies')
-        .doc(companyId)
-        .collection('salesInvoices')
-        .snapshots();
-
-    final supplierPaymentsStream = _firestore
-        .collection('companies')
-        .doc(companyId)
-        .collection('supplierPayments')
-        .where('isPosted', isEqualTo: true)
-        .snapshots();
-
-    final approvalsStream = _firestore
-        .collection('companies')
-        .doc(companyId)
-        .collection('approvals')
-        .where('status', isEqualTo: 'pending')
-        .snapshots();
-
-    // Use a multi-stream controller or similar to combine
-    // For simplicity without RxDart, we can use a StreamController and listen to all
     final controller = StreamController<DashboardStats>();
 
     void update() async {
-      final invSnap = await _firestore
-          .collection('companies')
-          .doc(companyId)
-          .collection('salesInvoices')
-          .get();
-      final supSnap = await _firestore
-          .collection('companies')
-          .doc(companyId)
-          .collection('supplierPayments')
-          .where('isPosted', isEqualTo: true)
-          .get();
-      final appSnap = await _firestore
-          .collection('companies')
-          .doc(companyId)
-          .collection('approvals')
-          .where('status', isEqualTo: 'pending')
-          .get();
+      try {
+        final now = DateTime.now();
+        final startOfToday = DateTime(now.year, now.month, now.day);
 
-      final now = DateTime.now();
-      double revenue = 0;
-      int pendingInvoices = 0;
-      int overdueInvoices = 0;
+        final invSnap = await _firestore
+            .collection('companies')
+            .doc(companyId)
+            .collection('salesInvoices')
+            .get();
 
-      for (var doc in invSnap.docs) {
-        final inv = InvoiceModel.fromMap(doc.data(), doc.id);
-        if (inv.isPosted) {
-          revenue += inv.totalAmount;
-        }
-        if (inv.status != InvoiceStatus.paid) {
-          pendingInvoices++;
-          if (inv.dueDate.isBefore(now)) {
-            overdueInvoices++;
+        final supSnap = await _firestore
+            .collection('companies')
+            .doc(companyId)
+            .collection('supplierPayments')
+            .where('isPosted', isEqualTo: true)
+            .get();
+
+        final pendingAppSnap = await _firestore
+            .collection('companies')
+            .doc(companyId)
+            .collection('approval_requests')
+            .where('status', isEqualTo: 'pending')
+            .get();
+
+        final approvedTodaySnap = await _firestore
+            .collection('companies')
+            .doc(companyId)
+            .collection('approval_requests')
+            .where('status', isEqualTo: 'approved')
+            .get();
+
+        final rejectedSnap = await _firestore
+            .collection('companies')
+            .doc(companyId)
+            .collection('approval_requests')
+            .where('status', isEqualTo: 'rejected')
+            .get();
+
+        double revenue = 0;
+        int pendingInvoices = 0;
+        int overdueInvoices = 0;
+
+        for (var doc in invSnap.docs) {
+          final inv = InvoiceModel.fromMap(doc.data(), doc.id);
+          if (inv.isPosted) {
+            revenue += inv.totalAmount;
+          }
+          if (inv.status != InvoiceStatus.paid) {
+            pendingInvoices++;
+            if (inv.dueDate.isBefore(now)) {
+              overdueInvoices++;
+            }
           }
         }
-      }
 
-      double expenses = 0;
-      for (var doc in supSnap.docs) {
-        expenses += (doc.data()['amount'] as num).toDouble();
-      }
+        double expenses = 0;
+        for (var doc in supSnap.docs) {
+          expenses += (doc.data()['amount'] as num?)?.toDouble() ?? 0;
+        }
 
-      if (!controller.isClosed) {
-        controller.add(
-          DashboardStats(
-            totalRevenue: revenue,
-            totalExpenses: expenses,
-            totalProfit: revenue - expenses,
-            pendingInvoicesCount: pendingInvoices,
-            overdueInvoicesCount: overdueInvoices,
-            pendingApprovalsCount: appSnap.docs.length,
-          ),
-        );
+        int approvedToday = 0;
+        for (var doc in approvedTodaySnap.docs) {
+          final history = doc.data()['history'] as List?;
+          if (history == null || history.isEmpty) continue;
+          final lastAction = history.last;
+          if (lastAction is! Map) continue;
+          final rawTimestamp = lastAction['timestamp'];
+          if (rawTimestamp is! Timestamp) continue;
+          if (rawTimestamp.toDate().isAfter(startOfToday)) {
+            approvedToday++;
+          }
+        }
+
+        if (!controller.isClosed) {
+          controller.add(
+            DashboardStats(
+              totalRevenue: revenue,
+              totalExpenses: expenses,
+              totalProfit: revenue - expenses,
+              pendingInvoicesCount: pendingInvoices,
+              overdueInvoicesCount: overdueInvoices,
+              pendingApprovalsCount: pendingAppSnap.docs.length,
+              approvedTodayCount: approvedToday,
+              rejectedDocsCount: rejectedSnap.docs.length,
+            ),
+          );
+        }
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) {
+          controller.addError(error, stackTrace);
+        }
       }
     }
 
-    final sub1 = invoicesStream.listen((_) => update());
-    final sub2 = supplierPaymentsStream.listen((_) => update());
-    final sub3 = approvalsStream.listen((_) => update());
+    // Listen to changes in all related collections
+    final sub1 = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('salesInvoices')
+        .snapshots()
+        .listen((_) => update());
+    final sub2 = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('supplierPayments')
+        .snapshots()
+        .listen((_) => update());
+    final sub3 = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('approval_requests')
+        .snapshots()
+        .listen((_) => update());
 
     controller.onCancel = () {
       sub1.cancel();
@@ -119,7 +155,7 @@ class DashboardService {
       sub3.cancel();
     };
 
-    update(); // Initial push
+    update();
     return controller.stream;
   }
 

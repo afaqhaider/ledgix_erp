@@ -1,77 +1,67 @@
-import '../../accounting/chart_of_accounts/account_model.dart';
-
-class AccountBalance {
-  final AccountModel account;
+class ReportLine {
+  final String code;
+  final String name;
   final double debit;
   final double credit;
+  final double balance;
+  final bool isHeader;
 
-  AccountBalance({
-    required this.account,
-    required this.debit,
-    required this.credit,
+  ReportLine({
+    required this.code,
+    required this.name,
+    this.debit = 0,
+    this.credit = 0,
+    this.balance = 0,
+    this.isHeader = false,
   });
-
-  double get balance {
-    if (account.normalBalance == BalanceType.debit) {
-      return debit - credit;
-    } else {
-      return credit - debit;
-    }
-  }
 }
 
 class TrialBalanceReport {
-  final List<AccountBalance> balances;
-  final DateTime asOf;
+  final List<ReportLine> lines;
+  final double totalDebit;
+  final double totalCredit;
 
-  TrialBalanceReport({required this.balances, required this.asOf});
+  TrialBalanceReport({
+    required this.lines,
+    required this.totalDebit,
+    required this.totalCredit,
+  });
 
-  double get totalDebits => balances.fold(0, (sum, b) => sum + b.debit);
-  double get totalCredits => balances.fold(0, (sum, b) => sum + b.credit);
+  bool get isBalanced => (totalDebit - totalCredit).abs() < 0.01;
 }
 
 class ProfitLossReport {
-  final List<AccountBalance> income;
-  final List<AccountBalance> costOfSales;
-  final List<AccountBalance> expenses;
-  final DateTime startDate;
-  final DateTime endDate;
+  final List<ReportSection> sections;
+  final double netProfit;
 
-  ProfitLossReport({
-    required this.income,
-    required this.costOfSales,
-    required this.expenses,
-    required this.startDate,
-    required this.endDate,
-  });
-
-  double get totalIncome => income.fold(0, (sum, b) => sum + b.balance);
-  double get totalCostOfSales =>
-      costOfSales.fold(0, (sum, b) => sum + b.balance);
-  double get grossProfit => totalIncome - totalCostOfSales;
-  double get totalExpenses => expenses.fold(0, (sum, b) => sum + b.balance);
-  double get netProfit => grossProfit - totalExpenses;
+  ProfitLossReport({required this.sections, required this.netProfit});
 }
 
 class BalanceSheetReport {
-  final List<AccountBalance> assets;
-  final List<AccountBalance> liabilities;
-  final List<AccountBalance> equity;
-  final double netProfitPeriod; // Net profit to be added to Equity
-  final DateTime asOf;
+  final List<ReportSection> sections;
+  final double totalAssets;
+  final double totalLiabilities;
+  final double totalEquity;
 
   BalanceSheetReport({
-    required this.assets,
-    required this.liabilities,
-    required this.equity,
-    required this.netProfitPeriod,
-    required this.asOf,
+    required this.sections,
+    required this.totalAssets,
+    required this.totalLiabilities,
+    required this.totalEquity,
   });
 
-  double get totalAssets => assets.fold(0.0, (sum, b) => sum + b.balance);
-  double get totalLiabilities =>
-      liabilities.fold(0.0, (sum, b) => sum + b.balance);
-  double get totalEquity =>
-      equity.fold(0.0, (sum, b) => sum + b.balance) + netProfitPeriod;
-  double get totalLiabilitiesAndEquity => totalLiabilities + totalEquity;
+  bool get isBalanced =>
+      (totalAssets - (totalLiabilities + totalEquity)).abs() < 0.01;
+}
+
+class ReportSection {
+  final String title;
+  final List<ReportLine> lines;
+  final double total;
+
+  ReportSection({
+    required this.title,
+    required this.lines,
+    required this.total,
+  });
 }

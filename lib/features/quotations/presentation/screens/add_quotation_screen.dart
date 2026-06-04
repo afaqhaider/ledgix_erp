@@ -10,12 +10,13 @@ import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.
 import 'package:ledgixerp/widgets/searchable_selector.dart';
 import 'package:ledgixerp/features/crm/customers/presentation/widgets/add_customer_dialog.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/add_account_dialog.dart';
-import 'package:ledgixerp/features/inventory/models/product_model.dart';
+import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/settings/models/payment_term_model.dart';
 import 'package:ledgixerp/features/settings/services/terms_service.dart';
 import 'package:ledgixerp/features/settings/presentation/widgets/add_payment_term_dialog.dart';
-import 'package:ledgixerp/features/inventory/presentation/widgets/add_product_dialog.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
+import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_item_pane.dart';
 import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
@@ -47,7 +48,7 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
 
   List<CustomerModel> _allCustomers = [];
   List<AccountModel> _allAccounts = [];
-  List<ProductModel> _allProducts = [];
+  List<InventoryItemModel> _allProducts = [];
   List<PaymentTermModel> _allTerms = [];
   final List<QuotationLineItemModel> _items = [];
   bool _isLoading = false;
@@ -67,14 +68,19 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     _accountService.getAccounts(widget.user.companyId!).listen((accounts) {
       if (mounted) {
         setState(() {
-          _allAccounts = accounts.where((a) => 
-            a.accountType == AccountType.income || 
-            a.accountType == AccountType.otherIncome
-          ).toList();
+          _allAccounts = accounts
+              .where(
+                (a) =>
+                    a.accountType == AccountType.income ||
+                    a.accountType == AccountType.otherIncome,
+              )
+              .toList();
         });
       }
     });
-    _inventoryService.getProducts(widget.user.companyId!).listen((products) {
+    _inventoryService.getInventoryItems(widget.user.companyId!).listen((
+      products,
+    ) {
       if (mounted) setState(() => _allProducts = products);
     });
     _termsService.getPaymentTerms(widget.user.companyId!).listen((terms) {
@@ -182,9 +188,11 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     }
 
     if (_items.any((item) => item.accountId.isEmpty)) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('All items must have an account selected')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All items must have an account selected'),
+        ),
+      );
       return;
     }
 
@@ -231,7 +239,8 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   void _showAddCustomerDialog() {
     showDialog(
       context: context,
-      builder: (context) => AddCustomerDialog(companyId: widget.user.companyId!),
+      builder: (context) =>
+          AddCustomerDialog(companyId: widget.user.companyId!),
     );
   }
 
@@ -245,14 +254,16 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   void _showAddPaymentTermDialog() {
     showDialog(
       context: context,
-      builder: (context) => AddPaymentTermDialog(companyId: widget.user.companyId!),
+      builder: (context) =>
+          AddPaymentTermDialog(companyId: widget.user.companyId!),
     );
   }
 
   void _showAddProductDialog() {
-    showDialog(
+    SidePanel.show(
       context: context,
-      builder: (context) => AddProductDialog(companyId: widget.user.companyId!),
+      title: 'New Inventory Item',
+      child: AddInventoryItemPane(user: widget.user),
     );
   }
 
@@ -276,7 +287,7 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
@@ -284,20 +295,24 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
             children: [
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
                       Row(
                         children: [
                           Expanded(
                             child: InputDecorator(
-                              decoration: ErpFormStyle.inputDecoration(context, 'Document Number'),
+                              decoration: ErpFormStyle.inputDecoration(
+                                context,
+                                'Document Number',
+                              ),
                               child: Text(
                                 'Next number: $_previewNumber',
-                                style: ErpFormStyle.inputStyle(context).copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blueAccent,
-                                ),
+                                style: ErpFormStyle.inputStyle(context)
+                                    .copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blueAccent,
+                                    ),
                               ),
                             ),
                           ),
@@ -308,11 +323,13 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                               labelText: 'Select Customer',
                               items: _allCustomers,
                               itemLabelBuilder: (c) => c.name,
-                              onSelected: (val) => setState(() => _selectedCustomer = val),
+                              onSelected: (val) =>
+                                  setState(() => _selectedCustomer = val),
                               addLabel: 'Add New Customer',
                               onAdd: _showAddCustomerDialog,
                               initialValue: _selectedCustomer,
-                              validator: (v) => _selectedCustomer == null ? 'Required' : null,
+                              validator: (v) =>
+                                  _selectedCustomer == null ? 'Required' : null,
                             ),
                           ),
                         ],
@@ -394,14 +411,20 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                           controller: _notesController,
                           maxLines: 2,
                           style: ErpFormStyle.inputStyle(context),
-                          decoration: ErpFormStyle.inputDecoration(context, 'Notes'),
+                          decoration: ErpFormStyle.inputDecoration(
+                            context,
+                            'Notes',
+                          ),
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _termsController,
                           maxLines: 2,
                           style: ErpFormStyle.inputStyle(context),
-                          decoration: ErpFormStyle.inputDecoration(context, 'Terms & Conditions'),
+                          decoration: ErpFormStyle.inputDecoration(
+                            context,
+                            'Terms & Conditions',
+                          ),
                         ),
                       ],
                     ),
@@ -433,8 +456,15 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
         if (date != null) onTap(date);
       },
       child: InputDecorator(
-        decoration: ErpFormStyle.inputDecoration(context, label, icon: Icons.calendar_today),
-        child: Text(DateFormat('yyyy-MM-dd').format(selectedDate), style: ErpFormStyle.inputStyle(context)),
+        decoration: ErpFormStyle.inputDecoration(
+          context,
+          label,
+          icon: Icons.calendar_today,
+        ),
+        child: Text(
+          DateFormat('yyyy-MM-dd').format(selectedDate),
+          style: ErpFormStyle.inputStyle(context),
+        ),
       ),
     );
   }
@@ -454,14 +484,41 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
       children: [
         TableRow(
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
           ),
           children: [
-            Padding(padding: const EdgeInsets.all(8), child: Text('Product / Account', style: ErpFormStyle.labelStyle(context))),
-            Padding(padding: const EdgeInsets.all(8), child: Text('Qty', style: ErpFormStyle.labelStyle(context))),
-            Padding(padding: const EdgeInsets.all(8), child: Text('Unit Price', style: ErpFormStyle.labelStyle(context))),
-            Padding(padding: const EdgeInsets.all(8), child: Text('VAT%', style: ErpFormStyle.labelStyle(context))),
-            Padding(padding: const EdgeInsets.all(8), child: Text('Total', textAlign: TextAlign.right, style: ErpFormStyle.labelStyle(context))),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'Product / Account',
+                style: ErpFormStyle.labelStyle(context),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text('Qty', style: ErpFormStyle.labelStyle(context)),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'Unit Price',
+                style: ErpFormStyle.labelStyle(context),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text('VAT%', style: ErpFormStyle.labelStyle(context)),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'Total',
+                textAlign: TextAlign.right,
+                style: ErpFormStyle.labelStyle(context),
+              ),
+            ),
             const Padding(padding: EdgeInsets.all(8), child: Text('')),
           ],
         ),
@@ -477,19 +534,21 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                   labelText: '',
                   items: [..._allProducts, ..._allAccounts],
                   itemLabelBuilder: (val) {
-                    if (val is ProductModel) return '${val.sku} - ${val.name}';
-                    if (val is AccountModel) return '${val.accountCode} - ${val.accountName}';
+                    if (val is InventoryItemModel)
+                      return '${val.itemCode} - ${val.itemName}';
+                    if (val is AccountModel)
+                      return '${val.accountCode} - ${val.accountName}';
                     return '';
                   },
                   onSelected: (val) {
-                    if (val is ProductModel) {
+                    if (val is InventoryItemModel) {
                       _updateItem(
                         index,
                         productId: val.id,
                         accountId: val.incomeAccountId ?? '',
-                        accountName: val.name,
-                        desc: val.description ?? val.name,
-                        price: val.salePrice,
+                        accountName: val.itemName,
+                        desc: val.itemName,
+                        price: val.salesPrice,
                       );
                     } else if (val is AccountModel) {
                       _updateItem(
@@ -502,9 +561,13 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                   },
                   addLabel: 'Add Product',
                   onAdd: _showAddProductDialog,
-                  initialValue: item.productId != null 
-                      ? _allProducts.where((p) => p.id == item.productId).firstOrNull
-                      : _allAccounts.where((a) => a.id == item.accountId).firstOrNull,
+                  initialValue: item.productId != null
+                      ? _allProducts
+                            .where((p) => p.id == item.productId)
+                            .firstOrNull
+                      : _allAccounts
+                            .where((a) => a.id == item.accountId)
+                            .firstOrNull,
                 ),
               ),
               Padding(
@@ -514,7 +577,8 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                   style: ErpFormStyle.inputStyle(context),
                   decoration: ErpFormStyle.inputDecoration(context, ''),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, qty: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, qty: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
@@ -524,7 +588,8 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                   style: ErpFormStyle.inputStyle(context),
                   decoration: ErpFormStyle.inputDecoration(context, ''),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, price: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, price: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
@@ -534,7 +599,8 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                   style: ErpFormStyle.inputStyle(context),
                   decoration: ErpFormStyle.inputDecoration(context, ''),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) => _updateItem(index, vat: double.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      _updateItem(index, vat: double.tryParse(v) ?? 0),
                 ),
               ),
               Padding(
@@ -546,7 +612,11 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.close, color: theme.iconTheme.color?.withValues(alpha: 0.3), size: 18),
+                icon: Icon(
+                  Icons.close,
+                  color: theme.iconTheme.color?.withValues(alpha: 0.3),
+                  size: 18,
+                ),
                 onPressed: () => _removeItem(index),
               ),
             ],
@@ -561,9 +631,11 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: 300,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.01),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.black.withValues(alpha: 0.01),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: theme.dividerColor),
       ),
@@ -586,7 +658,9 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
       children: [
         Text(
           label,
-          style: isBold ? ErpFormStyle.sectionHeaderStyle(context) : ErpFormStyle.labelStyle(context),
+          style: isBold
+              ? ErpFormStyle.sectionHeaderStyle(context)
+              : ErpFormStyle.labelStyle(context),
         ),
         Text(
           NumberFormat('#,##0.00').format(value),

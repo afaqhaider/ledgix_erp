@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
-import 'package:ledgixerp/core/theme/app_spacing.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
@@ -55,14 +54,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 onPressed: () {
                   showErpSidePane(
                     context: context,
-                    builder: AddInvoiceScreen(
-                      user: widget.user,
-                      isPane: true,
-                    ),
+                    builder: AddInvoiceScreen(user: widget.user, isPane: true),
                   );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('New Invoice'),
+                label: const Text('Add New'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: Colors.white,
@@ -107,9 +103,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              child: DataTable(
+            padding: const EdgeInsets.all(16),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Card(
+                child: DataTable(
                 horizontalMargin: 24,
                 columnSpacing: 40,
                 columns: const [
@@ -155,13 +153,14 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                     cells: [
                       DataCell(Text(invoice.invoiceNumber)),
                       DataCell(Text(invoice.customerName)),
+                      DataCell(Text(AppFormatters.date(invoice.invoiceDate))),
                       DataCell(
                         Text(
-                          AppFormatters.date(invoice.invoiceDate),
+                          AppFormatters.currency(
+                            invoice.totalAmount,
+                            symbol: _company?.baseCurrency,
+                          ),
                         ),
-                      ),
-                      DataCell(
-                        Text(AppFormatters.currency(invoice.totalAmount, symbol: _company?.baseCurrency)),
                       ),
                       DataCell(
                         Container(
@@ -170,16 +169,17 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: (invoice.isPosted
-                                    ? Colors.green
-                                    : _getStatusColor(invoice.status))
-                                .withValues(alpha: 0.1),
+                            color:
+                                (invoice.isPosted
+                                        ? Colors.green
+                                        : _getStatusColor(invoice.status))
+                                    .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             (invoice.isPosted
-                                    ? 'POSTED'
-                                    : invoice.status.name.toUpperCase()),
+                                ? 'POSTED'
+                                : invoice.status.name.toUpperCase()),
                             style: TextStyle(
                               color: invoice.isPosted
                                   ? Colors.green
@@ -228,8 +228,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 }).toList(),
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }

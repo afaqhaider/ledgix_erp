@@ -23,6 +23,10 @@ class BillService {
     });
   }
 
+  Future<String> previewNextBillNumber(String companyId) async {
+    return await _settingsService.previewNextDocumentNumber(companyId, 'bill');
+  }
+
   Future<String> generateNextBillNumber(String companyId) async {
     return await _settingsService.previewNextDocumentNumber(companyId, 'bill');
   }
@@ -34,11 +38,12 @@ class BillService {
 
     await _firestore.runTransaction((transaction) async {
       // 1. Generate and increment within transaction
-      final actualBillNumber = await _settingsService.getNextDocumentNumberAndIncrement(
-        bill.companyId,
-        'bill',
-        transaction: transaction,
-      );
+      final actualBillNumber = await _settingsService
+          .getNextDocumentNumberAndIncrement(
+            bill.companyId,
+            'bill',
+            transaction: transaction,
+          );
 
       final docRef = _getBillsRef(bill.companyId).doc();
       final finalBill = bill.copyWith(
