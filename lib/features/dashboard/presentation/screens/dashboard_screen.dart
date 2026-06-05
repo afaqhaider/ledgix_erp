@@ -7,10 +7,16 @@ import 'package:ledgixerp/features/dashboard/services/dashboard_service.dart';
 import 'package:ledgixerp/features/dashboard/presentation/widgets/kpi_card.dart';
 import 'package:ledgixerp/features/dashboard/presentation/widgets/recent_activity_card.dart';
 import 'package:ledgixerp/features/dashboard/presentation/widgets/dashboard_chart.dart';
+import 'package:ledgixerp/features/invoices/presentation/screens/add_invoice_screen.dart';
+import 'package:ledgixerp/features/suppliers/presentation/screens/add_bill_screen.dart';
+import 'package:ledgixerp/features/crm/customer_payments/presentation/screens/add_customer_payment_screen.dart';
+import 'package:ledgixerp/features/supplier_payments/presentation/screens/add_supplier_payment_screen.dart';
 import 'package:ledgixerp/features/notifications/presentation/screens/notification_center_screen.dart';
 import 'package:ledgixerp/features/notifications/services/notification_service.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/core/theme/app_colors.dart';
 
@@ -31,7 +37,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const _expenseAccent = Color(0xFFD18B45);
   static const _profitAccent = Color(0xFF6E9F7F);
   static const _cashAccent = Color(0xFFE29A43);
-  static const _warningAccent = Color(0xFFD99A2B);
   static const _dangerAccent = Color(0xFFB46A5A);
 
   @override
@@ -188,21 +193,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             return SingleChildScrollView(
               padding: EdgeInsets.all(padding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeaderRow(),
-                  if (hasStatsError) ...[
-                    const SizedBox(height: 10),
-                    _buildDashboardDataNotice(),
-                  ],
-                  const SizedBox(height: 16),
-                  _buildKPIGrid(stats, currency),
-                  const SizedBox(height: 16),
-                  _buildChartsRow(stats),
-                  const SizedBox(height: 16),
-                  _buildActivityGrid(companyId, currency, stats),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final showRightRail = constraints.maxWidth >= 980;
+                  final mainContent = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderRow(),
+                      if (hasStatsError) ...[
+                        const SizedBox(height: 10),
+                        _buildDashboardDataNotice(),
+                      ],
+                      if (!showRightRail) ...[
+                        const SizedBox(height: 16),
+                        _buildQuickActionsRail(isCompact: true),
+                      ],
+                      const SizedBox(height: 16),
+                      _buildKPIGrid(stats, currency),
+                      const SizedBox(height: 16),
+                      _buildChartsRow(stats),
+                      const SizedBox(height: 16),
+                      _buildActivityGrid(companyId, currency, stats),
+                    ],
+                  );
+
+                  if (!showRightRail) return mainContent;
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: mainContent),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 280,
+                        child: _buildQuickActionsRail(isCompact: false),
+                      ),
+                    ],
+                  );
+                },
               ),
             );
           },
@@ -426,9 +454,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        int count = constraints.maxWidth > 1200
-            ? 3
-            : (constraints.maxWidth > 800 ? 2 : 1);
+        int count = constraints.maxWidth > 800 ? 2 : 1;
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -487,14 +513,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
               },
             ),
-            _buildQuickActionsCard(stats),
           ],
         );
       },
     );
   }
 
-  Widget _buildQuickActionsCard(DashboardStats stats) {
+  Widget _buildQuickActionsRail({required bool isCompact}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = isDark
@@ -525,64 +550,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Operational Overview',
+            'Quick Actions',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildActionItem(
-            'Pending Approvals',
-            '${stats.pendingApprovalsCount} tasks waiting',
-            Icons.fact_check_rounded,
-            _warningAccent,
-            () => _selectModule(AppModuleId.approvals),
+            'Add New Invoice',
+            'Sales invoice',
+            Icons.receipt_long_rounded,
+            _revenueAccent,
+            _openAddInvoice,
           ),
-          Divider(height: 24, color: dividerColor),
+          Divider(height: 20, color: dividerColor),
           _buildActionItem(
-            'Approved Today',
-            '${stats.approvedTodayCount} documents',
-            Icons.check_circle_rounded,
+            'Add New Bill',
+            'Vendor bill',
+            Icons.assignment_rounded,
+            _expenseAccent,
+            _openAddBill,
+          ),
+          Divider(height: 20, color: dividerColor),
+          _buildActionItem(
+            'Add New Receipt',
+            'Customer receipt',
+            Icons.payments_rounded,
             _profitAccent,
-            () => _selectModule(AppModuleId.approvals),
+            _openAddReceipt,
           ),
-          Divider(height: 24, color: dividerColor),
+          Divider(height: 20, color: dividerColor),
           _buildActionItem(
-            'Rejected Documents',
-            '${stats.rejectedDocsCount} items',
-            Icons.cancel_rounded,
-            _dangerAccent,
-            () => _selectModule(AppModuleId.approvals),
+            'Add New Payment',
+            'Supplier payment',
+            Icons.account_balance_wallet_rounded,
+            _cashAccent,
+            _openAddPayment,
           ),
-          Divider(height: 24, color: dividerColor),
+          Divider(height: 20, color: dividerColor),
           _buildActionItem(
-            'Overdue Invoices',
-            '${stats.overdueInvoicesCount} invoices',
-            Icons.warning_rounded,
+            'Add New Expense',
+            'Expense bill',
+            Icons.trending_down_rounded,
             _dangerAccent,
-            () => _selectModule(AppModuleId.salesInvoices),
-          ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary.withValues(
-                  alpha: 0.1,
-                ),
-                foregroundColor: theme.colorScheme.primary,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              child: const Text(
-                'View All Activities',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-            ),
+            _openAddExpense,
           ),
         ],
       ),
+    );
+  }
+
+  void _openAddInvoice() {
+    showErpSidePane(
+      context: context,
+      builder: AddInvoiceScreen(user: widget.user, isPane: true),
+    );
+  }
+
+  void _openAddBill() {
+    showErpSidePane(
+      context: context,
+      builder: AddBillScreen(user: widget.user, isPane: true),
+    );
+  }
+
+  void _openAddReceipt() {
+    SidePanel.show(
+      context: context,
+      title: 'Add New Receipt',
+      child: AddCustomerPaymentScreen(user: widget.user),
+    );
+  }
+
+  void _openAddPayment() {
+    SidePanel.show(
+      context: context,
+      title: 'Add Supplier Payment',
+      child: AddSupplierPaymentScreen(user: widget.user),
+    );
+  }
+
+  void _openAddExpense() {
+    showErpSidePane(
+      context: context,
+      builder: AddBillScreen(user: widget.user, isPane: true),
     );
   }
 

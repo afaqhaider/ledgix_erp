@@ -9,6 +9,7 @@ import '../models/company_model.dart';
 class CompanyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final Map<String, String> _resolvedLogoUrlCache = {};
 
   Future<String> setupCompany(CompanyModel company) async {
     final companyRef = _firestore.collection('companies').doc();
@@ -59,6 +60,9 @@ class CompanyService {
   }
 
   Future<void> updateCompany(CompanyModel company) async {
+    debugPrint(
+      'CompanyService: Updating company ${company.id}; logo=${company.companyLogoUrl ?? '(none)'}',
+    );
     await _firestore
         .collection('companies')
         .doc(company.id)
@@ -68,15 +72,29 @@ class CompanyService {
   Future<String?> resolveLogoUrl(String? logoUrl) async {
     final value = logoUrl?.trim();
     if (value == null || value.isEmpty) return null;
+    final cachedUrl = _resolvedLogoUrlCache[value];
+    if (cachedUrl != null) {
+      debugPrint('CompanyService: Resolved logo from cache: $value');
+      return cachedUrl;
+    }
+
     if (value.startsWith('http://') || value.startsWith('https://')) {
+      debugPrint('CompanyService: Using logo download URL directly.');
+      _resolvedLogoUrlCache[value] = value;
       return value;
     }
 
     try {
+      debugPrint('CompanyService: Resolving logo path: $value');
+      late final String resolvedUrl;
       if (value.startsWith('gs://')) {
-        return await _storage.refFromURL(value).getDownloadURL();
+        resolvedUrl = await _storage.refFromURL(value).getDownloadURL();
+      } else {
+        resolvedUrl = await _storage.ref().child(value).getDownloadURL();
       }
-      return await _storage.ref().child(value).getDownloadURL();
+      _resolvedLogoUrlCache[value] = resolvedUrl;
+      debugPrint('CompanyService: Logo path resolved successfully.');
+      return resolvedUrl;
     } catch (e) {
       debugPrint('Error resolving logo URL: $e');
       return null;
@@ -117,7 +135,12 @@ class CompanyService {
         uploadTask = storageRef.putFile(file, metadata);
       }
       final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      _resolvedLogoUrlCache[snapshot.ref.fullPath] = downloadUrl;
+      debugPrint(
+        'CompanyService: Logo uploaded successfully: ${snapshot.ref.fullPath}',
+      );
+      return snapshot.ref.fullPath;
     } catch (e) {
       debugPrint('Error uploading logo: $e');
       throw Exception('Could not upload the company logo. Please try again.');

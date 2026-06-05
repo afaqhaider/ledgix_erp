@@ -382,7 +382,7 @@ class AppModules {
         AppModule(
           id: AppModuleId.companySettings,
           icon: Icons.business_rounded,
-          label: 'Company Settings',
+          label: 'Basic Settings',
           permission: AppPermission.manageSettings,
           pageBuilder: (user) => CompanySettingsScreen(user: user),
         ),
@@ -410,14 +410,14 @@ class AppModules {
             AppModule(
               id: AppModuleId.creditTerms,
               icon: Icons.credit_card_rounded,
-              label: 'Credit Terms (Customers)',
+              label: 'Credit Terms',
               permission: AppPermission.manageSettings,
               pageBuilder: (user) => CreditTermsScreen(user: user),
             ),
             AppModule(
               id: AppModuleId.paymentTerms,
               icon: Icons.payments_rounded,
-              label: 'Payment Terms (Quotations)',
+              label: 'Payment Terms',
               permission: AppPermission.manageSettings,
               pageBuilder: (user) => PaymentTermsScreen(user: user),
             ),

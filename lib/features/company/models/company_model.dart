@@ -14,6 +14,11 @@ class CompanyModel {
   final String? email;
   final String? website;
   final String? address;
+  final String? addressLine1;
+  final String? addressLine2;
+  final String? city;
+  final String? stateOrEmirate;
+  final String? poBox;
   final int financialYearStartMonth;
   final String timezone;
   final DateTime createdAt;
@@ -33,6 +38,11 @@ class CompanyModel {
     this.email,
     this.website,
     this.address,
+    this.addressLine1,
+    this.addressLine2,
+    this.city,
+    this.stateOrEmirate,
+    this.poBox,
     required this.financialYearStartMonth,
     required this.timezone,
     required this.createdAt,
@@ -54,6 +64,11 @@ class CompanyModel {
       email: map['email'],
       website: map['website'],
       address: map['address'],
+      addressLine1: map['addressLine1'],
+      addressLine2: map['addressLine2'],
+      city: map['city'],
+      stateOrEmirate: map['stateOrEmirate'],
+      poBox: map['poBox'],
       financialYearStartMonth: map['financialYearStartMonth'] ?? 1,
       timezone: map['timezone'] ?? 'UTC',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -74,7 +89,12 @@ class CompanyModel {
       'phone': phone,
       'email': email,
       'website': website,
-      'address': address,
+      'address': _formattedAddress,
+      'addressLine1': addressLine1,
+      'addressLine2': addressLine2,
+      'city': city,
+      'stateOrEmirate': stateOrEmirate,
+      'poBox': poBox,
       'financialYearStartMonth': financialYearStartMonth,
       'timezone': timezone,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -97,6 +117,11 @@ class CompanyModel {
       email: email,
       website: website,
       address: address,
+      addressLine1: addressLine1,
+      addressLine2: addressLine2,
+      city: city,
+      stateOrEmirate: stateOrEmirate,
+      poBox: poBox,
       financialYearStartMonth: financialYearStartMonth,
       timezone: timezone,
       createdAt: createdAt,
@@ -117,6 +142,11 @@ class CompanyModel {
     String? email,
     String? website,
     String? address,
+    String? addressLine1,
+    String? addressLine2,
+    String? city,
+    String? stateOrEmirate,
+    String? poBox,
     int? financialYearStartMonth,
     String? timezone,
   }) {
@@ -134,11 +164,34 @@ class CompanyModel {
       email: email ?? this.email,
       website: website ?? this.website,
       address: address ?? this.address,
+      addressLine1: addressLine1 ?? this.addressLine1,
+      addressLine2: addressLine2 ?? this.addressLine2,
+      city: city ?? this.city,
+      stateOrEmirate: stateOrEmirate ?? this.stateOrEmirate,
+      poBox: poBox ?? this.poBox,
       financialYearStartMonth:
           financialYearStartMonth ?? this.financialYearStartMonth,
       timezone: timezone ?? this.timezone,
       createdAt: createdAt,
       createdByUserId: createdByUserId,
     );
+  }
+
+  String? get _formattedAddress {
+    final parts =
+        [
+              addressLine1,
+              addressLine2,
+              city,
+              stateOrEmirate,
+              country,
+              if (poBox != null && poBox!.trim().isNotEmpty) 'P.O. Box $poBox',
+            ]
+            .where((part) => part != null && part.trim().isNotEmpty)
+            .map((part) => part!.trim())
+            .toList();
+
+    if (parts.isNotEmpty) return parts.join(', ');
+    return address;
   }
 }

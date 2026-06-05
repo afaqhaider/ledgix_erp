@@ -6,6 +6,7 @@ import 'package:ledgixerp/core/theme/theme_controller.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/widgets/app_logo_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SidebarNavigation extends StatefulWidget {
@@ -28,6 +29,7 @@ class SidebarNavigation extends StatefulWidget {
 
 class _SidebarNavigationState extends State<SidebarNavigation> {
   String? _expandedSection;
+  final Set<AppModuleId> _expandedModules = {};
   final _companyService = CompanyService();
 
   @override
@@ -101,33 +103,56 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                     if (isSectionExpanded)
                       ...visibleModules.expand((module) {
                         final List<Widget> subWidgets = [];
+                        final visibleSubModules = module.subModules
+                            .where(
+                              (sub) =>
+                                  widget.role.hasPermission(sub.permission),
+                            )
+                            .toList();
+                        final hasSubModules = visibleSubModules.isNotEmpty;
+                        final isModuleExpanded = _expandedModules.contains(
+                          module.id,
+                        );
+
                         subWidgets.add(
                           _SidebarTile(
                             module: module,
-                            isSelected: widget.selectedModuleId == module.id,
+                            isSelected:
+                                widget.selectedModuleId == module.id ||
+                                visibleSubModules.any(
+                                  (sub) => widget.selectedModuleId == sub.id,
+                                ),
                             activeColor: activeColor,
-                            onTap: () => widget.onModuleSelected(module),
+                            onTap: () {
+                              if (hasSubModules) {
+                                setState(() {
+                                  if (isModuleExpanded) {
+                                    _expandedModules.remove(module.id);
+                                  } else {
+                                    _expandedModules.add(module.id);
+                                  }
+                                });
+                                return;
+                              }
+                              widget.onModuleSelected(module);
+                            },
                             isIndent: true,
+                            hasSubItems: hasSubModules,
+                            isExpanded: isModuleExpanded,
                           ),
                         );
 
-                        if (module.subModules.isNotEmpty) {
+                        if (hasSubModules && isModuleExpanded) {
                           subWidgets.addAll(
-                            module.subModules
-                                .where(
-                                  (sub) =>
-                                      widget.role.hasPermission(sub.permission),
-                                )
-                                .map(
-                                  (sub) => _SidebarTile(
-                                    module: sub,
-                                    isSelected:
-                                        widget.selectedModuleId == sub.id,
-                                    activeColor: activeColor,
-                                    onTap: () => widget.onModuleSelected(sub),
-                                    isSubItem: true,
-                                  ),
-                                ),
+                            visibleSubModules.map(
+                              (sub) => _SidebarTile(
+                                module: sub,
+                                isSelected: widget.selectedModuleId == sub.id,
+                                activeColor: activeColor,
+                                onTap: () => widget.onModuleSelected(sub),
+                                isSubItem: true,
+                              ),
+                            ),
                           );
                         }
                         return subWidgets;
@@ -152,13 +177,15 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: widget.companyId == null
-          ? _buildLogoPlaceholder("LedGix")
+          ? _buildLogoPlaceholder("LedGix ERP")
           : StreamBuilder<CompanyModel?>(
               stream: _companyService.getCompany(widget.companyId!),
               builder: (context, snapshot) {
                 final company = snapshot.data;
                 final name =
-                    company?.tradeName ?? company?.companyLegalName ?? "LedGix";
+                    company?.tradeName ??
+                    company?.companyLegalName ??
+                    "LedGix ERP";
                 final logoUrl = company?.companyLogoUrl;
                 final hasLogo = logoUrl != null && logoUrl.trim().isNotEmpty;
 
@@ -176,7 +203,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                           color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: -0.2,
+                          letterSpacing: 0,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -189,48 +216,13 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   }
 
   Widget _buildCompanyLogo(String logoUrl) {
-    return FutureBuilder<String?>(
-      future: _companyService.resolveLogoUrl(logoUrl),
-      builder: (context, snapshot) {
-        final resolvedUrl = snapshot.data;
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(
-            width: 26,
-            height: 26,
-            child: Center(
-              child: SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          );
-        }
-        if (resolvedUrl == null || resolvedUrl.isEmpty) {
-          return _buildCompanyLogoFallback();
-        }
-
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: Image.network(
-            resolvedUrl,
-            key: ValueKey(resolvedUrl),
-            width: 26,
-            height: 26,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) =>
-                _buildCompanyLogoFallback(),
-          ),
-        );
-      },
-    );
+    return _buildCompanyLogoFallback();
   }
 
   Widget _buildCompanyLogoFallback() {
-    return Icon(
-      Icons.account_balance_wallet_rounded,
-      color: Theme.of(context).colorScheme.primary,
-      size: 22,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(5),
+      child: AppLogoImage(width: 28, height: 28),
     );
   }
 
@@ -381,6 +373,8 @@ class _SidebarTile extends StatelessWidget {
   final VoidCallback onTap;
   final bool isSubItem;
   final bool isIndent;
+  final bool hasSubItems;
+  final bool isExpanded;
 
   const _SidebarTile({
     required this.module,
@@ -389,6 +383,8 @@ class _SidebarTile extends StatelessWidget {
     required this.onTap,
     this.isSubItem = false,
     this.isIndent = false,
+    this.hasSubItems = false,
+    this.isExpanded = false,
   });
 
   @override
@@ -443,6 +439,14 @@ class _SidebarTile extends StatelessWidget {
                     color: activeColor,
                     borderRadius: BorderRadius.circular(1),
                   ),
+                )
+              else if (hasSubItems)
+                Icon(
+                  isExpanded
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
+                  size: 14,
+                  color: idleColor,
                 ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/features/auth/presentation/screens/register_screen.dart';
+import 'package:ledgixerp/widgets/app_logo_image.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -138,13 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(
-                          Icons.account_balance_wallet,
-                          size: 38,
-                          color: isDark
-                              ? Colors.white
-                              : theme.colorScheme.primary,
-                        ),
+                        Center(child: AppLogoImage(width: 42, height: 42)),
                         const SizedBox(height: 18),
                         Text(
                           'LedGix ERP',

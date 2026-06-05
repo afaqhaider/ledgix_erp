@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
+import 'package:ledgixerp/widgets/app_logo_image.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -117,6 +118,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Center(child: AppLogoImage(width: 42, height: 42)),
+                        const SizedBox(height: 18),
                         Text(
                           'Create ERP Account',
                           textAlign: TextAlign.center,
