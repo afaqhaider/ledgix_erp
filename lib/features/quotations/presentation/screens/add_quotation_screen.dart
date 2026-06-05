@@ -9,7 +9,6 @@ import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.da
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
 import 'package:ledgixerp/features/crm/customers/presentation/widgets/add_customer_dialog.dart';
-import 'package:ledgixerp/features/accounting/chart_of_accounts/add_account_dialog.dart';
 import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/settings/models/payment_term_model.dart';
@@ -20,6 +19,7 @@ import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_
 import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:ledgixerp/widgets/form_layout.dart';
 
 class AddQuotationScreen extends StatefulWidget {
   final AppUser user;
@@ -244,13 +244,6 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
     );
   }
 
-  void _showAddAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AddAccountDialog(companyId: widget.user.companyId!),
-    );
-  }
-
   void _showAddPaymentTermDialog() {
     showDialog(
       context: context,
@@ -288,152 +281,156 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: InputDecorator(
-                              decoration: ErpFormStyle.inputDecoration(
-                                context,
-                                'Document Number',
-                              ),
-                              child: Text(
-                                'Next number: $_previewNumber',
-                                style: ErpFormStyle.inputStyle(context)
-                                    .copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blueAccent,
-                                    ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 2,
-                            child: SearchableSelector<CustomerModel>(
-                              labelText: 'Select Customer',
-                              items: _allCustomers,
-                              itemLabelBuilder: (c) => c.name,
-                              onSelected: (val) =>
-                                  setState(() => _selectedCustomer = val),
-                              addLabel: 'Add New Customer',
-                              onAdd: _showAddCustomerDialog,
-                              initialValue: _selectedCustomer,
-                              validator: (v) =>
-                                  _selectedCustomer == null ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDatePicker(
-                              label: 'Quotation Date',
-                              selectedDate: _quoDate,
-                              onTap: (date) {
-                                setState(() => _quoDate = date);
-                                _updateValidUntilDate();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: SearchableSelector<PaymentTermModel>(
-                              labelText: 'Payment Terms',
-                              items: _allTerms,
-                              itemLabelBuilder: (t) => t.name,
-                              onSelected: (val) {
-                                setState(() {
-                                  _selectedTerm = val;
-                                  _updateValidUntilDate();
-                                });
-                              },
-                              addLabel: 'Add New Term',
-                              onAdd: _showAddPaymentTermDialog,
-                              initialValue: _selectedTerm,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildDatePicker(
-                              label: 'Valid Until',
-                              selectedDate: _validUntil,
-                              onTap: (date) =>
-                                  setState(() => _validUntil = date),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'Quotation Items',
-                style: ErpFormStyle.sectionHeaderStyle(context),
-              ),
-              const SizedBox(height: 16),
-              _buildItemsTable(),
-              const SizedBox(height: 16),
-              TextButton.icon(
-                onPressed: _addItem,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Item'),
-              ),
-              const SizedBox(height: 32),
-              AttachmentSection(
-                companyId: widget.user.companyId!,
-                folder: 'quotations',
-                onAttachmentsChanged: (attachments) {
-                  _attachments = attachments;
-                },
-              ),
-              const SizedBox(height: 32),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
+        child: FormLayout(
+          maxWidth: 1100,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        TextFormField(
-                          controller: _notesController,
-                          maxLines: 2,
-                          style: ErpFormStyle.inputStyle(context),
-                          decoration: ErpFormStyle.inputDecoration(
-                            context,
-                            'Notes',
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InputDecorator(
+                                decoration: ErpFormStyle.inputDecoration(
+                                  context,
+                                  'Document Number',
+                                ),
+                                child: Text(
+                                  'Next number: $_previewNumber',
+                                  style: ErpFormStyle.inputStyle(context)
+                                      .copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blueAccent,
+                                      ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: SearchableSelector<CustomerModel>(
+                                labelText: 'Select Customer',
+                                items: _allCustomers,
+                                itemLabelBuilder: (c) => c.name,
+                                onSelected: (val) =>
+                                    setState(() => _selectedCustomer = val),
+                                addLabel: 'Add New Customer',
+                                onAdd: _showAddCustomerDialog,
+                                initialValue: _selectedCustomer,
+                                validator: (v) => _selectedCustomer == null
+                                    ? 'Required'
+                                    : null,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _termsController,
-                          maxLines: 2,
-                          style: ErpFormStyle.inputStyle(context),
-                          decoration: ErpFormStyle.inputDecoration(
-                            context,
-                            'Terms & Conditions',
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildDatePicker(
+                                label: 'Quotation Date',
+                                selectedDate: _quoDate,
+                                onTap: (date) {
+                                  setState(() => _quoDate = date);
+                                  _updateValidUntilDate();
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: SearchableSelector<PaymentTermModel>(
+                                labelText: 'Payment Terms',
+                                items: _allTerms,
+                                itemLabelBuilder: (t) => t.name,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedTerm = val;
+                                    _updateValidUntilDate();
+                                  });
+                                },
+                                addLabel: 'Add New Term',
+                                onAdd: _showAddPaymentTermDialog,
+                                initialValue: _selectedTerm,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildDatePicker(
+                                label: 'Valid Until',
+                                selectedDate: _validUntil,
+                                onTap: (date) =>
+                                    setState(() => _validUntil = date),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 32),
-                  _buildSummarySection(),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  'Quotation Items',
+                  style: ErpFormStyle.sectionHeaderStyle(context),
+                ),
+                const SizedBox(height: 16),
+                _buildItemsTable(),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: _addItem,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Item'),
+                ),
+                const SizedBox(height: 32),
+                AttachmentSection(
+                  companyId: widget.user.companyId!,
+                  folder: 'quotations',
+                  onAttachmentsChanged: (attachments) {
+                    _attachments = attachments;
+                  },
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _notesController,
+                            maxLines: 2,
+                            style: ErpFormStyle.inputStyle(context),
+                            decoration: ErpFormStyle.inputDecoration(
+                              context,
+                              'Notes',
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _termsController,
+                            maxLines: 2,
+                            style: ErpFormStyle.inputStyle(context),
+                            decoration: ErpFormStyle.inputDecoration(
+                              context,
+                              'Terms & Conditions',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 32),
+                    _buildSummarySection(),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -534,10 +531,12 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                   labelText: '',
                   items: [..._allProducts, ..._allAccounts],
                   itemLabelBuilder: (val) {
-                    if (val is InventoryItemModel)
+                    if (val is InventoryItemModel) {
                       return '${val.itemCode} - ${val.itemName}';
-                    if (val is AccountModel)
+                    }
+                    if (val is AccountModel) {
                       return '${val.accountCode} - ${val.accountName}';
+                    }
                     return '';
                   },
                   onSelected: (val) {

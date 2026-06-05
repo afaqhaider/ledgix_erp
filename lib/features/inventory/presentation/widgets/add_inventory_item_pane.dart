@@ -4,6 +4,7 @@ import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
+import 'package:ledgixerp/widgets/form_layout.dart';
 import 'package:uuid/uuid.dart';
 
 class AddInventoryItemPane extends StatefulWidget {
@@ -48,7 +49,9 @@ class _AddInventoryItemPaneState extends State<AddInventoryItemPane> {
     _uomController = TextEditingController(
       text: widget.item?.defaultUomId ?? 'Units',
     );
-    _categoryController = TextEditingController(text: widget.item?.itemCategoryId);
+    _categoryController = TextEditingController(
+      text: widget.item?.itemCategoryId,
+    );
     _itemType = widget.item?.itemType ?? InventoryItemType.stock;
     _inventoryAccountId = widget.item?.inventoryAccountId;
     _incomeAccountId = widget.item?.incomeAccountId;
@@ -96,111 +99,131 @@ class _AddInventoryItemPaneState extends State<AddInventoryItemPane> {
 
   @override
   Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _codeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Item Code*',
-                    hintText: 'SKU-001',
+    return FormLayout(
+      maxWidth: 680,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _codeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Item Code*',
+                      hintText: 'SKU-001',
+                    ),
+                    validator: (v) => v?.isEmpty == true ? 'Required' : null,
                   ),
-                  validator: (v) => v?.isEmpty == true ? 'Required' : null,
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: DropdownButtonFormField<InventoryItemType>(
-                  value: _itemType,
-                  decoration: const InputDecoration(labelText: 'Type*'),
-                  items: InventoryItemType.values
-                      .map(
-                        (t) => DropdownMenuItem(
-                          value: t,
-                          child: Text(t.label),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: DropdownButtonFormField<InventoryItemType>(
+                    initialValue: _itemType,
+                    decoration: const InputDecoration(labelText: 'Type*'),
+                    items: InventoryItemType.values
+                        .map(
+                          (t) =>
+                              DropdownMenuItem(value: t, child: Text(t.label)),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _itemType = v!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Item Name*'),
+              validator: (v) => v?.isEmpty == true ? 'Required' : null,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _categoryController,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _uomController,
+                    decoration: const InputDecoration(
+                      labelText: 'Unit of Measure*',
+                    ),
+                    validator: (v) => v?.isEmpty == true ? 'Required' : null,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Financial Mapping',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const Divider(),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _salesPriceController,
+                    decoration: const InputDecoration(labelText: 'Sales Price'),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _purchasePriceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Purchase Price',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            StreamBuilder<List<AccountModel>>(
+              stream: _accountService.getAccounts(widget.user.companyId!),
+              builder: (context, snapshot) {
+                final accounts = snapshot.data ?? [];
+                return Column(
+                  children: [
+                    if (_itemType == InventoryItemType.stock)
+                      DropdownButtonFormField<String>(
+                        initialValue: _inventoryAccountId,
+                        decoration: const InputDecoration(
+                          labelText: 'Inventory Account',
                         ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _itemType = v!),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Item Name*'),
-            validator: (v) => v?.isEmpty == true ? 'Required' : null,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _categoryController,
-                  decoration: const InputDecoration(labelText: 'Category'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: TextFormField(
-                  controller: _uomController,
-                  decoration: const InputDecoration(
-                    labelText: 'Unit of Measure*',
-                  ),
-                  validator: (v) => v?.isEmpty == true ? 'Required' : null,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Financial Mapping',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          const Divider(),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _salesPriceController,
-                  decoration: const InputDecoration(labelText: 'Sales Price'),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: TextFormField(
-                  controller: _purchasePriceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Purchase Price',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          StreamBuilder<List<AccountModel>>(
-            stream: _accountService.getAccounts(widget.user.companyId!),
-            builder: (context, snapshot) {
-              final accounts = snapshot.data ?? [];
-              return Column(
-                children: [
-                  if (_itemType == InventoryItemType.stock)
+                        items: accounts
+                            .where((a) => a.accountType == AccountType.asset)
+                            .map(
+                              (a) => DropdownMenuItem(
+                                value: a.id,
+                                child: Text(
+                                  '${a.accountCode} - ${a.accountName}',
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => _inventoryAccountId = v),
+                      ),
+                    const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _inventoryAccountId,
+                      initialValue: _incomeAccountId,
                       decoration: const InputDecoration(
-                        labelText: 'Inventory Account',
+                        labelText: 'Income Account',
                       ),
                       items: accounts
-                          .where((a) => a.accountType == AccountType.asset)
+                          .where((a) => a.accountType == AccountType.income)
                           .map(
                             (a) => DropdownMenuItem(
                               value: a.id,
@@ -210,66 +233,54 @@ class _AddInventoryItemPaneState extends State<AddInventoryItemPane> {
                             ),
                           )
                           .toList(),
-                      onChanged: (v) => setState(() => _inventoryAccountId = v),
+                      onChanged: (v) => setState(() => _incomeAccountId = v),
                     ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: _incomeAccountId,
-                    decoration: const InputDecoration(
-                      labelText: 'Income Account',
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: _expenseAccountId,
+                      decoration: const InputDecoration(
+                        labelText: 'Expense/COGS Account',
+                      ),
+                      items: accounts
+                          .where(
+                            (a) =>
+                                a.accountType == AccountType.expense ||
+                                a.accountType == AccountType.costOfSales,
+                          )
+                          .map(
+                            (a) => DropdownMenuItem(
+                              value: a.id,
+                              child: Text(
+                                '${a.accountCode} - ${a.accountName}',
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _expenseAccountId = v),
                     ),
-                    items: accounts
-                        .where((a) => a.accountType == AccountType.income)
-                        .map(
-                          (a) => DropdownMenuItem(
-                            value: a.id,
-                            child: Text('${a.accountCode} - ${a.accountName}'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => _incomeAccountId = v),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: _expenseAccountId,
-                    decoration: const InputDecoration(
-                      labelText: 'Expense/COGS Account',
-                    ),
-                    items: accounts
-                        .where(
-                          (a) =>
-                              a.accountType == AccountType.expense ||
-                              a.accountType == AccountType.costOfSales,
-                        )
-                        .map(
-                          (a) => DropdownMenuItem(
-                            value: a.id,
-                            child: Text('${a.accountCode} - ${a.accountName}'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => _expenseAccountId = v),
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          SwitchListTile(
-            title: const Text('Is Active'),
-            value: _isActive,
-            onChanged: (v) => setState(() => _isActive = v),
-            contentPadding: EdgeInsets.zero,
-          ),
-          const SizedBox(height: 40),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _save,
-              child: Text(widget.item == null ? 'Create Item' : 'Update Item'),
+                  ],
+                );
+              },
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            SwitchListTile(
+              title: const Text('Is Active'),
+              value: _isActive,
+              onChanged: (v) => setState(() => _isActive = v),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _save,
+                child: Text(
+                  widget.item == null ? 'Create Item' : 'Update Item',
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

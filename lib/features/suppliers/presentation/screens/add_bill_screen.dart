@@ -19,6 +19,7 @@ import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_
 import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:ledgixerp/widgets/form_layout.dart';
 
 class AddBillScreen extends StatefulWidget {
   final AppUser user;
@@ -280,126 +281,128 @@ class _AddBillScreenState extends State<AddBillScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: InputDecorator(
-                              decoration: ErpFormStyle.inputDecoration(
-                                context,
-                                'Bill Number',
+        child: FormLayout(
+          maxWidth: 1100,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InputDecorator(
+                                decoration: ErpFormStyle.inputDecoration(
+                                  context,
+                                  'Bill Number',
+                                ),
+                                child: Text(
+                                  'Next number: $_previewNumber',
+                                  style: ErpFormStyle.inputStyle(context)
+                                      .copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blueAccent,
+                                      ),
+                                ),
                               ),
-                              child: Text(
-                                'Next number: $_previewNumber',
-                                style: ErpFormStyle.inputStyle(context)
-                                    .copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blueAccent,
-                                    ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: SearchableSelector<SupplierModel>(
+                                labelText: 'Select Supplier',
+                                items: _allSuppliers,
+                                itemLabelBuilder: (s) => s.supplierName,
+                                onSelected: (val) =>
+                                    setState(() => _selectedSupplier = val),
+                                addLabel: 'Add New Supplier',
+                                onAdd: _showAddSupplierDialog,
+                                initialValue: _selectedSupplier,
+                                validator: (v) => _selectedSupplier == null
+                                    ? 'Required'
+                                    : null,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 2,
-                            child: SearchableSelector<SupplierModel>(
-                              labelText: 'Select Supplier',
-                              items: _allSuppliers,
-                              itemLabelBuilder: (s) => s.supplierName,
-                              onSelected: (val) =>
-                                  setState(() => _selectedSupplier = val),
-                              addLabel: 'Add New Supplier',
-                              onAdd: _showAddSupplierDialog,
-                              initialValue: _selectedSupplier,
-                              validator: (v) =>
-                                  _selectedSupplier == null ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDatePicker(
-                              label: 'Bill Date',
-                              selectedDate: _billDate,
-                              onTap: (date) {
-                                setState(() => _billDate = date);
-                                _updateDueDate();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: SearchableSelector<CreditTermModel>(
-                              labelText: 'Payment Terms',
-                              items: _allTerms,
-                              itemLabelBuilder: (t) => t.name,
-                              onSelected: (val) {
-                                setState(() {
-                                  _selectedTerm = val;
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildDatePicker(
+                                label: 'Bill Date',
+                                selectedDate: _billDate,
+                                onTap: (date) {
+                                  setState(() => _billDate = date);
                                   _updateDueDate();
-                                });
-                              },
-                              addLabel: 'Add New Term',
-                              onAdd: _showAddCreditTermDialog,
-                              initialValue: _selectedTerm,
+                                },
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildDatePicker(
-                              label: 'Due Date',
-                              selectedDate: _dueDate,
-                              onTap: (date) => setState(() => _dueDate = date),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: SearchableSelector<CreditTermModel>(
+                                labelText: 'Payment Terms',
+                                items: _allTerms,
+                                itemLabelBuilder: (t) => t.name,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedTerm = val;
+                                    _updateDueDate();
+                                  });
+                                },
+                                addLabel: 'Add New Term',
+                                onAdd: _showAddCreditTermDialog,
+                                initialValue: _selectedTerm,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildDatePicker(
+                                label: 'Due Date',
+                                selectedDate: _dueDate,
+                                onTap: (date) =>
+                                    setState(() => _dueDate = date),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'Bill Items',
-                style: ErpFormStyle.sectionHeaderStyle(context),
-              ),
-              const SizedBox(height: 16),
-              _buildItemsTable(),
-              const SizedBox(height: 16),
-              TextButton.icon(
-                onPressed: _addItem,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Item'),
-              ),
-              const SizedBox(height: 32),
-              AttachmentSection(
-                companyId: widget.user.companyId!,
-                folder: 'bills',
-                onAttachmentsChanged: (attachments) {
-                  _attachments = attachments;
-                },
-              ),
-              const SizedBox(height: 32),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Spacer(),
-                  _buildSummarySection(),
-                ],
-              ),
-            ],
+                const SizedBox(height: 32),
+                Text(
+                  'Bill Items',
+                  style: ErpFormStyle.sectionHeaderStyle(context),
+                ),
+                const SizedBox(height: 16),
+                _buildItemsTable(),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: _addItem,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Item'),
+                ),
+                const SizedBox(height: 32),
+                AttachmentSection(
+                  companyId: widget.user.companyId!,
+                  folder: 'bills',
+                  onAttachmentsChanged: (attachments) {
+                    _attachments = attachments;
+                  },
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [const Spacer(), _buildSummarySection()],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -545,11 +548,11 @@ class _AddBillScreenState extends State<AddBillScreen> {
                     onAdd: _showAddProductDialog,
                     initialValue: item.productId != null
                         ? _allProducts
-                            .where((p) => p.id == item.productId)
-                            .firstOrNull
+                              .where((p) => p.id == item.productId)
+                              .firstOrNull
                         : _allAccounts
-                            .where((a) => a.id == item.accountId)
-                            .firstOrNull,
+                              .where((a) => a.id == item.accountId)
+                              .firstOrNull,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -621,7 +624,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
       width: 300,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.01),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.black.withValues(alpha: 0.01),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: theme.dividerColor),
       ),

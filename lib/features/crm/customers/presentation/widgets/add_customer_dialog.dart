@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ledgixerp/features/crm/customers/models/customer_model.dart';
 import 'package:ledgixerp/features/crm/customers/services/customer_service.dart';
 import 'package:ledgixerp/core/theme/app_colors.dart';
+import 'package:ledgixerp/widgets/form_layout.dart';
 
 class AddCustomerDialog extends StatefulWidget {
   final String companyId;
@@ -65,112 +66,112 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildFieldLabel('Customer / Company Name *'),
-          TextFormField(
-            controller: _nameController,
-            style: const TextStyle(fontSize: 14),
-            decoration: _getInputDecoration('e.g. Acme Corp'),
-            validator: (v) => v!.isEmpty ? 'Required' : null,
-          ),
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFieldLabel('Email Address'),
-                    TextFormField(
-                      controller: _emailController,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: _getInputDecoration('email@example.com'),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return null;
-                        if (!RegExp(
-                          r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$',
-                        ).hasMatch(v)) {
-                          return 'Invalid email';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFieldLabel('Phone Number'),
-                    TextFormField(
-                      controller: _phoneController,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: _getInputDecoration('+1 234 567 890'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          _buildFieldLabel('Tax Number (VAT/TRN)'),
-          TextFormField(
-            controller: _taxController,
-            style: const TextStyle(fontSize: 14),
-            decoration: _getInputDecoration('Optional'),
-          ),
-          const SizedBox(height: 16),
-
-          _buildFieldLabel('Billing Address'),
-          TextFormField(
-            controller: _addressController,
-            maxLines: 3,
-            style: const TextStyle(fontSize: 14),
-            decoration: _getInputDecoration('Full street address...'),
-          ),
-
-          const SizedBox(height: 32),
-
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text(
-                      'Save Customer',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+    return FormLayout(
+      maxWidth: 640,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildFieldLabel('Customer / Company Name *'),
+            TextFormField(
+              controller: _nameController,
+              style: const TextStyle(fontSize: 14),
+              decoration: _getInputDecoration('e.g. Acme Corp'),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel('Email Address'),
+                      TextFormField(
+                        controller: _emailController,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: _getInputDecoration('email@example.com'),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return null;
+                          if (!RegExp(
+                            r'^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(v)) {
+                            return 'Invalid email';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel('Phone Number'),
+                      TextFormField(
+                        controller: _phoneController,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: _getInputDecoration('+1 234 567 890'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            _buildFieldLabel('Tax Number (VAT/TRN)'),
+            TextFormField(
+              controller: _taxController,
+              style: const TextStyle(fontSize: 14),
+              decoration: _getInputDecoration('Optional'),
+            ),
+            const SizedBox(height: 16),
+
+            _buildFieldLabel('Billing Address'),
+            TextFormField(
+              controller: _addressController,
+              maxLines: 3,
+              style: const TextStyle(fontSize: 14),
+              decoration: _getInputDecoration('Full street address...'),
+            ),
+
+            const SizedBox(height: 32),
+
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Save Customer',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

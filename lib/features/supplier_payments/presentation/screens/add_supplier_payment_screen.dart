@@ -18,6 +18,7 @@ import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/core/theme/app_spacing.dart';
 import 'package:ledgixerp/core/services/document_number_service.dart';
 import 'package:ledgixerp/core/widgets/side_panel.dart';
+import 'package:ledgixerp/widgets/form_layout.dart';
 
 class AddSupplierPaymentScreen extends StatefulWidget {
   final AppUser user;
@@ -139,149 +140,154 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _paymentDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (date != null) setState(() => _paymentDate = date);
-                  },
-                  child: InputDecorator(
+    return FormLayout(
+      maxWidth: 640,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _paymentDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (date != null) setState(() => _paymentDate = date);
+                    },
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Payment Date',
+                        prefixIcon: Icon(Icons.calendar_today),
+                        border: OutlineInputBorder(),
+                      ),
+                      child: Text(
+                        DateFormat('dd-MMM-yyyy').format(_paymentDate),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SearchableSelector<SupplierModel>(
+              labelText: 'Supplier',
+              items: _allSuppliers,
+              itemLabelBuilder: (s) => s.supplierName,
+              onSelected: (val) => setState(() {
+                _selectedSupplier = val;
+                _selectedPO = null;
+              }),
+              addLabel: 'Add New Supplier',
+              onAdd: () => SidePanel.show(
+                context: context,
+                title: 'Add Supplier',
+                child: AddSupplierDialog(companyId: widget.user.companyId!),
+              ),
+              initialValue: _selectedSupplier,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SearchableSelector<PurchaseOrderModel>(
+              labelText: 'Link to Purchase Order (Optional)',
+              items: _allPOs
+                  .where((po) => po.supplierId == _selectedSupplier?.id)
+                  .toList(),
+              itemLabelBuilder: (po) =>
+                  '${po.poNumber} (${AppFormatters.currency(po.totalAmount, symbol: _company?.baseCurrency)})',
+              onSelected: (val) => setState(() => _selectedPO = val),
+              initialValue: _selectedPO,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _amountController,
+                    decoration: InputDecoration(
+                      labelText: 'Amount',
+                      prefixText: '${_company?.baseCurrency ?? 'AED'} ',
+                      border: const OutlineInputBorder(),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: DropdownButtonFormField<PaymentMethod>(
+                    initialValue: _paymentMethod,
                     decoration: const InputDecoration(
-                      labelText: 'Payment Date',
-                      prefixIcon: Icon(Icons.calendar_today),
+                      labelText: 'Method',
                       border: OutlineInputBorder(),
                     ),
-                    child: Text(DateFormat('dd-MMM-yyyy').format(_paymentDate)),
+                    items: PaymentMethod.values
+                        .map(
+                          (method) => DropdownMenuItem(
+                            value: method,
+                            child: Text(method.name.toUpperCase()),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(() => _paymentMethod = val!),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SearchableSelector<SupplierModel>(
-            labelText: 'Supplier',
-            items: _allSuppliers,
-            itemLabelBuilder: (s) => s.supplierName,
-            onSelected: (val) => setState(() {
-              _selectedSupplier = val;
-              _selectedPO = null;
-            }),
-            addLabel: 'Add New Supplier',
-            onAdd: () => SidePanel.show(
-              context: context,
-              title: 'Add Supplier',
-              child: AddSupplierDialog(companyId: widget.user.companyId!),
+              ],
             ),
-            initialValue: _selectedSupplier,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SearchableSelector<PurchaseOrderModel>(
-            labelText: 'Link to Purchase Order (Optional)',
-            items: _allPOs
-                .where((po) => po.supplierId == _selectedSupplier?.id)
-                .toList(),
-            itemLabelBuilder: (po) =>
-                '${po.poNumber} (${AppFormatters.currency(po.totalAmount, symbol: _company?.baseCurrency)})',
-            onSelected: (val) => setState(() => _selectedPO = val),
-            initialValue: _selectedPO,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _amountController,
-                  decoration: InputDecoration(
-                    labelText: 'Amount',
-                    prefixText: '${_company?.baseCurrency ?? 'AED'} ',
-                    border: const OutlineInputBorder(),
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
+            const SizedBox(height: AppSpacing.md),
+            SearchableSelector<BankAccountModel>(
+              labelText: 'Paid From (Bank/Cash)',
+              items: _allBankAccounts,
+              itemLabelBuilder: (a) => a.accountName,
+              onSelected: (val) => setState(() => _selectedBankAccount = val),
+              initialValue: _selectedBankAccount,
+              onAdd: () => SidePanel.show(
+                context: context,
+                title: 'Add Bank Account',
+                child: AddBankAccountDialog(companyId: widget.user.companyId!),
+              ),
+              addLabel: 'Add Bank Account',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _referenceController,
+              decoration: const InputDecoration(
+                labelText: 'Reference / Cheque #',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _notesController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Notes',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
                 ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Save Payment'),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: DropdownButtonFormField<PaymentMethod>(
-                  initialValue: _paymentMethod,
-                  decoration: const InputDecoration(
-                    labelText: 'Method',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: PaymentMethod.values
-                      .map(
-                        (method) => DropdownMenuItem(
-                          value: method,
-                          child: Text(method.name.toUpperCase()),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) => setState(() => _paymentMethod = val!),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SearchableSelector<BankAccountModel>(
-            labelText: 'Paid From (Bank/Cash)',
-            items: _allBankAccounts,
-            itemLabelBuilder: (a) => a.accountName,
-            onSelected: (val) => setState(() => _selectedBankAccount = val),
-            initialValue: _selectedBankAccount,
-            onAdd: () => SidePanel.show(
-              context: context,
-              title: 'Add Bank Account',
-              child: AddBankAccountDialog(companyId: widget.user.companyId!),
             ),
-            addLabel: 'Add Bank Account',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          TextFormField(
-            controller: _referenceController,
-            decoration: const InputDecoration(
-              labelText: 'Reference / Cheque #',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          TextFormField(
-            controller: _notesController,
-            maxLines: 2,
-            decoration: const InputDecoration(
-              labelText: 'Notes',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-              ),
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Save Payment'),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

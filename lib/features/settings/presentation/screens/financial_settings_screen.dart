@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ledgixerp/widgets/form_layout.dart';
 import '../../../../core/auth/app_user.dart';
 import '../../models/financial_settings_model.dart';
 import '../../services/financial_settings_service.dart';
@@ -154,48 +155,66 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildSectionHeader('Accounting Period'),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _activePeriodController,
-              decoration: const InputDecoration(
-                labelText: 'Active Accounting Period (YYYY-MM)',
-                border: OutlineInputBorder(),
+            FormLayout(
+              maxWidth: 720,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader('Accounting Period'),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _activePeriodController,
+                    decoration: const InputDecoration(
+                      labelText: 'Active Accounting Period (YYYY-MM)',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Required';
+                      if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) {
+                        return 'Use YYYY-MM format';
+                      }
+                      return null;
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Lock Past Periods'),
+                    subtitle: const Text(
+                      'Prevent posting or editing transactions in previous months',
+                    ),
+                    value: _settings.lockPastPeriods,
+                    onChanged: (val) => setState(
+                      () =>
+                          _settings = _settings.copyWith(lockPastPeriods: val),
+                    ),
+                  ),
+                  const Divider(height: 48),
+                  _buildSectionHeader('Document Numbering (Prefixes)'),
+                  const SizedBox(height: 16),
+                  _buildPrefixField('Invoice Prefix', _invoicePrefixController),
+                  _buildPrefixField(
+                    'Quotation Prefix',
+                    _quotationPrefixController,
+                  ),
+                  _buildPrefixField(
+                    'Purchase Order Prefix',
+                    _poPrefixController,
+                  ),
+                  _buildPrefixField('Receipt Prefix', _receiptPrefixController),
+                  _buildPrefixField(
+                    'Supplier Payment Prefix',
+                    _suppPayPrefixController,
+                  ),
+                  _buildPrefixField(
+                    'Journal Voucher Prefix',
+                    _journalPrefixController,
+                  ),
+                  _buildPrefixField(
+                    'Vendor Bill Prefix',
+                    _billPrefixController,
+                  ),
+                ],
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Required';
-                if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) {
-                  return 'Use YYYY-MM format';
-                }
-                return null;
-              },
             ),
-            SwitchListTile(
-              title: const Text('Lock Past Periods'),
-              subtitle: const Text(
-                'Prevent posting or editing transactions in previous months',
-              ),
-              value: _settings.lockPastPeriods,
-              onChanged: (val) => setState(
-                () => _settings = _settings.copyWith(lockPastPeriods: val),
-              ),
-            ),
-            const Divider(height: 48),
-            _buildSectionHeader('Document Numbering (Prefixes)'),
-            const SizedBox(height: 16),
-            _buildPrefixField('Invoice Prefix', _invoicePrefixController),
-            _buildPrefixField('Quotation Prefix', _quotationPrefixController),
-            _buildPrefixField('Purchase Order Prefix', _poPrefixController),
-            _buildPrefixField('Receipt Prefix', _receiptPrefixController),
-            _buildPrefixField(
-              'Supplier Payment Prefix',
-              _suppPayPrefixController,
-            ),
-            _buildPrefixField(
-              'Journal Voucher Prefix',
-              _journalPrefixController,
-            ),
-            _buildPrefixField('Vendor Bill Prefix', _billPrefixController),
           ],
         ),
       ),

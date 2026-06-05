@@ -8,13 +8,21 @@
 - [x] Project Initialization
 - [x] Firebase Integration
 - [x] Base Application Structure (Flutter)
+- [x] Email/password authentication screens with Firebase Auth integration
+- [x] Company setup and Basic Settings screen
+- [x] Company logo asset on login/register screens
+- [x] Company logo upload/display flow for sidebar and branding preview
+- [x] Settings navigation cleanup with collapsible Financial Settings submenu
+- [x] Dashboard Quick Actions right-side collapsible rail
+- [x] Structured company address fields
+- [x] Constrained form layout for Basic Settings and major entry forms
 
 ## In Development (Priority: Critical)
-- [ ] Authentication System (Email/Google)
+- [ ] Google authentication
 - [ ] Multi-Company & Branch Setup
 - [ ] Chart of Accounts Framework
 - [ ] Journal Entry Engine
-- [ ] Base UI Design System (Dark/Light)
+- [ ] Complete Base UI Design System pass across all modules
 
 ## Planned (Priority: High)
 - [ ] Sales Module (Quotation to Invoice)

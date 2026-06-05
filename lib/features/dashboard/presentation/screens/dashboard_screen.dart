@@ -32,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   AppModule _selectedModule = AppModules.dashboard;
   final _dashboardService = DashboardService();
   final _companyService = CompanyService();
+  bool _isQuickActionsCollapsed = false;
 
   static const _revenueAccent = Color(0xFF5B8DEF);
   static const _expenseAccent = Color(0xFFD18B45);
@@ -195,7 +196,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: EdgeInsets.all(padding),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final showRightRail = constraints.maxWidth >= 980;
+                  final showQuickActionsRail = constraints.maxWidth >= 760;
                   final mainContent = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -203,10 +204,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (hasStatsError) ...[
                         const SizedBox(height: 10),
                         _buildDashboardDataNotice(),
-                      ],
-                      if (!showRightRail) ...[
-                        const SizedBox(height: 16),
-                        _buildQuickActionsRail(isCompact: true),
                       ],
                       const SizedBox(height: 16),
                       _buildKPIGrid(stats, currency),
@@ -217,16 +214,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   );
 
-                  if (!showRightRail) return mainContent;
+                  if (!showQuickActionsRail) return mainContent;
 
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: mainContent),
                       const SizedBox(width: 16),
-                      SizedBox(
-                        width: 280,
-                        child: _buildQuickActionsRail(isCompact: false),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
+                        width: _isQuickActionsCollapsed ? 48 : 280,
+                        child: _buildQuickActionsRail(),
                       ),
                     ],
                   );
@@ -519,7 +518,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickActionsRail({required bool isCompact}) {
+  Widget _buildQuickActionsRail() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = isDark
@@ -529,6 +528,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ? AppColors.darkBorder.withValues(alpha: 0.9)
         : Colors.white.withValues(alpha: 0.86);
     final dividerColor = isDark ? Colors.white10 : AppColors.lightBorder;
+
+    if (_isQuickActionsCollapsed) {
+      return InkWell(
+        onTap: () => setState(() => _isQuickActionsCollapsed = false),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 236,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.18)
+                    : const Color(0xFF94A3B8).withValues(alpha: 0.16),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.keyboard_arrow_left_rounded,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: RotatedBox(
+                  quarterTurns: 1,
+                  child: Center(
+                    child: Text(
+                      'Quick Actions',
+                      maxLines: 1,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -549,9 +599,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Quick Actions',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Quick Actions',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Collapse quick actions',
+                onPressed: () =>
+                    setState(() => _isQuickActionsCollapsed = true),
+                icon: const Icon(Icons.keyboard_arrow_right_rounded, size: 20),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 28,
+                  height: 28,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           _buildActionItem(

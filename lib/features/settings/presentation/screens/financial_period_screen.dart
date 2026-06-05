@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ledgixerp/widgets/form_layout.dart';
 import '../../../../core/auth/app_user.dart';
 import '../../models/financial_settings_model.dart';
 import '../../services/financial_settings_service.dart';
@@ -55,23 +56,31 @@ class _FinancialPeriodScreenState extends State<FinancialPeriodScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          TextFormField(
-            controller: _activePeriodController,
-            decoration: const InputDecoration(
-              labelText: 'Active Accounting Period (YYYY-MM)',
-              border: OutlineInputBorder(),
+          FormLayout(
+            maxWidth: 560,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _activePeriodController,
+                  decoration: const InputDecoration(
+                    labelText: 'Active Accounting Period (YYYY-MM)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text('Lock Past Periods'),
+                  value: _settings.lockPastPeriods,
+                  onChanged: (val) => setState(
+                    () => _settings = _settings.copyWith(lockPastPeriods: val),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(onPressed: _save, child: const Text('Save')),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          SwitchListTile(
-            title: const Text('Lock Past Periods'),
-            value: _settings.lockPastPeriods,
-            onChanged: (val) => setState(
-              () => _settings = _settings.copyWith(lockPastPeriods: val),
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(onPressed: _save, child: const Text('Save')),
         ],
       ),
     );

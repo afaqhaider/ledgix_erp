@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ledgixerp/widgets/form_layout.dart';
 import '../../../../core/auth/app_user.dart';
 import '../../models/financial_settings_model.dart';
 import '../../services/financial_settings_service.dart';
@@ -65,12 +66,23 @@ class _DocsPrefixScreenState extends State<DocsPrefixScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildPrefixField('Invoice Prefix', _invoicePrefixController),
-          _buildPrefixField('Quotation Prefix', _quotationPrefixController),
-          _buildPrefixField('Purchase Order Prefix', _poPrefixController),
-          _buildPrefixField('Bill Prefix', _billPrefixController),
-          const SizedBox(height: 24),
-          ElevatedButton(onPressed: _save, child: const Text('Save')),
+          FormLayout(
+            maxWidth: 560,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildPrefixField('Invoice Prefix', _invoicePrefixController),
+                _buildPrefixField(
+                  'Quotation Prefix',
+                  _quotationPrefixController,
+                ),
+                _buildPrefixField('Purchase Order Prefix', _poPrefixController),
+                _buildPrefixField('Bill Prefix', _billPrefixController),
+                const SizedBox(height: 24),
+                ElevatedButton(onPressed: _save, child: const Text('Save')),
+              ],
+            ),
+          ),
         ],
       ),
     );
