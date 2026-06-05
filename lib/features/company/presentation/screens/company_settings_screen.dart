@@ -559,14 +559,12 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   }
 
   Widget _buildSavedLogoPreview(ThemeData theme) {
-    return _buildLogoFallback(theme);
-  }
-
-  Widget _buildLogoFallback(ThemeData theme) {
-    return const AppLogoImage(
+    return CompanyLogoImage(
+      logoUrl: _company?.companyLogoUrl,
       width: 88,
       height: 88,
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      borderRadius: 8,
     );
   }
 

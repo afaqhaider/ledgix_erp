@@ -137,10 +137,11 @@ class CompanyService {
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
       _resolvedLogoUrlCache[snapshot.ref.fullPath] = downloadUrl;
+      _resolvedLogoUrlCache[downloadUrl] = downloadUrl;
       debugPrint(
         'CompanyService: Logo uploaded successfully: ${snapshot.ref.fullPath}',
       );
-      return snapshot.ref.fullPath;
+      return downloadUrl;
     } catch (e) {
       debugPrint('Error uploading logo: $e');
       throw Exception('Could not upload the company logo. Please try again.');

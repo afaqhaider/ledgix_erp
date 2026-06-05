@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
 
 class AppLogoImage extends StatelessWidget {
   final double width;
@@ -28,6 +29,77 @@ class AppLogoImage extends StatelessWidget {
           child: const CustomPaint(painter: _LedGixLogoPainter()),
         ),
       ),
+    );
+  }
+}
+
+class CompanyLogoImage extends StatelessWidget {
+  final String? logoUrl;
+  final double width;
+  final double height;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+
+  const CompanyLogoImage({
+    super.key,
+    required this.logoUrl,
+    required this.width,
+    required this.height,
+    this.padding = EdgeInsets.zero,
+    this.borderRadius = 6,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final value = logoUrl?.trim();
+    if (value == null || value.isEmpty) return _fallbackLogo();
+
+    return Padding(
+      padding: padding,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: FutureBuilder<String?>(
+          future: CompanyService().resolveLogoUrl(value),
+          builder: (context, snapshot) {
+            final resolvedUrl = snapshot.data;
+            if (resolvedUrl == null || resolvedUrl.isEmpty) {
+              return _fallbackLogoContents();
+            }
+
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(borderRadius),
+              child: Image.network(
+                resolvedUrl,
+                width: width,
+                height: height,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                errorBuilder: (context, error, stackTrace) =>
+                    _fallbackLogoContents(),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackLogo() {
+    return Padding(
+      padding: padding,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: _fallbackLogoContents(),
+      ),
+    );
+  }
+
+  Widget _fallbackLogoContents() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: AppLogoImage(width: width, height: height),
     );
   }
 }

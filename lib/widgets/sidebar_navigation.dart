@@ -174,8 +174,8 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
 
   Widget _buildSidebarHeader() {
     return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 96,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: widget.companyId == null
           ? _buildLogoPlaceholder("LedGix ERP")
           : StreamBuilder<CompanyModel?>(
@@ -191,18 +191,16 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
 
                 return Row(
                   children: [
-                    if (hasLogo)
-                      _buildCompanyLogo(logoUrl)
-                    else
-                      _buildCompanyLogoFallback(),
-                    const SizedBox(width: 12),
+                    if (hasLogo) _buildCompanyLogo(logoUrl),
+                    if (!hasLogo) _buildCompanyLogoFallback(),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Text(
                         name,
                         style: GoogleFonts.inter(
                           color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: 0,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -216,27 +214,29 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   }
 
   Widget _buildCompanyLogo(String logoUrl) {
-    return _buildCompanyLogoFallback();
+    return CompanyLogoImage(
+      logoUrl: logoUrl,
+      width: 44,
+      height: 44,
+      borderRadius: 8,
+    );
   }
 
   Widget _buildCompanyLogoFallback() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(5),
-      child: AppLogoImage(width: 28, height: 28),
-    );
+    return const AppLogoImage(width: 44, height: 44);
   }
 
   Widget _buildLogoPlaceholder(String name) {
     return Row(
       children: [
         _buildCompanyLogoFallback(),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Text(
           name,
           style: GoogleFonts.inter(
             color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ],
