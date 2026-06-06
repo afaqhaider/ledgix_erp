@@ -18,7 +18,7 @@ class AppLogoImage extends StatelessWidget {
     return Padding(
       padding: padding,
       child: Image.asset(
-        'assets/ledgix_logo.png',
+        'assets/erp_logo.png',
         width: width,
         height: height,
         fit: BoxFit.contain,
