@@ -33,7 +33,7 @@ class AppLogoImage extends StatelessWidget {
   }
 }
 
-class CompanyLogoImage extends StatelessWidget {
+class CompanyLogoImage extends StatefulWidget {
   final String? logoUrl;
   final double width;
   final double height;
@@ -50,33 +50,90 @@ class CompanyLogoImage extends StatelessWidget {
   });
 
   @override
+  State<CompanyLogoImage> createState() => _CompanyLogoImageState();
+}
+
+class _CompanyLogoImageState extends State<CompanyLogoImage> {
+  Future<String?>? _resolveFuture;
+  String? _lastLogoUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateFuture();
+  }
+
+  @override
+  void didUpdateWidget(CompanyLogoImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.logoUrl != widget.logoUrl) {
+      _updateFuture();
+    }
+  }
+
+  void _updateFuture() {
+    final value = widget.logoUrl?.trim().replaceAll(RegExp(r'[\n\r]'), '');
+    if (value != null && value.isNotEmpty) {
+      if (_lastLogoUrl != value) {
+        _lastLogoUrl = value;
+        _resolveFuture = CompanyService().resolveLogoUrl(value);
+      }
+    } else {
+      _lastLogoUrl = null;
+      _resolveFuture = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final value = logoUrl?.trim();
-    if (value == null || value.isEmpty) return _fallbackLogo();
+    if (_resolveFuture == null) return _fallbackLogo();
 
     return Padding(
-      padding: padding,
+      padding: widget.padding,
       child: SizedBox(
-        width: width,
-        height: height,
+        width: widget.width,
+        height: widget.height,
         child: FutureBuilder<String?>(
-          future: CompanyService().resolveLogoUrl(value),
+          future: _resolveFuture,
           builder: (context, snapshot) {
             final resolvedUrl = snapshot.data;
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                resolvedUrl == null) {
+              return _fallbackLogoContents();
+            }
+
             if (resolvedUrl == null || resolvedUrl.isEmpty) {
               return _fallbackLogoContents();
             }
 
             return ClipRRect(
-              borderRadius: BorderRadius.circular(borderRadius),
+              borderRadius: BorderRadius.circular(widget.borderRadius),
               child: Image.network(
                 resolvedUrl,
-                width: width,
-                height: height,
+                width: widget.width,
+                height: widget.height,
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.high,
-                errorBuilder: (context, error, stackTrace) =>
-                    _fallbackLogoContents(),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('CompanyLogoImage: Error loading network image: $error');
+                  return _fallbackLogoContents();
+                },
               ),
             );
           },
@@ -87,10 +144,10 @@ class CompanyLogoImage extends StatelessWidget {
 
   Widget _fallbackLogo() {
     return Padding(
-      padding: padding,
+      padding: widget.padding,
       child: SizedBox(
-        width: width,
-        height: height,
+        width: widget.width,
+        height: widget.height,
         child: _fallbackLogoContents(),
       ),
     );
@@ -98,8 +155,8 @@ class CompanyLogoImage extends StatelessWidget {
 
   Widget _fallbackLogoContents() {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: AppLogoImage(width: width, height: height),
+      borderRadius: BorderRadius.circular(widget.borderRadius),
+      child: AppLogoImage(width: widget.width, height: widget.height),
     );
   }
 }

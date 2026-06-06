@@ -18,13 +18,15 @@ import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/core/services/document_number_service.dart';
 import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
 
 class AddCustomerPaymentScreen extends StatefulWidget {
   final AppUser user;
-  const AddCustomerPaymentScreen({super.key, required this.user});
+  final bool isPane;
+  const AddCustomerPaymentScreen({super.key, required this.user, this.isPane = false});
 
   @override
   State<AddCustomerPaymentScreen> createState() =>
@@ -165,161 +167,160 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FormLayout(
-      maxWidth: 640,
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: _paymentDate,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (date != null) setState(() => _paymentDate = date);
-                    },
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Receipt Date',
-                        prefixIcon: Icon(Icons.calendar_today),
-                        border: OutlineInputBorder(),
-                      ),
-                      child: Text(
-                        DateFormat('dd-MMM-yyyy').format(_paymentDate),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            SearchableSelector<CustomerModel>(
-              labelText: 'Customer',
-              items: _allCustomers,
-              itemLabelBuilder: (c) => c.name,
-              onSelected: (val) => setState(() {
-                _selectedCustomer = val;
-                _selectedRef = null;
-              }),
-              addLabel: 'Add New Customer',
-              onAdd: () => SidePanel.show(
-                context: context,
-                title: 'Add Customer',
-                child: AddCustomerDialog(companyId: widget.user.companyId!),
-              ),
-              initialValue: _selectedCustomer,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<ReceiptType>(
-              initialValue: _receiptType,
-              decoration: const InputDecoration(
-                labelText: 'Receipt Type',
-                border: OutlineInputBorder(),
-              ),
-              items: ReceiptType.values
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
-                  .toList(),
-              onChanged: (val) => setState(() {
-                _receiptType = val!;
-                _selectedRef = null;
-              }),
-            ),
-            if (_receiptType == ReceiptType.againstRef) ...[
-              const SizedBox(height: AppSpacing.md),
-              SearchableSelector<dynamic>(
-                labelText: 'Select Reference',
-                items: [
-                  ..._allInvoices.where(
-                    (inv) =>
-                        inv.customerId == _selectedCustomer?.id &&
-                        inv.status != InvoiceStatus.paid,
-                  ),
-                  ..._allJVs.where(
-                    (jv) => jv.reference.toLowerCase().contains('credit'),
-                  ),
-                ],
-                itemLabelBuilder: (val) => val is InvoiceModel
-                    ? 'Inv: ${val.invoiceNumber} | Due: ${AppFormatters.currency(val.balanceDue, symbol: _company?.baseCurrency)}'
-                    : 'JV: ${val.reference}',
-                onSelected: (val) => setState(() => _selectedRef = val),
-                initialValue: _selectedRef,
-              ),
-            ],
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _amountController,
-                    decoration: InputDecoration(
-                      labelText: 'Amount',
-                      prefixText: '${_company?.baseCurrency ?? 'AED'} ',
-                      border: const OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (v) => v!.isEmpty ? 'Required' : null,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: DropdownButtonFormField<CustomerPaymentMethod>(
-                    initialValue: _paymentMethod,
+    final formContent = Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _paymentDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (date != null) setState(() => _paymentDate = date);
+                  },
+                  child: InputDecorator(
                     decoration: const InputDecoration(
-                      labelText: 'Method',
+                      labelText: 'Receipt Date',
+                      prefixIcon: Icon(Icons.calendar_today),
                       border: OutlineInputBorder(),
                     ),
-                    items: CustomerPaymentMethod.values
-                        .map(
-                          (m) => DropdownMenuItem(
-                            value: m,
-                            child: Text(m.name.toUpperCase()),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) => setState(() => _paymentMethod = val!),
+                    child: Text(
+                      DateFormat('dd-MMM-yyyy').format(_paymentDate),
+                    ),
                   ),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SearchableSelector<CustomerModel>(
+            labelText: 'Customer',
+            items: _allCustomers,
+            itemLabelBuilder: (c) => c.name,
+            onSelected: (val) => setState(() {
+              _selectedCustomer = val;
+              _selectedRef = null;
+            }),
+            addLabel: 'Add New Customer',
+            onAdd: () => SidePanel.show(
+              context: context,
+              title: 'Add Customer',
+              child: AddCustomerDialog(companyId: widget.user.companyId!),
+            ),
+            initialValue: _selectedCustomer,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          DropdownButtonFormField<ReceiptType>(
+            initialValue: _receiptType,
+            decoration: const InputDecoration(
+              labelText: 'Receipt Type',
+              border: OutlineInputBorder(),
+            ),
+            items: ReceiptType.values
+                .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
+                .toList(),
+            onChanged: (val) => setState(() {
+              _receiptType = val!;
+              _selectedRef = null;
+            }),
+          ),
+          if (_receiptType == ReceiptType.againstRef) ...[
+            const SizedBox(height: AppSpacing.md),
+            SearchableSelector<dynamic>(
+              labelText: 'Select Reference',
+              items: [
+                ..._allInvoices.where(
+                  (inv) =>
+                      inv.customerId == _selectedCustomer?.id &&
+                      inv.status != InvoiceStatus.paid,
+                ),
+                ..._allJVs.where(
+                  (jv) => jv.reference.toLowerCase().contains('credit'),
+                ),
               ],
+              itemLabelBuilder: (val) => val is InvoiceModel
+                  ? 'Inv: ${val.invoiceNumber} | Due: ${AppFormatters.currency(val.balanceDue, symbol: _company?.baseCurrency)}'
+                  : 'JV: ${val.reference}',
+              onSelected: (val) => setState(() => _selectedRef = val),
+              initialValue: _selectedRef,
             ),
-            const SizedBox(height: AppSpacing.md),
-            SearchableSelector<BankAccountModel>(
-              labelText: 'Mode of Payment',
-              items: _allBankAccounts,
-              itemLabelBuilder: (a) =>
-                  '${a.accountName} (${a.bankName ?? 'Cash'})',
-              onSelected: (val) => setState(() => _selectedBankAccount = val),
-              initialValue: _selectedBankAccount,
-              onAdd: () => SidePanel.show(
-                context: context,
-                title: 'Add Bank Account',
-                child: AddBankAccountDialog(companyId: widget.user.companyId!),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _amountController,
+                  decoration: InputDecoration(
+                    labelText: 'Amount',
+                    prefixText: '${_company?.baseCurrency ?? 'AED'} ',
+                    border: const OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
               ),
-              addLabel: 'Add Bank Account',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _referenceController,
-              decoration: const InputDecoration(
-                labelText: 'Reference #',
-                border: OutlineInputBorder(),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: DropdownButtonFormField<CustomerPaymentMethod>(
+                  initialValue: _paymentMethod,
+                  decoration: const InputDecoration(
+                    labelText: 'Method',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: CustomerPaymentMethod.values
+                      .map(
+                        (m) => DropdownMenuItem(
+                          value: m,
+                          child: Text(m.name.toUpperCase()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) => setState(() => _paymentMethod = val!),
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SearchableSelector<BankAccountModel>(
+            labelText: 'Mode of Payment',
+            items: _allBankAccounts,
+            itemLabelBuilder: (a) =>
+                '${a.accountName} (${a.bankName ?? 'Cash'})',
+            onSelected: (val) => setState(() => _selectedBankAccount = val),
+            initialValue: _selectedBankAccount,
+            onAdd: () => SidePanel.show(
+              context: context,
+              title: 'Add Bank Account',
+              child: AddBankAccountDialog(companyId: widget.user.companyId!),
             ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _notesController,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Internal Notes',
-                border: OutlineInputBorder(),
-              ),
+            addLabel: 'Add Bank Account',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextFormField(
+            controller: _referenceController,
+            decoration: const InputDecoration(
+              labelText: 'Reference #',
+              border: OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextFormField(
+            controller: _notesController,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Internal Notes',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          if (!widget.isPane) ...[
             const SizedBox(height: AppSpacing.xl),
             SizedBox(
               width: double.infinity,
@@ -336,8 +337,24 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
               ),
             ),
           ],
-        ),
+        ],
       ),
+    );
+
+    if (widget.isPane) {
+      return ErpSidePane(
+        title: 'Add New Receipt',
+        onCancel: () => Navigator.pop(context),
+        onSave: _save,
+        isLoading: _isLoading,
+        saveLabel: 'Save Receipt',
+        child: formContent,
+      );
+    }
+
+    return FormLayout(
+      maxWidth: 640,
+      child: formContent,
     );
   }
 }

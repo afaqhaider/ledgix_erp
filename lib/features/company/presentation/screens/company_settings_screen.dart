@@ -162,7 +162,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      debugPrint('CompanySettings: Selected logo ${image.name}');
       Uint8List? selectedBytes;
       if (kIsWeb) {
         selectedBytes = await image.readAsBytes();
@@ -175,7 +174,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
           _newLogoFile = image;
         });
       }
-
       await _saveSelectedLogo(image, selectedBytes);
     }
   }
@@ -206,9 +204,9 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error updating logo: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating logo: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -220,25 +218,9 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
 
     setState(() => _isLoading = true);
     try {
-      String? logoUrl = _company!.companyLogoUrl;
-      debugPrint(
-        'CompanySettings: Saving settings. Existing logo=${logoUrl ?? '(none)'}. New logo selected=${_newLogoFile != null}',
-      );
-
-      if (_newLogoFile != null) {
-        logoUrl = await _companyService.uploadLogo(
-          _company!.id,
-          kIsWeb ? _newLogoBytes : File(_newLogoFile!.path),
-          fileName: _newLogoFile!.name,
-          contentType: _newLogoFile!.mimeType,
-        );
-        debugPrint('CompanySettings: Uploaded logo path=$logoUrl');
-      }
-
       final updatedCompany = _company!.copyWith(
         companyLegalName: _legalNameController.text.trim(),
         tradeName: _tradeNameController.text.trim(),
-        companyLogoUrl: logoUrl,
         primaryBrandColor:
             '0x${_primaryColor.toARGB32().toRadixString(16).toUpperCase()}',
         secondaryBrandColor:
@@ -263,8 +245,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
       if (mounted) {
         setState(() {
           _company = updatedCompany;
-          _newLogoFile = null;
-          _newLogoBytes = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Settings saved successfully!')),
@@ -282,6 +262,99 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Widget _buildSection(ThemeData theme, String title, Widget content) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            content,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimezoneField() {
+    return DropdownButtonFormField<String>(
+      initialValue: _timezones.contains(_timezoneController.text)
+          ? _timezoneController.text
+          : 'UTC',
+      decoration: const InputDecoration(
+        labelText: 'Timezone*',
+        border: OutlineInputBorder(),
+      ),
+      items: _timezones
+          .map(
+            (timezone) =>
+                DropdownMenuItem(value: timezone, child: Text(timezone)),
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value != null) {
+          setState(() => _timezoneController.text = value);
+        }
+      },
+      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+    );
+  }
+
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    bool isRequired = false,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      validator: isRequired
+          ? (v) => v == null || v.isEmpty ? 'Required' : null
+          : null,
+    );
+  }
+
+  void _showColorPicker(bool isPrimary) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pick a color'),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: isPrimary ? _primaryColor : _secondaryColor,
+            onColorChanged: (color) {
+              setState(() {
+                if (isPrimary) {
+                  _primaryColor = color;
+                } else {
+                  _secondaryColor = color;
+                }
+              });
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -478,15 +551,20 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                             ),
                             child: _newLogoFile != null
                                 ? (kIsWeb
-                                      ? Image.memory(
-                                          _newLogoBytes!,
-                                          fit: BoxFit.contain,
-                                        )
-                                      : Image.file(
-                                          File(_newLogoFile!.path),
-                                          fit: BoxFit.contain,
-                                        ))
-                                : _buildSavedLogoPreview(theme),
+                                    ? Image.memory(
+                                        _newLogoBytes!,
+                                        fit: BoxFit.contain,
+                                      )
+                                    : Image.file(
+                                        File(_newLogoFile!.path),
+                                        fit: BoxFit.contain,
+                                      ))
+                                : CompanyLogoImage(
+                                    logoUrl: _company?.companyLogoUrl,
+                                    width: 120,
+                                    height: 120,
+                                    borderRadius: 8,
+                                  ),
                           ),
                           TextButton(
                             onPressed: _pickLogo,
@@ -533,109 +611,6 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSection(ThemeData theme, String title, Widget content) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            content,
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSavedLogoPreview(ThemeData theme) {
-    return CompanyLogoImage(
-      logoUrl: _company?.companyLogoUrl,
-      width: 88,
-      height: 88,
-      padding: const EdgeInsets.all(16),
-      borderRadius: 8,
-    );
-  }
-
-  Widget _buildTimezoneField() {
-    return DropdownButtonFormField<String>(
-      initialValue: _timezones.contains(_timezoneController.text)
-          ? _timezoneController.text
-          : 'UTC',
-      decoration: const InputDecoration(
-        labelText: 'Timezone*',
-        border: OutlineInputBorder(),
-      ),
-      items: _timezones
-          .map(
-            (timezone) =>
-                DropdownMenuItem(value: timezone, child: Text(timezone)),
-          )
-          .toList(),
-      onChanged: (value) {
-        if (value != null) {
-          setState(() => _timezoneController.text = value);
-        }
-      },
-      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-    );
-  }
-
-  Widget _buildTextField(
-    String label,
-    TextEditingController controller, {
-    bool isRequired = false,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
-      validator: isRequired
-          ? (v) => v == null || v.isEmpty ? 'Required' : null
-          : null,
-    );
-  }
-
-  void _showColorPicker(bool isPrimary) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Pick a color'),
-        content: SingleChildScrollView(
-          child: ColorPicker(
-            pickerColor: isPrimary ? _primaryColor : _secondaryColor,
-            onColorChanged: (color) {
-              setState(() {
-                if (isPrimary) {
-                  _primaryColor = color;
-                } else {
-                  _secondaryColor = color;
-                }
-              });
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
-          ),
-        ],
       ),
     );
   }

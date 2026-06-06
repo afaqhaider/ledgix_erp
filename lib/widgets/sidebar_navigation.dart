@@ -31,6 +31,32 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   String? _expandedSection;
   final Set<AppModuleId> _expandedModules = {};
   final _companyService = CompanyService();
+  Stream<CompanyModel?>? _companyStream;
+  String? _lastCompanyId;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateCompanyStream();
+  }
+
+  @override
+  void didUpdateWidget(SidebarNavigation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.companyId != widget.companyId) {
+      _updateCompanyStream();
+    }
+  }
+
+  void _updateCompanyStream() {
+    if (widget.companyId != null && widget.companyId != _lastCompanyId) {
+      _lastCompanyId = widget.companyId;
+      _companyStream = _companyService.getCompany(widget.companyId!);
+    } else if (widget.companyId == null) {
+      _lastCompanyId = null;
+      _companyStream = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +82,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
       child: Column(
         children: [
           _buildSidebarHeader(),
-          const SizedBox(height: 8),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -174,72 +199,43 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
 
   Widget _buildSidebarHeader() {
     return Container(
-      height: 96,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: widget.companyId == null
-          ? _buildLogoPlaceholder("LedGix ERP")
-          : StreamBuilder<CompanyModel?>(
-              stream: _companyService.getCompany(widget.companyId!),
-              builder: (context, snapshot) {
-                final company = snapshot.data;
-                final name =
-                    company?.tradeName ??
-                    company?.companyLegalName ??
-                    "LedGix ERP";
-                final logoUrl = company?.companyLogoUrl;
-                final hasLogo = logoUrl != null && logoUrl.trim().isNotEmpty;
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      child: StreamBuilder<CompanyModel?>(
+        stream: _companyStream,
+        builder: (context, snapshot) {
+          final company = snapshot.data;
+          final name =
+              company?.tradeName ??
+              company?.companyLegalName ??
+              "LedGix ERP";
+          final logoUrl = company?.companyLogoUrl;
 
-                return Row(
-                  children: [
-                    if (hasLogo) _buildCompanyLogo(logoUrl),
-                    if (!hasLogo) _buildCompanyLogoFallback(),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: GoogleFonts.inter(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-    );
-  }
-
-  Widget _buildCompanyLogo(String logoUrl) {
-    return CompanyLogoImage(
-      logoUrl: logoUrl,
-      width: 44,
-      height: 44,
-      borderRadius: 8,
-    );
-  }
-
-  Widget _buildCompanyLogoFallback() {
-    return const AppLogoImage(width: 44, height: 44);
-  }
-
-  Widget _buildLogoPlaceholder(String name) {
-    return Row(
-      children: [
-        _buildCompanyLogoFallback(),
-        const SizedBox(width: 14),
-        Text(
-          name,
-          style: GoogleFonts.inter(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CompanyLogoImage(
+                logoUrl: logoUrl,
+                width: 96,
+                height: 96,
+                borderRadius: 12,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                name,
+                textAlign: TextAlign.left,
+                style: GoogleFonts.inter(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 

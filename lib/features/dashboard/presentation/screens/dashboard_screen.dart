@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/config/app_modules.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/widgets/sidebar_navigation.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/features/dashboard/services/dashboard_service.dart';
 import 'package:ledgixerp/features/dashboard/presentation/widgets/kpi_card.dart';
 import 'package:ledgixerp/features/dashboard/presentation/widgets/recent_activity_card.dart';
@@ -15,10 +17,11 @@ import 'package:ledgixerp/features/notifications/presentation/screens/notificati
 import 'package:ledgixerp/features/notifications/services/notification_service.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
-import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/core/theme/app_colors.dart';
+import 'package:intl/intl.dart';
+import 'package:ledgixerp/features/search/services/search_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   final AppUser user;
@@ -29,10 +32,137 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
   AppModule _selectedModule = AppModules.dashboard;
   final _dashboardService = DashboardService();
   final _companyService = CompanyService();
+  final _searchService = SearchService();
   bool _isQuickActionsCollapsed = false;
+
+  final LayerLink _searchLayerLink = LayerLink();
+  OverlayEntry? _searchOverlayEntry;
+  final TextEditingController _searchController = TextEditingController();
+  List<SearchResult> _searchResults = [];
+  bool _isSearching = false;
+
+  @override
+  void dispose() {
+    _removeSearchOverlay();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _removeSearchOverlay() {
+    _searchOverlayEntry?.remove();
+    _searchOverlayEntry = null;
+  }
+
+  void _showSearchOverlay() {
+    _removeSearchOverlay();
+    _searchOverlayEntry = _createSearchOverlayEntry();
+    Overlay.of(context).insert(_searchOverlayEntry!);
+  }
+
+  OverlayEntry _createSearchOverlayEntry() {
+    return OverlayEntry(
+      builder: (context) => Positioned(
+        width: 480,
+        child: CompositedTransformFollower(
+          link: _searchLayerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(-80, 48), // Adjusted for center search bar
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 400),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              ),
+              child: _isSearching
+                  ? const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : _searchResults.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('No results found'),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          itemCount: _searchResults.length,
+                          itemBuilder: (context, index) {
+                            final result = _searchResults[index];
+                            return ListTile(
+                              leading: Icon(_getSearchIcon(result.type), size: 20),
+                              title: Text(result.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              subtitle: Text(result.subtitle, style: const TextStyle(fontSize: 11)),
+                              trailing: Text(DateFormat('MMM dd').format(result.date), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                              onTap: () {
+                                _handleSearchResultTap(result);
+                                _removeSearchOverlay();
+                                _searchController.clear();
+                              },
+                            );
+                          },
+                        ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _getSearchIcon(String type) {
+    switch (type) {
+      case 'customer': return Icons.person_outline;
+      case 'supplier': return Icons.local_shipping_outlined;
+      case 'invoice': return Icons.receipt_long_outlined;
+      case 'bill': return Icons.assignment_outlined;
+      case 'journal': return Icons.history_edu_outlined;
+      case 'payment': return Icons.payments_outlined;
+      default: return Icons.search;
+    }
+  }
+
+  void _handleSearchResultTap(SearchResult result) {
+    AppModuleId? targetId;
+    switch (result.type) {
+      case 'customer': targetId = AppModuleId.customers; break;
+      case 'invoice': targetId = AppModuleId.salesInvoices; break;
+      case 'bill': targetId = AppModuleId.bills; break;
+      case 'journal': targetId = AppModuleId.journalEntries; break;
+      case 'payment': targetId = result.data.containsKey('customerName') ? AppModuleId.receipts : AppModuleId.supplierPayments; break;
+    }
+    
+    if (targetId != null) {
+      setState(() => _selectedModule = AppModules.moduleById(targetId!));
+    }
+  }
+
+  void _onSearchChanged(String query) async {
+    if (query.length < 2) {
+      _removeSearchOverlay();
+      return;
+    }
+
+    _showSearchOverlay();
+    setState(() => _isSearching = true);
+    
+    final results = await _searchService.globalSearch(widget.user.companyId!, query);
+    
+    if (mounted) {
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+      _showSearchOverlay(); 
+    }
+  }
 
   static const _revenueAccent = Color(0xFF5B8DEF);
   static const _expenseAccent = Color(0xFFD18B45);
@@ -46,89 +176,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isMobile = MediaQuery.of(context).size.width < 900;
 
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 48,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: theme.colorScheme.surface,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, size: 18),
-            onPressed: () {},
-            visualDensity: VisualDensity.compact,
-          ),
-          StreamBuilder<int>(
-            stream: NotificationService().getUnreadCount(widget.user.uid),
-            builder: (context, snapshot) {
-              final count = snapshot.data ?? 0;
-              return Badge(
-                label: Text(
-                  count.toString(),
-                  style: const TextStyle(fontSize: 9),
-                ),
-                isLabelVisible: count > 0,
-                child: IconButton(
-                  icon: const Icon(Icons.notifications_none, size: 18),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          NotificationCenterScreen(user: widget.user),
-                    ),
-                  ),
-                  visualDensity: VisualDensity.compact,
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-          const VerticalDivider(width: 1, indent: 12, endIndent: 12),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: PopupMenuButton<String>(
-              offset: const Offset(0, 40),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'profile',
-                  child: Text(
-                    'Profile Settings',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Text('Logout', style: TextStyle(fontSize: 13)),
-                ),
-              ],
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Color(0xFFE2E8F0),
-                    child: Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                  if (!isMobile) ...[
-                    const SizedBox(width: 10),
-                    Text(
-                      widget.user.fullName,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Icon(Icons.arrow_drop_down, size: 16),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
       drawer: isMobile
           ? Drawer(
               child: SidebarNavigation(
@@ -154,9 +201,144 @@ class _DashboardScreenState extends State<DashboardScreen> {
               },
             ),
           Expanded(
-            child: Container(
-              color: theme.colorScheme.surface,
-              child: _buildBody(),
+            child: ClipRect(
+              child: Navigator(
+                key: _shellNavigatorKey,
+                onGenerateRoute: (settings) => MaterialPageRoute(
+                  builder: (context) => Scaffold(
+                    body: Column(
+                      children: [
+                        _buildTopBar(theme, isMobile),
+                        Expanded(
+                          child: Container(
+                            color: theme.colorScheme.surface,
+                            child: _buildBody(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBar(ThemeData theme, bool isMobile) {
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (isMobile)
+            Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            ),
+          const Spacer(),
+          Expanded(
+            flex: 4,
+            child: CompositedTransformTarget(
+              link: _searchLayerLink,
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.8)),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Global Search',
+                    hintStyle: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onChanged: _onSearchChanged,
+                ),
+              ),
+            ),
+          ),
+          const Spacer(),
+          if (!isMobile) ...[
+            const _WeatherWidget(),
+            const SizedBox(width: 24),
+            const _ClockWidget(),
+            const SizedBox(width: 16),
+          ],
+          StreamBuilder<int>(
+            stream: NotificationService().getUnreadCount(widget.user.uid),
+            builder: (context, snapshot) {
+              final count = snapshot.data ?? 0;
+              return Badge(
+                label: Text(
+                  count.toString(),
+                  style: const TextStyle(fontSize: 9),
+                ),
+                isLabelVisible: count > 0,
+                child: IconButton(
+                  icon: const Icon(Icons.notifications_none, size: 22),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          NotificationCenterScreen(user: widget.user),
+                    ),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: PopupMenuButton<String>(
+              offset: const Offset(0, 48),
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'profile',
+                  child: Text(
+                    'Profile Settings',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Text('Logout', style: TextStyle(fontSize: 13)),
+                ),
+              ],
+              onSelected: (val) {
+                if (val == 'logout') {
+                   AuthService().signOut();
+                }
+              },
+              child: const CircleAvatar(
+                radius: 16,
+                backgroundColor: Color(0xFFE2E8F0),
+                child: Icon(
+                  Icons.person,
+                  size: 18,
+                  color: Color(0xFF64748B),
+                ),
+              ),
             ),
           ),
         ],
@@ -200,12 +382,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final mainContent = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeaderRow(),
                       if (hasStatsError) ...[
-                        const SizedBox(height: 10),
                         _buildDashboardDataNotice(),
+                        const SizedBox(height: 16),
                       ],
-                      const SizedBox(height: 16),
                       _buildKPIGrid(stats, currency),
                       const SizedBox(height: 16),
                       _buildChartsRow(stats),
@@ -235,43 +415,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildHeaderRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome back, ${widget.user.fullName}',
-              style: GoogleFonts.inter(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Here\'s what\'s happening with your business today.',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-            ),
-          ],
-        ),
-        OutlinedButton.icon(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            side: BorderSide(color: Colors.grey[800]!),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          icon: const Icon(Icons.download_rounded, size: 16),
-          label: const Text('Export Summary', style: TextStyle(fontSize: 12)),
-        ),
-      ],
     );
   }
 
@@ -621,82 +764,112 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          // Tab Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Add',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const Expanded(child: SizedBox()), // Placeholder for future tabs
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           _buildActionItem(
-            'Add New Invoice',
+            'Invoice',
             'Sales invoice',
             Icons.receipt_long_rounded,
             _revenueAccent,
-            _openAddInvoice,
+            () => _openAddInvoice(context),
           ),
           Divider(height: 20, color: dividerColor),
           _buildActionItem(
-            'Add New Bill',
+            'Bill',
             'Vendor bill',
             Icons.assignment_rounded,
             _expenseAccent,
-            _openAddBill,
+            () => _openAddBill(context),
           ),
           Divider(height: 20, color: dividerColor),
           _buildActionItem(
-            'Add New Receipt',
+            'Receipt',
             'Customer receipt',
             Icons.payments_rounded,
             _profitAccent,
-            _openAddReceipt,
+            () => _openAddReceipt(context),
           ),
           Divider(height: 20, color: dividerColor),
           _buildActionItem(
-            'Add New Payment',
+            'Payment',
             'Supplier payment',
             Icons.account_balance_wallet_rounded,
             _cashAccent,
-            _openAddPayment,
+            () => _openAddPayment(context),
           ),
           Divider(height: 20, color: dividerColor),
           _buildActionItem(
-            'Add New Expense',
+            'Expense',
             'Expense bill',
             Icons.trending_down_rounded,
             _dangerAccent,
-            _openAddExpense,
+            () => _openAddExpense(context),
           ),
         ],
       ),
     );
   }
 
-  void _openAddInvoice() {
+  void _openAddInvoice(BuildContext context) {
     showErpSidePane(
       context: context,
       builder: AddInvoiceScreen(user: widget.user, isPane: true),
     );
   }
 
-  void _openAddBill() {
+  void _openAddBill(BuildContext context) {
     showErpSidePane(
       context: context,
       builder: AddBillScreen(user: widget.user, isPane: true),
     );
   }
 
-  void _openAddReceipt() {
-    SidePanel.show(
+  void _openAddReceipt(BuildContext context) {
+    showErpSidePane(
       context: context,
-      title: 'Add New Receipt',
-      child: AddCustomerPaymentScreen(user: widget.user),
+      builder: AddCustomerPaymentScreen(user: widget.user, isPane: true),
     );
   }
 
-  void _openAddPayment() {
-    SidePanel.show(
+  void _openAddPayment(BuildContext context) {
+    showErpSidePane(
       context: context,
-      title: 'Add Supplier Payment',
-      child: AddSupplierPaymentScreen(user: widget.user),
+      builder: AddSupplierPaymentScreen(user: widget.user, isPane: true),
     );
   }
 
-  void _openAddExpense() {
+  void _openAddExpense(BuildContext context) {
     showErpSidePane(
       context: context,
       builder: AddBillScreen(user: widget.user, isPane: true),
@@ -744,6 +917,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
         ],
       ),
+    );
+  }
+}
+
+class _ClockWidget extends StatefulWidget {
+  const _ClockWidget();
+
+  @override
+  State<_ClockWidget> createState() => _ClockWidgetState();
+}
+
+class _ClockWidgetState extends State<_ClockWidget> {
+  late Timer _timer;
+  late DateTime _now;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() => _now = DateTime.now());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          DateFormat('HH:mm:ss').format(_now),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
+        Text(
+          DateFormat('EEE, MMM d').format(_now),
+          style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+        ),
+      ],
+    );
+  }
+}
+
+class _WeatherWidget extends StatelessWidget {
+  const _WeatherWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    // Mock weather data
+    return const Row(
+      children: [
+        Icon(Icons.wb_sunny_rounded, color: Colors.orange, size: 18),
+        SizedBox(width: 8),
+        Text(
+          '28°C',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
+      ],
     );
   }
 }

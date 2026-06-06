@@ -1,49 +1,60 @@
 # 06 System Architecture
 
-## Overview
-LedGix ERP follows a decoupled, client-heavy architecture initially, leveraging Firebase's Backend-as-a-Service (BaaS) capabilities.
+## 1. Current Architecture (Firebase)
+LedGix ERP is currently built as a modern serverless application leveraging the Firebase suite for speed, scalability, and real-time capabilities.
 
-## Current Architecture (Phase 1: Firebase)
-```mermaid
-graph TD
-    A[Flutter Web/Mobile] --> B[Firebase Auth]
-    A --> C[Cloud Firestore]
-    A --> D[Firebase Storage]
-    A --> E[Cloud Functions]
-    E --> C
-    E --> F[Third-Party APIs - Email/SMS]
+### Tech Stack:
+- **Frontend:** Flutter (Web, Android, iOS)
+- **Authentication:** Firebase Auth
+- **Database:** Cloud Firestore (NoSQL)
+- **Storage:** Firebase Storage
+- **Backend Logic:** Cloud Functions (Node.js/TypeScript)
+- **Hosting:** Firebase Hosting
+
+### High-Level Data Flow:
+```text
+Flutter App (UI)
+      ↓
+Firebase Auth (Identity)
+      ↓
+Cloud Firestore (State/Data)
+      ↓
+Cloud Functions (Business Logic/Integrations)
+      ↓
+Firebase Storage (Assets/Documents)
 ```
 
-- **Frontend:** Flutter (Cross-platform).
-- **Authentication:** Firebase Auth (JWT based).
-- **Database:** Cloud Firestore (NoSQL, Document-based).
-- **Storage:** Firebase Storage (PDFs, Images).
-- **Backend Logic:** Cloud Functions (Node.js/TypeScript) for sensitive operations (e.g., posting to ledger).
+## 2. Technical Strategy
+- **Feature-Based Architecture:** Code is organized by features (e.g., `features/accounting`, `features/sales`) rather than layers.
+- **State Management:** Using Riverpod for robust and testable state handling.
+- **Service Layer:** All business logic resides in service classes, making it independent of the UI and easy to move to a backend API later.
+- **Repository Pattern:** Abstracting data access to allow switching from Firestore to PostgreSQL in the future.
 
-## Future Enterprise Architecture (Phase 2: Microservices)
-```mermaid
-graph TD
-    A[Flutter Web/Mobile] --> B[API Gateway]
-    B --> C[Auth Service]
-    B --> D[Accounting Service]
-    B --> E[Inventory Service]
-    D --> F[(PostgreSQL)]
-    E --> F
-    B --> G[Reporting Engine - Data Warehouse]
+## 3. Security & Access Control
+- **Firestore Security Rules:** Primary defense for data isolation. Rules verify `request.auth.uid` and check if the user belongs to the `company_id` they are accessing.
+- **RBAC (Role-Based Access Control):** Custom claims or a `user_roles` collection to manage permissions.
+
+## 4. Future Enterprise Architecture
+As the platform scales to enterprise levels, we will transition to:
+
+```text
+Flutter (Frontend)
+      ↓
+API Gateway (Kong/Nginx)
+      ↓
+Microservices (Go/Node.js)
+      ↓
+PostgreSQL (Relational Database)
+      ↓
+Redis (Caching)
+      ↓
+Data Warehouse (BigQuery/Snowflake for Analytics)
 ```
 
-- **Language:** Go or Python for backend services.
-- **Database:** PostgreSQL for relational integrity.
-- **Communication:** gRPC or REST.
-- **Infrastructure:** Kubernetes / Docker.
+## 5. Key Infrastructure Components
+- **Auth Flow:** User logs in → Receives JWT → App attaches JWT to Firestore/Function requests.
+- **Reporting Flow:** Firestore Query → Service Logic → UI (Small reports) | Cloud Function → PDF Gen → UI (Large reports).
+- **Notification Flow:** Trigger (e.g., Overdue Invoice) → Cloud Function → Firebase Cloud Messaging (FCM) / SendGrid Email.
 
-## Data Flow
-1. **Request:** User submits a Sales Invoice.
-2. **Validation:** Client-side validation.
-3. **Transmission:** Secure write to Firestore (status: 'Draft').
-4. **Processing:** Cloud Function triggers on 'Approve' to:
-   - Verify inventory levels.
-   - Generate Journal Entry.
-   - Update account balances.
-   - Update document status to 'Posted'.
-5. **Notification:** Trigger push/email via Cloud Function.
+## 6. Migration Path
+- The use of `Service` and `Repository` interfaces in Flutter ensures that when we move to a REST API, we only need to implement a `RestRepository` while the `Service` and `UI` remain unchanged.

@@ -267,6 +267,151 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final formContent = SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: FormLayout(
+        maxWidth: 1100,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: InputDecorator(
+                              decoration: ErpFormStyle.inputDecoration(
+                                context,
+                                'Invoice Number',
+                              ),
+                              child: Text(
+                                'Next: $_previewNumber',
+                                style: ErpFormStyle.inputStyle(context)
+                                    .copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blueAccent,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 5,
+                            child: SearchableSelector<CustomerModel>(
+                              labelText: 'Select Customer',
+                              items: _allCustomers,
+                              itemLabelBuilder: (c) => c.name,
+                              onSelected: (val) =>
+                                  setState(() => _selectedCustomer = val),
+                              addLabel: 'Add New Customer',
+                              onAdd: _showAddCustomerDialog,
+                              initialValue: _selectedCustomer,
+                              validator: (v) => _selectedCustomer == null
+                                  ? 'Required'
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: _buildDatePicker(
+                              label: 'Invoice Date',
+                              selectedDate: _invoiceDate,
+                              onTap: (date) {
+                                setState(() => _invoiceDate = date);
+                                _updateDueDate();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 3,
+                            child: SearchableSelector<CreditTermModel>(
+                              labelText: 'Payment Terms',
+                              items: _allTerms,
+                              itemLabelBuilder: (t) => t.name,
+                              onSelected: (val) {
+                                setState(() {
+                                  _selectedTerm = val;
+                                  _updateDueDate();
+                                });
+                              },
+                              addLabel: 'Add New Term',
+                              onAdd: _showAddCreditTermDialog,
+                              initialValue: _selectedTerm,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 2,
+                            child: _buildDatePicker(
+                              label: 'Due Date',
+                              selectedDate: _dueDate,
+                              onTap: (date) =>
+                                  setState(() => _dueDate = date),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Invoice Items',
+                style: ErpFormStyle.sectionHeaderStyle(context),
+              ),
+              const SizedBox(height: 16),
+              _buildItemsTable(),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _addItem,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Item'),
+              ),
+              const SizedBox(height: 32),
+              AttachmentSection(
+                companyId: widget.user.companyId!,
+                folder: 'invoices',
+                onAttachmentsChanged: (attachments) {
+                  _attachments = attachments;
+                },
+              ),
+              const SizedBox(height: 32),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [const Spacer(), _buildSummarySection()],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (widget.isPane) {
+      return ErpSidePane(
+        title: 'Create New Sales Invoice',
+        onCancel: () => Navigator.pop(context),
+        onSave: _save,
+        isLoading: _isLoading,
+        saveLabel: 'Save Invoice',
+        child: formContent,
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create New Sales Invoice'),
@@ -282,133 +427,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
           const SizedBox(width: 16),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: FormLayout(
-          maxWidth: 1100,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: InputDecorator(
-                                decoration: ErpFormStyle.inputDecoration(
-                                  context,
-                                  'Invoice Number',
-                                ),
-                                child: Text(
-                                  'Next number: $_previewNumber',
-                                  style: ErpFormStyle.inputStyle(context)
-                                      .copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blueAccent,
-                                      ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: SearchableSelector<CustomerModel>(
-                                labelText: 'Select Customer',
-                                items: _allCustomers,
-                                itemLabelBuilder: (c) => c.name,
-                                onSelected: (val) =>
-                                    setState(() => _selectedCustomer = val),
-                                addLabel: 'Add New Customer',
-                                onAdd: _showAddCustomerDialog,
-                                initialValue: _selectedCustomer,
-                                validator: (v) => _selectedCustomer == null
-                                    ? 'Required'
-                                    : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildDatePicker(
-                                label: 'Invoice Date',
-                                selectedDate: _invoiceDate,
-                                onTap: (date) {
-                                  setState(() => _invoiceDate = date);
-                                  _updateDueDate();
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: SearchableSelector<CreditTermModel>(
-                                labelText: 'Payment Terms',
-                                items: _allTerms,
-                                itemLabelBuilder: (t) => t.name,
-                                onSelected: (val) {
-                                  setState(() {
-                                    _selectedTerm = val;
-                                    _updateDueDate();
-                                  });
-                                },
-                                addLabel: 'Add New Term',
-                                onAdd: _showAddCreditTermDialog,
-                                initialValue: _selectedTerm,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildDatePicker(
-                                label: 'Due Date',
-                                selectedDate: _dueDate,
-                                onTap: (date) =>
-                                    setState(() => _dueDate = date),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  'Invoice Items',
-                  style: ErpFormStyle.sectionHeaderStyle(context),
-                ),
-                const SizedBox(height: 16),
-                _buildItemsTable(),
-                const SizedBox(height: 16),
-                TextButton.icon(
-                  onPressed: _addItem,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Item'),
-                ),
-                const SizedBox(height: 32),
-                AttachmentSection(
-                  companyId: widget.user.companyId!,
-                  folder: 'invoices',
-                  onAttachmentsChanged: (attachments) {
-                    _attachments = attachments;
-                  },
-                ),
-                const SizedBox(height: 32),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [const Spacer(), _buildSummarySection()],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      body: formContent,
     );
   }
 

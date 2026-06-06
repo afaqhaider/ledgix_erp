@@ -1,7 +1,4 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
@@ -243,31 +240,10 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
   Color _primaryColor = const Color(0xFF0F172A);
   Color _secondaryColor = const Color(0xFF3B82F6);
 
-  XFile? _logoFile;
-  Uint8List? _logoBytes;
-
   @override
   void initState() {
     super.initState();
     _emailController.text = widget.user.email;
-  }
-
-  Future<void> _pickLogo() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      if (kIsWeb) {
-        final bytes = await image.readAsBytes();
-        setState(() {
-          _logoFile = image;
-          _logoBytes = bytes;
-        });
-      } else {
-        setState(() {
-          _logoFile = image;
-        });
-      }
-    }
   }
 
   Future<void> _setupCompany() async {
@@ -314,20 +290,6 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
       debugPrint('CompanySetup: Calling service.setupCompany...');
       final companyId = await _companyService.setupCompany(company);
       debugPrint('CompanySetup: Company created with ID: $companyId');
-
-      if (_logoFile != null) {
-        debugPrint('CompanySetup: Uploading logo...');
-        final uploadedUrl = await _companyService.uploadLogo(
-          companyId,
-          kIsWeb ? _logoBytes : File(_logoFile!.path),
-          fileName: _logoFile!.name,
-          contentType: _logoFile!.mimeType,
-        );
-        debugPrint('CompanySetup: Updating company with logo URL...');
-        await _companyService.updateCompany(
-          company.copyWith(companyLogoUrl: uploadedUrl).copyWithId(companyId),
-        );
-      }
 
       debugPrint(
         'CompanySetup: Setup complete. Waiting for AuthGate redirect.',
@@ -570,44 +532,6 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Company Logo',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: Column(
-            children: [
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  border: Border.all(color: theme.colorScheme.outline),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: _logoFile != null
-                    ? kIsWeb
-                          ? Image.memory(_logoBytes!, fit: BoxFit.contain)
-                          : Image.file(
-                              File(_logoFile!.path),
-                              fit: BoxFit.contain,
-                            )
-                    : const Icon(
-                        Icons.add_a_photo_outlined,
-                        size: 48,
-                        color: Colors.grey,
-                      ),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: _pickLogo,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Upload Logo'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
         const Text(
           'Brand Colors',
           style: TextStyle(fontWeight: FontWeight.bold),

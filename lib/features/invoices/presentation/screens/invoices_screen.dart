@@ -8,8 +8,8 @@ import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/invoices/services/invoice_service.dart';
 import 'package:ledgixerp/features/invoices/presentation/screens/add_invoice_screen.dart';
 import 'package:ledgixerp/features/invoices/presentation/screens/invoice_detail_screen.dart';
-
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class InvoicesScreen extends StatefulWidget {
   final AppUser user;
@@ -39,198 +39,260 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final canManage = widget.user.role.hasPermission(
       AppPermission.manageInvoices,
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sales Invoices'),
-        actions: [
+    return Column(
+      children: [
+        _buildHeader(theme, canManage),
+        Expanded(
+          child: StreamBuilder<List<InvoiceModel>>(
+            stream: _invoiceService.getInvoices(widget.user.companyId!),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+
+              final invoices = snapshot.data ?? [];
+
+              if (invoices.isEmpty) {
+                return _buildEmptyState(theme);
+              }
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.5,
+                      ),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Theme(
+                      data: theme.copyWith(dividerColor: Colors.transparent),
+                      child: DataTable(
+                        headingRowHeight: 48,
+                        dataRowMinHeight: 40,
+                        dataRowMaxHeight: 52,
+                        horizontalMargin: 24,
+                        columnSpacing: 40,
+                        headingRowColor: WidgetStateProperty.all(
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : Colors.black.withValues(alpha: 0.02),
+                        ),
+                        columns: [
+                          _buildColumn('Invoice #'),
+                          _buildColumn('Customer'),
+                          _buildColumn('Date'),
+                          _buildColumn('Total', numeric: true),
+                          _buildColumn('Status'),
+                          _buildColumn('Actions'),
+                        ],
+                        rows: invoices.map((invoice) {
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(
+                                  invoice.invoiceNumber,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  invoice.customerName,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  AppFormatters.date(invoice.invoiceDate),
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  AppFormatters.currency(
+                                    invoice.totalAmount,
+                                    symbol: _company?.baseCurrency,
+                                  ),
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              DataCell(_buildStatusBadge(invoice)),
+                              DataCell(
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.visibility_outlined,
+                                        size: 18,
+                                      ),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                InvoiceDetailScreen(
+                                              invoice: invoice,
+                                              user: widget.user,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    if (canManage && !invoice.isPosted)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: Colors.redAccent,
+                                        ),
+                                        onPressed: () => _confirmDelete(invoice),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme, bool canManage) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sales Invoices',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Manage and track your customer billings',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (canManage)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  showErpSidePane(
-                    context: context,
-                    builder: AddInvoiceScreen(user: widget.user, isPane: true),
-                  );
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add New'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: Colors.white,
+            ElevatedButton.icon(
+              onPressed: () {
+                showErpSidePane(
+                  context: context,
+                  builder: AddInvoiceScreen(user: widget.user, isPane: true),
+                );
+              },
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('New Invoice'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ),
         ],
       ),
-      body: StreamBuilder<List<InvoiceModel>>(
-        stream: _invoiceService.getInvoices(widget.user.companyId!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    );
+  }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+  DataColumn _buildColumn(String label, {bool numeric = false}) {
+    return DataColumn(
+      numeric: numeric,
+      label: Text(
+        label.toUpperCase(),
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          color: Colors.grey[600],
+        ),
+      ),
+    );
+  }
 
-          final invoices = snapshot.data ?? [];
+  Widget _buildStatusBadge(InvoiceModel invoice) {
+    final color = invoice.isPosted ? Colors.green : _getStatusColor(invoice.status);
+    final text = invoice.isPosted ? 'POSTED' : invoice.status.name.toUpperCase();
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
 
-          if (invoices.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.description_outlined,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No invoices found',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: Card(
-                child: DataTable(
-                horizontalMargin: 24,
-                columnSpacing: 40,
-                columns: const [
-                  DataColumn(
-                    label: Text(
-                      'Invoice #',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Customer',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Date',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Total',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Status',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Actions',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-                rows: invoices.map((invoice) {
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(invoice.invoiceNumber)),
-                      DataCell(Text(invoice.customerName)),
-                      DataCell(Text(AppFormatters.date(invoice.invoiceDate))),
-                      DataCell(
-                        Text(
-                          AppFormatters.currency(
-                            invoice.totalAmount,
-                            symbol: _company?.baseCurrency,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                (invoice.isPosted
-                                        ? Colors.green
-                                        : _getStatusColor(invoice.status))
-                                    .withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            (invoice.isPosted
-                                ? 'POSTED'
-                                : invoice.status.name.toUpperCase()),
-                            style: TextStyle(
-                              color: invoice.isPosted
-                                  ? Colors.green
-                                  : _getStatusColor(invoice.status),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.visibility_outlined,
-                                size: 20,
-                              ),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => InvoiceDetailScreen(
-                                      invoice: invoice,
-                                      user: widget.user,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            if (canManage && !invoice.isPosted)
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  size: 20,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _confirmDelete(invoice),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
+  Widget _buildEmptyState(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.description_outlined,
+            size: 64,
+            color: Colors.grey[400],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Text(
+            'No invoices found',
+            style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+          ),
+        ],
       ),
     );
   }

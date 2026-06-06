@@ -296,24 +296,27 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                         Row(
                           children: [
                             Expanded(
+                              flex: 3,
                               child: InputDecorator(
                                 decoration: ErpFormStyle.inputDecoration(
                                   context,
                                   'Document Number',
                                 ),
                                 child: Text(
-                                  'Next number: $_previewNumber',
+                                  'Next: $_previewNumber',
                                   style: ErpFormStyle.inputStyle(context)
                                       .copyWith(
                                         fontWeight: FontWeight.bold,
                                         color: Colors.blueAccent,
                                       ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
-                              flex: 2,
+                              flex: 5,
                               child: SearchableSelector<CustomerModel>(
                                 labelText: 'Select Customer',
                                 items: _allCustomers,
@@ -334,6 +337,7 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                         Row(
                           children: [
                             Expanded(
+                              flex: 2,
                               child: _buildDatePicker(
                                 label: 'Quotation Date',
                                 selectedDate: _quoDate,
@@ -345,6 +349,7 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                             ),
                             const SizedBox(width: 16),
                             Expanded(
+                              flex: 3,
                               child: SearchableSelector<PaymentTermModel>(
                                 labelText: 'Payment Terms',
                                 items: _allTerms,
@@ -362,6 +367,7 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
                             ),
                             const SizedBox(width: 16),
                             Expanded(
+                              flex: 2,
                               child: _buildDatePicker(
                                 label: 'Valid Until',
                                 selectedDate: _validUntil,

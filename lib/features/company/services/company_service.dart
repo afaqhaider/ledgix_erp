@@ -7,6 +7,10 @@ import '../../settings/services/financial_settings_service.dart';
 import '../models/company_model.dart';
 
 class CompanyService {
+  static final CompanyService _instance = CompanyService._internal();
+  factory CompanyService() => _instance;
+  CompanyService._internal();
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final Map<String, String> _resolvedLogoUrlCache = {};
@@ -70,31 +74,57 @@ class CompanyService {
   }
 
   Future<String?> resolveLogoUrl(String? logoUrl) async {
-    final value = logoUrl?.trim();
-    if (value == null || value.isEmpty) return null;
-    final cachedUrl = _resolvedLogoUrlCache[value];
+    if (logoUrl == null) return null;
+    
+    // 1. Clean the input URL: trim and remove newlines/carriage returns
+    final cleanedInput = logoUrl.trim().replaceAll(RegExp(r'[\n\r]'), '');
+    if (cleanedInput.isEmpty) return null;
+
+    if (kDebugMode) {
+      debugPrint('CompanyService.resolveLogoUrl: Input length: ${logoUrl.length}');
+      debugPrint('CompanyService.resolveLogoUrl: Cleaned input length: ${cleanedInput.length}');
+    }
+
+    final cachedUrl = _resolvedLogoUrlCache[cleanedInput];
     if (cachedUrl != null) {
-      debugPrint('CompanyService: Resolved logo from cache: $value');
       return cachedUrl;
     }
 
-    if (value.startsWith('http://') || value.startsWith('https://')) {
-      debugPrint('CompanyService: Using logo download URL directly.');
-      _resolvedLogoUrlCache[value] = value;
-      return value;
+    // 2. If it is already a full Firebase Storage download URL, return it directly
+    if (cleanedInput.startsWith('https://firebasestorage.googleapis.com')) {
+      if (kDebugMode) {
+        debugPrint('CompanyService: Using direct Firebase Storage URL.');
+        debugPrint('CompanyService: Final URL length: ${cleanedInput.length}');
+      }
+      _resolvedLogoUrlCache[cleanedInput] = cleanedInput;
+      return cleanedInput;
+    }
+
+    // 3. If it starts with http/https but NOT Firebase Storage, just return it after cleaning
+    if (cleanedInput.startsWith('http://') || cleanedInput.startsWith('https://')) {
+      _resolvedLogoUrlCache[cleanedInput] = cleanedInput;
+      return cleanedInput;
     }
 
     try {
-      debugPrint('CompanyService: Resolving logo path: $value');
+      debugPrint('CompanyService: Resolving storage path: $cleanedInput');
       late final String resolvedUrl;
-      if (value.startsWith('gs://')) {
-        resolvedUrl = await _storage.refFromURL(value).getDownloadURL();
+      if (cleanedInput.startsWith('gs://')) {
+        resolvedUrl = await _storage.refFromURL(cleanedInput).getDownloadURL();
       } else {
-        resolvedUrl = await _storage.ref().child(value).getDownloadURL();
+        resolvedUrl = await _storage.ref().child(cleanedInput).getDownloadURL();
       }
-      _resolvedLogoUrlCache[value] = resolvedUrl;
-      debugPrint('CompanyService: Logo path resolved successfully.');
-      return resolvedUrl;
+
+      // Clean the resulting download URL as well
+      final finalUrl = resolvedUrl.trim().replaceAll(RegExp(r'[\n\r]'), '');
+      
+      if (kDebugMode) {
+        debugPrint('CompanyService: Resolved URL length: ${resolvedUrl.length}');
+        debugPrint('CompanyService: Final cleaned URL length: ${finalUrl.length}');
+      }
+
+      _resolvedLogoUrlCache[cleanedInput] = finalUrl;
+      return finalUrl;
     } catch (e) {
       debugPrint('Error resolving logo URL: $e');
       return null;
@@ -136,12 +166,23 @@ class CompanyService {
       }
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
-      _resolvedLogoUrlCache[snapshot.ref.fullPath] = downloadUrl;
-      _resolvedLogoUrlCache[downloadUrl] = downloadUrl;
+      
+      // Clean the URL: remove any potential whitespaces or newlines
+      final cleanUrl = downloadUrl.trim().replaceAll(RegExp(r'[\n\r]'), '');
+      
+      if (kDebugMode) {
+        debugPrint('CompanyService: Original URL length: ${downloadUrl.length}');
+        debugPrint('CompanyService: Cleaned URL length: ${cleanUrl.length}');
+        debugPrint('CompanyService: Cleaned URL: $cleanUrl');
+      }
+
+      _resolvedLogoUrlCache[snapshot.ref.fullPath] = cleanUrl;
+      _resolvedLogoUrlCache[cleanUrl] = cleanUrl;
+      
       debugPrint(
         'CompanyService: Logo uploaded successfully: ${snapshot.ref.fullPath}',
       );
-      return downloadUrl;
+      return cleanUrl;
     } catch (e) {
       debugPrint('Error uploading logo: $e');
       throw Exception('Could not upload the company logo. Please try again.');

@@ -1,33 +1,58 @@
 # 05 Non-Functional Requirements
 
-## Performance
-- **Dashboard Load:** Initial dashboard metrics must load under 2 seconds.
-- **Report Generation:** Standard reports (P&L, Balance Sheet) should generate in under 5 seconds for 10k transactions.
-- **Search:** Global search results should appear in under 500ms.
+## 1. Performance
+- **Response Time:**
+    - Dashboard and core list views must load in under 2 seconds on standard 4G/Broadband.
+    - Financial reports (Balance Sheet, P&L) for a standard SME (up to 10k transactions/year) must generate in under 5 seconds.
+    - UI interactions (button clicks, tab switching) must feel instantaneous (< 200ms).
+- **Concurrency:**
+    - Support at least 1,000 concurrent users per region in the initial Firebase phase.
 
-## Availability & Reliability
-- **Uptime:** Target 99.9% availability.
-- **Auto-Save:** Drafts should be saved frequently to prevent data loss.
-- **Offline Mode:** Limited read-only access to cached data when offline.
+## 2. Availability & Reliability
+- **Uptime:** Target 99.9% availability for the production environment.
+- **Offline Capability:**
+    - Mobile apps should allow viewing cached data.
+    - Critical data entry (Sales Invoice) should have basic offline support with sync-on-reconnect.
+- **Data Integrity:**
+    - Zero data loss guarantee for posted transactions.
+    - Transactional writes for all multi-document updates (e.g., Invoice + Journal Entry + Stock update).
 
-## Security
-- **Data Encryption:** TLS 1.3 for data in transit; AES-256 for data at rest (managed by Firebase).
-- **Authentication:** Mandatory MFA for 'Owner' and 'Admin' roles.
-- **Session Management:** Automatic logout after 30 minutes of inactivity.
+## 3. Scalability
+- **Vertical & Horizontal:**
+    - Leverage Firebase's auto-scaling for the first 50,000 companies.
+    - Architecture must allow migration to PostgreSQL/Microservices without rewriting business logic.
+- **Media Storage:**
+    - Use Firebase Storage with CDN for fast document/image retrieval.
 
-## Scalability
-- **Horizontal Scaling:** System must support thousands of simultaneous tenants via Firebase's multi-tenant infrastructure.
-- **Concurrency:** Optimistic locking for inventory and document updates.
+## 4. Security
+- **Data Isolation:** Strict multi-tenant architecture. One company cannot access another's data under any circumstances.
+- **Authentication:**
+    - Firebase Auth for secure identity management.
+    - Support for MFA (Multi-Factor Authentication) for Owner and Admin roles.
+- **Encryption:**
+    - Data in transit: SSL/TLS (HTTPS).
+    - Data at rest: AES-256 (Firebase default).
+- **Password Policy:** Minimum 8 characters, mix of alphanumeric and special characters.
 
-## Auditability
-- **Immutable Logs:** Every document save must create an entry in the `audit_logs` collection.
-- **User Tracking:** Store `created_by`, `updated_by`, and `timestamp` on every record.
+## 5. Auditability
+- **Change Logs:** Track who created/edited every document and when.
+- **Immutability:** Posted financial entries cannot be modified. Errors must be corrected via "Reversal" or "Adjustment" entries.
+- **System Logs:** Capture critical system errors and security events.
 
-## Backup & Recovery
-- **Daily Backups:** Automated Firestore backups.
-- **Point-in-Time Recovery:** Ability to restore data to a specific state (via Firebase backups).
+## 6. Usability & Accessibility
+- **Responsive Design:** Consistent experience across Desktop Web, Tablets, and Mobile phones.
+- **Localization:**
+    - Initial support for English.
+    - Framework must support RTL (Arabic/Urdu) for future expansion.
+    - Number formatting (1,000.00) and date formatting (DD-MMM-YYYY) must be consistent.
+- **Theme:** Default "Pure Black" (#000000) dark mode to reduce eye strain.
 
-## UI/UX & Accessibility
-- **Responsive:** UI must adapt from 320px (Mobile) to 4K (Desktop).
-- **Accessibility:** WCAG 2.1 Level AA compliance.
-- **Localization:** Support for RTL languages (Arabic, Urdu) and multiple date/number formats.
+## 7. Compliance
+- **Accounting:** Alignment with IFRS (International Financial Reporting Standards).
+- **Tax:** Support for VAT/GST calculations and reporting.
+- **GDPR:** Support for data deletion requests and privacy requirements.
+
+## 8. Backup & Disaster Recovery
+- **Backups:** Daily automated backups of Firestore data.
+- **Recovery Time Objective (RTO):** Under 4 hours for major system failures.
+- **Recovery Point Objective (RPO):** Under 24 hours.

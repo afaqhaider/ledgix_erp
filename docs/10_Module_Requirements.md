@@ -1,39 +1,90 @@
 # 10 Module Requirements
 
 ## 1. Accounting Module
-### Fields
-- `account_name`, `account_code`, `account_type`, `is_active`, `balance`.
-### Validation
-- Account code must be unique.
-- Cannot delete an account with a non-zero balance.
-### Posting Logic
-- Real-time balance updates on document posting.
-### Reports
-- Balance Sheet, Profit & Loss, Trial Balance, General Ledger.
+The core of LedGix ERP. It must maintain financial integrity and provide accurate reporting.
 
-## 2. Inventory Module
-### Fields
-- `sku`, `product_name`, `uom`, `category`, `current_stock`, `reorder_level`.
-### Workflows
-- Stock In (Purchase/Return)
-- Stock Out (Sales/Internal)
-- Stock Adjustment (Manual)
-### Audit Requirements
-- Track history of stock movements for every SKU.
+### Key Components:
+- **Chart of Accounts (CoA):** A hierarchical list of all accounts.
+- **Journal Entries:** The atomic unit of accounting.
+- **Financial Periods:** Monthly/Yearly locking of transactions.
 
-## 3. Sales Module
-### Fields
-- `customer_id`, `invoice_date`, `due_date`, `items_list`, `tax_total`, `grand_total`.
-### Notifications
-- Send email to customer on invoice posting.
-- Alert sales rep on payment receipt.
-### Exceptions
-- Handling of sales returns (Credit Notes).
+### Posting Logic:
+| Event | Debit | Credit |
+| :--- | :--- | :--- |
+| Sales Invoice | Accounts Receivable | Sales Revenue, VAT Output |
+| Customer Payment | Bank/Cash | Accounts Receivable |
+| Purchase Bill | Expense/Inventory, VAT Input | Accounts Payable |
+| Supplier Payment | Accounts Payable | Bank/Cash |
 
-## 4. HR & Payroll
-### Fields
-- `employee_id`, `basic_salary`, `allowances`, `deductions`, `joining_date`.
-### Posting Logic
-- Generate Salary Payable and Expense entries on payroll run.
-### Permissions
-- Highly restricted access to salary details.
+### Reports:
+- Balance Sheet, Profit & Loss, Trial Balance, Ledger Report.
+
+---
+
+## 2. Sales Module
+Manages the revenue lifecycle from lead to cash.
+
+### Workflow:
+`Quotation` → `Sales Order` → `Delivery Note` → `Sales Invoice` → `Customer Receipt`
+
+### Validation:
+- Customer credit limit check before invoice posting.
+- Warning if selling price is below cost price.
+- Check available stock if "Allow Negative Inventory" is disabled.
+
+---
+
+## 3. Purchase Module
+Manages the expense lifecycle from request to payment.
+
+### Workflow:
+`Purchase Requisition` → `Purchase Order` → `GRN (Goods Received Note)` → `Purchase Bill` → `Supplier Payment`
+
+### Features:
+- Track landing costs (Freight, Customs) and distribute them into inventory value.
+- Supplier performance tracking (Delivery time, Quality).
+
+---
+
+## 4. Inventory Module
+Tracks the movement and value of physical goods.
+
+### Core Features:
+- **Multi-Warehouse:** Track stock across different physical locations.
+- **Stock Valuation:** Support for FIFO (First-In, First-Out) and Weighted Average.
+- **UOM Conversions:** e.g., Buying in "Boxes" and selling in "Units".
+
+### Critical Logic:
+- **Stock Reconciliation:** Periodic physical count vs. system count adjustments.
+- **Low Stock Alerts:** Automated notifications when items fall below reorder levels.
+
+---
+
+## 5. Banking Module
+Manages cash flow and bank relationships.
+
+### Features:
+- **Bank Reconciliation:** Matching ERP bank ledger with actual bank statements.
+- **Bank Transfers:** Internal transfers between bank/cash accounts.
+- **Expense Claims:** Employee reimbursement management.
+
+---
+
+## 6. HR & Payroll Module
+Manages the workforce.
+
+### Features:
+- **Employee Master:** Personal details, documents, and contract terms.
+- **Attendance:** Daily clock-in/out and leave management.
+- **Payroll Engine:**
+    - Earnings (Basic, Housing, Transport).
+    - Deductions (Tax, Social Security, Advances).
+    - Net Pay calculation.
+    - Automated Journal Entry generation for salary accrual and payment.
+
+---
+
+## 7. Reports & Analytics
+- **Dashboard KPIs:** Real-time visibility.
+- **Operational Reports:** Daily sales, stock status, pending orders.
+- **Audit Reports:** User activity logs, deleted records (soft-deleted), change history.
