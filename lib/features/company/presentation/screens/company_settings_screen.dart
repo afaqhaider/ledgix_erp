@@ -606,6 +606,18 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 32),
+                Center(
+                  child: Text(
+                    'Version 1.0.1 Build 1',
+                    style: TextStyle(
+                      color: theme.brightness == Brightness.dark
+                          ? Colors.white24
+                          : Colors.grey[400],
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 24),
               ],
             ),
