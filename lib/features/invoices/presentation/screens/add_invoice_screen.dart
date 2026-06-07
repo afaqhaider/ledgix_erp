@@ -217,7 +217,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
         attachments: _attachments,
       );
 
-      await _invoiceService.addInvoice(invoice);
+      await _invoiceService.addInvoice(invoice, widget.user);
       if (mounted) {
         if (widget.isPane) {
           Navigator.pop(context, true);
@@ -225,13 +225,16 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
           Navigator.pop(context);
         }
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Error saving invoice: $e');
+      debugPrint(stack.toString());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
+        showErpError(
+          context: context,
+          title: 'Posting Error',
+          message:
+              'The invoice was saved but could not be posted to the ledger automatically.',
+          technicalDetails: e.toString(),
         );
       }
     } finally {

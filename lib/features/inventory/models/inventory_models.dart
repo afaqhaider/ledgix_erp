@@ -34,6 +34,8 @@ class InventoryItemModel {
   final double reorderLevel;
   final double minimumStock;
   final double maximumStock;
+  final double stockQuantity; // Denormalized stock balance
+  final double costPrice;     // Weighted Average Cost
   final bool isActive;
   final DateTime createdAt;
 
@@ -54,6 +56,8 @@ class InventoryItemModel {
     this.reorderLevel = 0.0,
     this.minimumStock = 0.0,
     this.maximumStock = 0.0,
+    this.stockQuantity = 0.0,
+    this.costPrice = 0.0,
     this.isActive = true,
     required this.createdAt,
   });
@@ -76,6 +80,8 @@ class InventoryItemModel {
       'reorderLevel': reorderLevel,
       'minimumStock': minimumStock,
       'maximumStock': maximumStock,
+      'stockQuantity': stockQuantity,
+      'costPrice': costPrice,
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
     };
@@ -102,6 +108,8 @@ class InventoryItemModel {
       reorderLevel: (map['reorderLevel'] as num?)?.toDouble() ?? 0.0,
       minimumStock: (map['minimumStock'] as num?)?.toDouble() ?? 0.0,
       maximumStock: (map['maximumStock'] as num?)?.toDouble() ?? 0.0,
+      stockQuantity: (map['stockQuantity'] as num?)?.toDouble() ?? 0.0,
+      costPrice: (map['costPrice'] as num?)?.toDouble() ?? 0.0,
       isActive: map['isActive'] ?? true,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );

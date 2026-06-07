@@ -1,16 +1,19 @@
 import 'package:ledgixerp/core/auth/permission.dart';
 
 enum UserRole {
-  superAdmin('Super Admin', 1000),
   owner('Owner', 100),
-  generalManager('General Manager', 80),
+  superAdmin('Super Admin', 1000),
+  admin('Admin', 90),
+  generalManager('General Manager', 85),
   accountant('Accountant', 60),
   cashier('Cashier', 40),
   sales('Sales', 40),
   purchase('Purchase', 40),
   storekeeper('Storekeeper', 40),
   hr('HR', 40),
-  employee('Employee', 10);
+  employee('Employee', 10),
+  customerPortal('Customer Portal', 0),
+  supplierPortal('Supplier Portal', 0);
 
   final String label;
   final int rank;
@@ -27,7 +30,7 @@ enum UserRole {
         return rank >= UserRole.accountant.rank;
       case AppPermission.manageSettings:
       case AppPermission.manageUsers:
-        return rank >= UserRole.generalManager.rank;
+        return rank >= UserRole.admin.rank;
       case AppPermission.viewAccounting:
       case AppPermission.manageAccounting:
         return rank >= UserRole.accountant.rank;

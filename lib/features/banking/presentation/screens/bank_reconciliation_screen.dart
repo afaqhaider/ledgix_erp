@@ -9,6 +9,8 @@ import 'package:ledgixerp/core/theme/app_colors.dart';
 import 'package:ledgixerp/features/banking/presentation/widgets/import_statement_dialog.dart';
 import 'package:ledgixerp/features/banking/presentation/widgets/reconciliation_matching_panel.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
 class BankReconciliationScreen extends StatefulWidget {
   final AppUser user;
   const BankReconciliationScreen({super.key, required this.user});
@@ -40,32 +42,81 @@ class _BankReconciliationScreenState extends State<BankReconciliationScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bank Reconciliation'),
-        actions: [
+    return Column(
+      children: [
+        _buildHeader(theme),
+        _buildFilterBar(isDark),
+        Expanded(
+          child: _selectedAccount == null
+              ? _buildEmptyState(theme)
+              : _buildReconciliationView(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bank Reconciliation',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Match your bank statements with ERP transactions',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (_selectedAccount != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: ElevatedButton.icon(
-                onPressed: () => _showImportDialog(),
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Import Statement'),
+            ElevatedButton.icon(
+              onPressed: () => _showImportDialog(),
+              icon: const Icon(Icons.upload_file, size: 18),
+              label: const Text('Import Statement'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
         ],
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildEmptyState(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildFilterBar(isDark),
-          Expanded(
-            child: _selectedAccount == null
-                ? const Center(
-                    child: Text(
-                      'Please select a bank account to begin reconciliation.',
-                    ),
-                  )
-                : _buildReconciliationView(),
+          Icon(
+            Icons.account_balance_outlined,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Please select a bank account to begin reconciliation',
+            style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
           ),
         ],
       ),
@@ -91,7 +142,7 @@ class _BankReconciliationScreenState extends State<BankReconciliationScreen> {
               builder: (context, snapshot) {
                 final accounts = snapshot.data ?? [];
                 return DropdownButtonFormField<BankAccountModel>(
-                  value: _selectedAccount,
+                  initialValue: _selectedAccount,
                   decoration: const InputDecoration(
                     labelText: 'Select Bank Account',
                     contentPadding: EdgeInsets.symmetric(
@@ -136,7 +187,7 @@ class _BankReconciliationScreenState extends State<BankReconciliationScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: DropdownButtonFormField<ReconciliationStatus?>(
-              value: _statusFilter,
+              initialValue: _statusFilter,
               decoration: const InputDecoration(
                 labelText: 'Match Status',
                 contentPadding: EdgeInsets.symmetric(

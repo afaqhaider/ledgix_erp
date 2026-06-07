@@ -60,24 +60,79 @@ class MigrationConfig {
       case MigrationModule.chartOfAccounts:
         return [
           FieldDefinition(
-            key: 'code',
-            label: 'Account Code',
-            isRequired: true,
-            aliases: ['Code', 'Account ID'],
-          ),
-          FieldDefinition(
             key: 'name',
             label: 'Account Name',
             isRequired: true,
             aliases: ['Name', 'Account'],
           ),
           FieldDefinition(
+            key: 'category',
+            label: 'Category',
+            isRequired: false, // Validated manually: Type or Category required
+            aliases: ['Category', 'Subcategory', 'Classification'],
+            options: [
+              'Current Asset', 'Non Current Asset', 'Cash', 'Bank', 'Accounts Receivable',
+              'Current Liability', 'Non Current Liability', 'Accounts Payable', 'VAT Payable',
+              'Owner Equity', 'Retained Earnings', 'Current Year Earnings',
+              'Sales', 'Service Income', 'Other Income',
+              'Direct Cost', 'Cost of Goods Sold',
+              'Operating Expense', 'Admin Expense', 'Staff Cost', 'Rent', 'Utilities', 'Depreciation'
+            ],
+            allowCustom: true,
+          ),
+          FieldDefinition(
             key: 'type',
             label: 'Account Type',
-            isRequired: true,
-            aliases: ['Type', 'Category'],
+            isRequired: false, // Validated manually: Type or Category required
+            aliases: ['Type', 'Major Type'],
+            options: ['Asset', 'Liability', 'Equity', 'Revenue', 'Cost of Sales', 'Expense', 'Other Revenue', 'Other Expense'],
           ),
+          FieldDefinition(
+            key: 'code',
+            label: 'Account Code',
+            isRequired: false,
+            aliases: ['Code', 'Account ID', 'Number'],
+          ),
+          FieldDefinition(
+            key: 'parentCode',
+            label: 'Parent Code',
+            aliases: ['Parent', 'Parent Account', 'Group'],
+          ),
+          FieldDefinition(
+            key: 'isPostable',
+            label: 'Is Postable?',
+            aliases: ['Postable', 'Allow Posting', 'Posting'],
+            options: ['Yes', 'No'],
+          ),
+          FieldDefinition(
+            key: 'openingBalance',
+            label: 'Opening Balance',
+            aliases: ['Balance', 'Opening'],
+          ),
+          FieldDefinition(
+            key: 'normalBalance',
+            label: 'Normal Balance',
+            aliases: ['Normal', 'Balance Type', 'Dr/Cr'],
+            options: ['Dr', 'Cr'],
+          ),
+        ];
+      case MigrationModule.journalEntries:
+        return [
+          FieldDefinition(key: 'date', label: 'Date', isRequired: true),
+          FieldDefinition(key: 'reference', label: 'Reference'),
+          FieldDefinition(key: 'accountCode', label: 'Account Code', isRequired: true),
           FieldDefinition(key: 'description', label: 'Description'),
+          FieldDefinition(key: 'debit', label: 'Debit'),
+          FieldDefinition(key: 'credit', label: 'Credit'),
+        ];
+      case MigrationModule.salesInvoices:
+        return [
+          FieldDefinition(key: 'invoiceNumber', label: 'Invoice #', isRequired: true),
+          FieldDefinition(key: 'date', label: 'Date', isRequired: true),
+          FieldDefinition(key: 'customerName', label: 'Customer', isRequired: true),
+          FieldDefinition(key: 'itemCode', label: 'Item Code'),
+          FieldDefinition(key: 'quantity', label: 'Quantity'),
+          FieldDefinition(key: 'unitPrice', label: 'Price'),
         ];
       case MigrationModule.inventory:
         return [

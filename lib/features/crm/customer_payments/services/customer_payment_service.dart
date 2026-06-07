@@ -34,7 +34,6 @@ class CustomerPaymentService {
   }
 
   Future<void> addPayment(CustomerPaymentModel payment) async {
-    // Check if period is locked
     if (await _settingsService.isPeriodLocked(
       payment.companyId,
       payment.paymentDate,
@@ -43,37 +42,6 @@ class CustomerPaymentService {
     }
 
     await _firestore.runTransaction((transaction) async {
-      // 1. ALL READS FIRST (WEB REQUIREMENT)
-
-      // Get settings snapshot for number generation
-      final settingsRef = _firestore
-          .collection('settings')
-          .doc(payment.companyId);
-      final settingsSnap = await transaction.get(settingsRef);
-
-      // Get all invoice snapshots
-      final List<DocumentSnapshot> invoiceSnaps = [];
-      final List<String> invoiceIds = [];
-
-      if (payment.allocations.isNotEmpty) {
-        for (var allocation in payment.allocations) {
-          invoiceIds.add(allocation.invoiceId);
-        }
-      } else if (payment.invoiceId != null) {
-        invoiceIds.add(payment.invoiceId!);
-      }
-
-      for (var id in invoiceIds) {
-        final invRef = _firestore
-            .collection('companies')
-            .doc(payment.companyId)
-            .collection('salesInvoices')
-            .doc(id);
-        invoiceSnaps.add(await transaction.get(invRef));
-      }
-
-      // 2. ALL WRITES AFTER
-
       // Generate final number and increment
       final finalNumber = await _settingsService
           .getNextDocumentNumberAndIncrement(
@@ -86,43 +54,21 @@ class CustomerPaymentService {
       final paymentToSave = payment.copyWith(
         id: payRef.id,
         paymentNumber: finalNumber,
+        isPosted: false, // Ensure it's not posted by default
       );
 
       transaction.set(payRef, paymentToSave.toMap());
-
-      // Update invoices
-      for (var i = 0; i < invoiceIds.length; i++) {
-        final invSnap = invoiceSnaps[i];
-        if (invSnap.exists) {
-          final data = invSnap.data() as Map<String, dynamic>;
-          final currentPaid = (data['amountPaid'] as num?)?.toDouble() ?? 0.0;
-          final totalAmount = (data['totalAmount'] as num?)?.toDouble() ?? 0.0;
-
-          double allocationAmount = payment.amount;
-          if (payment.allocations.isNotEmpty) {
-            allocationAmount = payment.allocations[i].amount;
-          }
-
-          final newPaid = currentPaid + allocationAmount;
-          final newBalance = totalAmount - newPaid;
-
-          String status = 'partiallyPaid';
-          if (newBalance <= 0) {
-            status = 'paid';
-          }
-
-          transaction.update(invSnap.reference, {
-            'amountPaid': newPaid,
-            'balanceDue': newBalance,
-            'status': status,
-          });
-        }
-      }
+      
+      // PRIORITY 3: We no longer update invoice balances here.
+      // It will be handled in AccountingPostingService upon posting.
     });
   }
 
   Future<void> updatePayment(CustomerPaymentModel payment) async {
-    if (payment.isPosted) throw Exception('Cannot update a posted payment.');
+    final doc = await _getRef(payment.companyId).doc(payment.id).get();
+    if (doc.exists && (doc.data() as Map<String, dynamic>)['isPosted'] == true) {
+      throw Exception('Cannot update a posted payment.');
+    }
     await _getRef(payment.companyId).doc(payment.id).update(payment.toMap());
   }
 
@@ -140,62 +86,8 @@ class CustomerPaymentService {
       );
     }
 
-    await _firestore.runTransaction((transaction) async {
-      // 1. ALL READS FIRST
-      final List<DocumentSnapshot> invoiceSnaps = [];
-      final List<String> invoiceIds = [];
-
-      if (payment.allocations.isNotEmpty) {
-        for (var allocation in payment.allocations) {
-          invoiceIds.add(allocation.invoiceId);
-        }
-      } else if (payment.invoiceId != null) {
-        invoiceIds.add(payment.invoiceId!);
-      }
-
-      for (var id in invoiceIds) {
-        final invRef = _firestore
-            .collection('companies')
-            .doc(companyId)
-            .collection('salesInvoices')
-            .doc(id);
-        invoiceSnaps.add(await transaction.get(invRef));
-      }
-
-      // 2. ALL WRITES AFTER
-
-      // Reverse allocations
-      for (var i = 0; i < invoiceIds.length; i++) {
-        final invSnap = invoiceSnaps[i];
-        if (invSnap.exists) {
-          final data = invSnap.data() as Map<String, dynamic>;
-          final currentPaid = (data['amountPaid'] as num?)?.toDouble() ?? 0.0;
-          final totalAmount = (data['totalAmount'] as num?)?.toDouble() ?? 0.0;
-
-          double allocationAmount = payment.amount;
-          if (payment.allocations.isNotEmpty) {
-            allocationAmount = payment.allocations[i].amount;
-          }
-
-          final newPaid = currentPaid - allocationAmount;
-          final newBalance = totalAmount - newPaid;
-
-          String status = 'sent';
-          if (newPaid > 0 && newBalance > 0) {
-            status = 'partiallyPaid';
-          } else if (newBalance <= 0) {
-            status = 'paid';
-          }
-
-          transaction.update(invSnap.reference, {
-            'amountPaid': newPaid,
-            'balanceDue': newBalance,
-            'status': status,
-          });
-        }
-      }
-
-      transaction.delete(_getRef(companyId).doc(paymentId));
-    });
+    // PRIORITY 3: Since balance wasn't updated at creation, 
+    // we don't need to reverse it here.
+    await _getRef(companyId).doc(paymentId).delete();
   }
 }

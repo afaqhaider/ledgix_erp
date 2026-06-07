@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
 import '../../../../core/auth/app_user.dart';
 import '../../models/financial_settings_model.dart';
@@ -120,103 +121,159 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Financial Settings')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadSettings,
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadSettings,
+              child: const Text('Retry'),
+            ),
+          ],
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Financial Settings'),
-        actions: [
-          IconButton(icon: const Icon(Icons.save), onPressed: _saveSettings),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            FormLayout(
-              maxWidth: 720,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionHeader('Accounting Period'),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _activePeriodController,
-                    decoration: const InputDecoration(
-                      labelText: 'Active Accounting Period (YYYY-MM)',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Required';
-                      if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) {
-                        return 'Use YYYY-MM format';
-                      }
-                      return null;
-                    },
+    return Column(
+      children: [
+        _buildHeader(theme),
+        Expanded(
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                FormLayout(
+                  maxWidth: 800,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader('Accounting Period'),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _activePeriodController,
+                        decoration: const InputDecoration(
+                          labelText: 'Active Accounting Period (YYYY-MM)',
+                          helperText: 'Controls which month is currently open for posting',
+                          prefixIcon: Icon(Icons.calendar_month_outlined),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Required';
+                          if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) {
+                            return 'Use YYYY-MM format';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Lock Past Periods', style: TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: const Text(
+                          'Prevent posting or editing transactions in previous months',
+                        ),
+                        value: _settings.lockPastPeriods,
+                        onChanged: (val) => setState(
+                          () =>
+                              _settings = _settings.copyWith(lockPastPeriods: val),
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32),
+                        child: Divider(),
+                      ),
+                      _buildSectionHeader('Document Numbering (Prefixes)'),
+                      const SizedBox(height: 24),
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 24,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 3.5,
+                        children: [
+                          _buildPrefixField('Invoice Prefix', _invoicePrefixController),
+                          _buildPrefixField(
+                            'Quotation Prefix',
+                            _quotationPrefixController,
+                          ),
+                          _buildPrefixField(
+                            'Purchase Order Prefix',
+                            _poPrefixController,
+                          ),
+                          _buildPrefixField('Receipt Prefix', _receiptPrefixController),
+                          _buildPrefixField(
+                            'Supplier Payment Prefix',
+                            _suppPayPrefixController,
+                          ),
+                          _buildPrefixField(
+                            'Journal Voucher Prefix',
+                            _journalPrefixController,
+                          ),
+                          _buildPrefixField(
+                            'Vendor Bill Prefix',
+                            _billPrefixController,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  SwitchListTile(
-                    title: const Text('Lock Past Periods'),
-                    subtitle: const Text(
-                      'Prevent posting or editing transactions in previous months',
-                    ),
-                    value: _settings.lockPastPeriods,
-                    onChanged: (val) => setState(
-                      () =>
-                          _settings = _settings.copyWith(lockPastPeriods: val),
-                    ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Financial Settings',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
                   ),
-                  const Divider(height: 48),
-                  _buildSectionHeader('Document Numbering (Prefixes)'),
-                  const SizedBox(height: 16),
-                  _buildPrefixField('Invoice Prefix', _invoicePrefixController),
-                  _buildPrefixField(
-                    'Quotation Prefix',
-                    _quotationPrefixController,
+                ),
+                Text(
+                  'Configure accounting periods and document numbering',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
-                  _buildPrefixField(
-                    'Purchase Order Prefix',
-                    _poPrefixController,
-                  ),
-                  _buildPrefixField('Receipt Prefix', _receiptPrefixController),
-                  _buildPrefixField(
-                    'Supplier Payment Prefix',
-                    _suppPayPrefixController,
-                  ),
-                  _buildPrefixField(
-                    'Journal Voucher Prefix',
-                    _journalPrefixController,
-                  ),
-                  _buildPrefixField(
-                    'Vendor Bill Prefix',
-                    _billPrefixController,
-                  ),
-                ],
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: _saveSettings,
+            icon: const Icon(Icons.save_rounded, size: 18),
+            label: const Text('Save Changes'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

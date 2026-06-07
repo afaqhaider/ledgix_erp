@@ -2,12 +2,50 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum PaymentMethod { cash, bank, card, cheque, online }
 
+enum SupplierPaymentType {
+  againstRef('Against Ref'),
+  onAccount('On Account'),
+  advance('Advance');
+
+  final String label;
+  const SupplierPaymentType(this.label);
+}
+
+class BillAllocation {
+  final String billId;
+  final String billNumber;
+  final double amount;
+
+  BillAllocation({
+    required this.billId,
+    required this.billNumber,
+    required this.amount,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'billId': billId,
+    'billNumber': billNumber,
+    'amount': amount,
+  };
+
+  factory BillAllocation.fromMap(Map<String, dynamic> map) =>
+      BillAllocation(
+        billId: map['billId'] ?? '',
+        billNumber: map['billNumber'] ?? '',
+        amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+      );
+}
+
 class SupplierPaymentModel {
   final String id;
   final String companyId;
   final String paymentNumber;
   final String supplierId;
   final String supplierName;
+  final SupplierPaymentType paymentType;
+  final String? billId; 
+  final String? billNumber;
+  final List<BillAllocation> allocations;
   final String? purchaseOrderId;
   final String? purchaseOrderNumber;
   final String? bankAccountId; // Linked to Banking module
@@ -29,6 +67,8 @@ class SupplierPaymentModel {
     required this.paymentNumber,
     required this.supplierId,
     required this.supplierName,
+    this.billId,
+    this.billNumber,
     this.purchaseOrderId,
     this.purchaseOrderNumber,
     this.bankAccountId,
@@ -41,6 +81,8 @@ class SupplierPaymentModel {
     this.isPosted = false,
     this.journalEntryId,
     this.approvalStatus,
+    this.paymentType = SupplierPaymentType.onAccount,
+    this.allocations = const [],
   });
 
   SupplierPaymentModel copyWith({
@@ -49,6 +91,10 @@ class SupplierPaymentModel {
     String? paymentNumber,
     String? supplierId,
     String? supplierName,
+    SupplierPaymentType? paymentType,
+    String? billId,
+    String? billNumber,
+    List<BillAllocation>? allocations,
     String? purchaseOrderId,
     String? purchaseOrderNumber,
     String? bankAccountId,
@@ -68,6 +114,10 @@ class SupplierPaymentModel {
       paymentNumber: paymentNumber ?? this.paymentNumber,
       supplierId: supplierId ?? this.supplierId,
       supplierName: supplierName ?? this.supplierName,
+      paymentType: paymentType ?? this.paymentType,
+      billId: billId ?? this.billId,
+      billNumber: billNumber ?? this.billNumber,
+      allocations: allocations ?? this.allocations,
       purchaseOrderId: purchaseOrderId ?? this.purchaseOrderId,
       purchaseOrderNumber: purchaseOrderNumber ?? this.purchaseOrderNumber,
       bankAccountId: bankAccountId ?? this.bankAccountId,
@@ -90,6 +140,10 @@ class SupplierPaymentModel {
       'paymentNumber': paymentNumber,
       'supplierId': supplierId,
       'supplierName': supplierName,
+      'paymentType': paymentType.name,
+      'billId': billId,
+      'billNumber': billNumber,
+      'allocations': allocations.map((e) => e.toMap()).toList(),
       'purchaseOrderId': purchaseOrderId,
       'purchaseOrderNumber': purchaseOrderNumber,
       'bankAccountId': bankAccountId,
@@ -112,6 +166,15 @@ class SupplierPaymentModel {
       paymentNumber: map['paymentNumber'] ?? '',
       supplierId: map['supplierId'] ?? '',
       supplierName: map['supplierName'] ?? '',
+      paymentType: SupplierPaymentType.values.firstWhere(
+        (e) => e.name == (map['paymentType'] ?? ''),
+        orElse: () => SupplierPaymentType.onAccount,
+      ),
+      billId: map['billId'],
+      billNumber: map['billNumber'],
+      allocations: (map['allocations'] as List? ?? [])
+          .map((e) => BillAllocation.fromMap(e as Map<String, dynamic>))
+          .toList(),
       purchaseOrderId: map['purchaseOrderId'],
       purchaseOrderNumber: map['purchaseOrderNumber'],
       bankAccountId: map['bankAccountId'],

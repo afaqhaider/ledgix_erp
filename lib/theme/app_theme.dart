@@ -135,6 +135,8 @@ class AppTheme {
       secondary: AppColors.secondary,
       surface: AppColors.lightSurface,
       onSurface: AppColors.lightTextPrimary,
+      surfaceContainer: AppColors.lightSurface,
+      surfaceContainerHighest: AppColors.lightBackground,
       error: AppColors.error,
       outlineVariant: AppColors.lightBorder,
     ),
@@ -267,10 +269,14 @@ class AppTheme {
       secondary: AppColors.secondary,
       surface: AppColors.darkSurface,
       onSurface: AppColors.darkTextPrimary,
+      surfaceContainerHighest: AppColors.darkCard,
+      surfaceContainer: AppColors.darkSidebar,
       error: AppColors.error,
       outlineVariant: AppColors.darkBorder,
     ),
     textTheme: _darkTextTheme,
+    canvasColor: AppColors.darkSidebar, // For sidebar background
+    cardColor: AppColors.darkCard,
     cardTheme: CardThemeData(
       elevation: 0,
       color: AppColors.darkCard,
@@ -289,7 +295,7 @@ class AppTheme {
       ),
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: AppColors.darkSidebar,
       foregroundColor: AppColors.darkTextPrimary,
       elevation: 0,
       centerTitle: false,

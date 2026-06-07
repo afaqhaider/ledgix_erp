@@ -13,7 +13,7 @@ class InventoryService {
 
   // Items
   Stream<List<InventoryItemModel>> getInventoryItems(String companyId) {
-    return _getRef(companyId, 'inventoryItems').snapshots().map(
+    return _getRef(companyId, 'items').snapshots().map(
       (snapshot) => snapshot.docs
           .map((doc) => InventoryItemModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList(),
@@ -21,26 +21,30 @@ class InventoryService {
   }
 
   Future<InventoryItemModel> getItem(String companyId, String itemId) async {
-    final doc = await _getRef(companyId, 'inventoryItems').doc(itemId).get();
+    final doc = await _getRef(companyId, 'items').doc(itemId).get();
     if (!doc.exists) throw Exception('Inventory item not found');
     return InventoryItemModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
   }
 
   Future<void> addItem(InventoryItemModel item) async {
-    await _getRef(item.companyId, 'inventoryItems').doc(item.id.isEmpty ? null : item.id).set(item.toMap());
+    await _getRef(item.companyId, 'items').doc(item.id.isEmpty ? null : item.id).set(item.toMap());
   }
 
   Future<void> updateItem(InventoryItemModel item) async {
-    await _getRef(item.companyId, 'inventoryItems').doc(item.id).update(item.toMap());
+    // PROTECT stockQuantity and costPrice: Do not allow direct updates.
+    final Map<String, dynamic> data = item.toMap();
+    data.remove('stockQuantity');
+    data.remove('costPrice');
+    await _getRef(item.companyId, 'items').doc(item.id).update(data);
   }
 
   Future<void> deleteItem(String companyId, String itemId) async {
-    await _getRef(companyId, 'inventoryItems').doc(itemId).delete();
+    await _getRef(companyId, 'items').doc(itemId).delete();
   }
 
   // Categories
   Stream<List<InventoryCategoryModel>> getCategories(String companyId) {
-    return _getRef(companyId, 'inventoryCategories').snapshots().map(
+    return _getRef(companyId, 'itemCategories').snapshots().map(
       (snapshot) => snapshot.docs
           .map((doc) => InventoryCategoryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList(),
@@ -48,7 +52,7 @@ class InventoryService {
   }
 
   Future<void> addCategory(InventoryCategoryModel category) async {
-    await _getRef(category.companyId, 'inventoryCategories').doc().set(category.toMap());
+    await _getRef(category.companyId, 'itemCategories').doc().set(category.toMap());
   }
 
   // Warehouses
@@ -66,7 +70,7 @@ class InventoryService {
 
   // UOM
   Stream<List<UomModel>> getUoms(String companyId) {
-    return _getRef(companyId, 'uoms').snapshots().map(
+    return _getRef(companyId, 'unitsOfMeasure').snapshots().map(
       (snapshot) => snapshot.docs
           .map((doc) => UomModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList(),
@@ -74,7 +78,7 @@ class InventoryService {
   }
 
   Future<void> addUom(UomModel uom) async {
-    await _getRef(uom.companyId, 'uoms').doc().set(uom.toMap());
+    await _getRef(uom.companyId, 'unitsOfMeasure').doc().set(uom.toMap());
   }
 
   // UOM Conversions

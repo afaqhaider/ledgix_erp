@@ -26,7 +26,6 @@ class _GrnPaneState extends State<GrnPane> {
   DateTime _date = DateTime.now();
   String? _supplierId;
   String? _warehouseId;
-  String? _notes;
   List<StockItemModel> _items = [];
 
   @override

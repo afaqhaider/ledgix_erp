@@ -288,7 +288,11 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
       );
 
       debugPrint('CompanySetup: Calling service.setupCompany...');
-      final companyId = await _companyService.setupCompany(company);
+      final companyId = await _companyService.setupCompany(
+        company,
+        ownerEmail: widget.user.email,
+        ownerName: widget.user.fullName,
+      );
       debugPrint('CompanySetup: Company created with ID: $companyId');
 
       debugPrint(

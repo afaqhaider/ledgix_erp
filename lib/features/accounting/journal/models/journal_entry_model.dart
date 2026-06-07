@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/features/accounting/journal/models/journal_line_model.dart';
 
-enum JournalStatus { draft, posted, cancelled }
+enum JournalStatus { draft, posted, cancelled, reversed }
 
 class JournalEntryModel {
   final String id;
@@ -27,7 +27,7 @@ class JournalEntryModel {
     required this.reference,
     required this.description,
     required this.lines,
-    this.status = JournalStatus.posted,
+    this.status = JournalStatus.draft,
     required this.createdBy,
     required this.createdAt,
     this.sourceType,

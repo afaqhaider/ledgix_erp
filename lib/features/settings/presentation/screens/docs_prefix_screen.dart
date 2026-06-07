@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
 import '../../../../core/auth/app_user.dart';
 import '../../models/financial_settings_model.dart';
@@ -59,27 +60,70 @@ class _DocsPrefixScreenState extends State<DocsPrefixScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Document Prefixes')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          FormLayout(
-            maxWidth: 560,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildPrefixField('Invoice Prefix', _invoicePrefixController),
-                _buildPrefixField(
-                  'Quotation Prefix',
-                  _quotationPrefixController,
+    return Column(
+      children: [
+        _buildHeader(theme),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              FormLayout(
+                maxWidth: 600,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildPrefixField('Invoice Prefix', _invoicePrefixController),
+                    _buildPrefixField(
+                      'Quotation Prefix',
+                      _quotationPrefixController,
+                    ),
+                    _buildPrefixField('Purchase Order Prefix', _poPrefixController),
+                    _buildPrefixField('Bill Prefix', _billPrefixController),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: _save,
+                      icon: const Icon(Icons.save_rounded),
+                      label: const Text('Save Prefixes'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ],
                 ),
-                _buildPrefixField('Purchase Order Prefix', _poPrefixController),
-                _buildPrefixField('Bill Prefix', _billPrefixController),
-                const SizedBox(height: 24),
-                ElevatedButton(onPressed: _save, child: const Text('Save')),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Document Prefixes',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Customize numbering prefixes for sales and purchase documents',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
               ],
             ),
           ),
@@ -95,7 +139,6 @@ class _DocsPrefixScreenState extends State<DocsPrefixScreen> {
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
         ),
       ),
     );

@@ -61,10 +61,19 @@ class BillService {
     String billId,
     BillStatus status,
   ) async {
+    final doc = await _getBillsRef(companyId).doc(billId).get();
+    if (doc.exists && (doc.data() as Map<String, dynamic>)['isPosted'] == true) {
+      throw Exception('Cannot update status of a posted bill.');
+    }
     await _getBillsRef(companyId).doc(billId).update({'status': status.name});
   }
 
   Future<void> deleteBill(String companyId, String billId) async {
+    final doc = await _getBillsRef(companyId).doc(billId).get();
+    if (!doc.exists) return;
+    if ((doc.data() as Map<String, dynamic>)['isPosted'] == true) {
+      throw Exception('Cannot delete a posted bill. Void it instead.');
+    }
     await _getBillsRef(companyId).doc(billId).delete();
   }
 }

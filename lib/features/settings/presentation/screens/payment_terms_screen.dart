@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/auth/app_user.dart';
 import '../../models/payment_term_model.dart';
 import '../../services/terms_service.dart';
@@ -75,37 +76,119 @@ class _PaymentTermsScreenState extends State<PaymentTermsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Payment Terms (Quotations)'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddDialog(),
-          ),
-        ],
-      ),
-      body: StreamBuilder<List<PaymentTermModel>>(
-        stream: _service.getPaymentTerms(widget.user.companyId!),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData)
-            return const Center(child: CircularProgressIndicator());
-          final terms = snapshot.data!;
-          return ListView.builder(
-            itemCount: terms.length,
-            itemBuilder: (context, index) {
-              final term = terms[index];
-              return ListTile(
-                title: Text(term.name),
-                subtitle: Text('${term.days} days'),
-                trailing: term.isDefault
-                    ? const Chip(label: Text('Default'))
-                    : null,
-                onTap: () => _showAddDialog(term),
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        _buildHeader(theme),
+        Expanded(
+          child: StreamBuilder<List<PaymentTermModel>>(
+            stream: _service.getPaymentTerms(widget.user.companyId!),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final terms = snapshot.data!;
+              if (terms.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.payments_outlined, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      const Text('No payment terms defined', style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: terms.length,
+                itemBuilder: (context, index) {
+                  final term = terms[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.secondaryContainer,
+                        child: Text(
+                          term.days.toString(),
+                          style: TextStyle(
+                            color: theme.colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      title: Text(term.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('${term.days} days'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (term.isDefault)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.secondary,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'DEFAULT',
+                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey),
+                        ],
+                      ),
+                      onTap: () => _showAddDialog(term),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Payment Terms',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Manage payment terms used in quotations and invoices',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => _showAddDialog(),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Add Term'),
+          ),
+        ],
       ),
     );
   }

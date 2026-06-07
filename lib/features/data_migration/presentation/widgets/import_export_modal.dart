@@ -4,6 +4,8 @@ import '../../models/migration_models.dart';
 import '../../services/data_migration_service.dart';
 import '../../services/migration_config.dart';
 
+import 'package:ledgixerp/features/data_migration/presentation/widgets/import_error_dialog.dart';
+
 class ImportExportModal extends StatefulWidget {
   final MigrationModule initialModule;
   final String companyId;
@@ -30,6 +32,9 @@ class _ImportExportModalState extends State<ImportExportModal> {
   Map<String, int> _mapping = {};
 
   int _step = 0; // 0: Select/Upload, 1: Preview/Map
+
+  bool _useImportedCodes = false;
+  DuplicateStrategy _duplicateStrategy = DuplicateStrategy.skip;
 
   @override
   void initState() {
@@ -71,9 +76,13 @@ class _ImportExportModalState extends State<ImportExportModal> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+          showDialog(
+            context: context,
+            builder: (context) => ImportErrorDialog(
+              friendlyMessage: 'We encountered a problem while reading your file.',
+              technicalDetails: e.toString(),
+            ),
+          );
         }
       } finally {
         setState(() => _isLoading = false);
@@ -84,6 +93,9 @@ class _ImportExportModalState extends State<ImportExportModal> {
   void _processData() {
     final defs = MigrationConfig.getFields(selectedModule);
     _processedRows = _service.processData(_rawData, _mapping, defs);
+    for (var row in _processedRows) {
+      _validateRow(row);
+    }
   }
 
   @override
@@ -316,9 +328,67 @@ class _ImportExportModalState extends State<ImportExportModal> {
   }
 
   void _editCell(ImportRow row, FieldDefinition field) {
-    final controller = TextEditingController(
-      text: row.data[field.key]?.toString() ?? '',
-    );
+    final initialValue = row.data[field.key]?.toString() ?? '';
+    final controller = TextEditingController(text: initialValue);
+    
+    // Check if field has options
+    if (field.options != null) {
+      String? selectedValue = field.options!.contains(initialValue) ? initialValue : null;
+      
+      showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text('Select ${field.label}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: selectedValue,
+                  decoration: InputDecoration(
+                    labelText: field.label,
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: [
+                    ...field.options!.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))),
+                    if (field.allowCustom)
+                      const DropdownMenuItem(value: 'ADD_NEW', child: Text('+ Add New...', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
+                  ],
+                  onChanged: (val) {
+                    if (val == 'ADD_NEW') {
+                      _showCustomValueDialog(field).then((customVal) {
+                        if (customVal != null && customVal.isNotEmpty) {
+                          setDialogState(() {
+                            selectedValue = customVal;
+                          });
+                        }
+                      });
+                    } else {
+                      setDialogState(() => selectedValue = val);
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    row.data[field.key] = selectedValue;
+                    _validateRow(row);
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -340,12 +410,7 @@ class _ImportExportModalState extends State<ImportExportModal> {
             onPressed: () {
               setState(() {
                 row.data[field.key] = controller.text;
-                // Re-validate row
-                if (field.isRequired && controller.text.isEmpty) {
-                  row.errors[field.key] = '${field.label} is required';
-                } else {
-                  row.errors.remove(field.key);
-                }
+                _validateRow(row);
               });
               Navigator.pop(context);
             },
@@ -354,6 +419,55 @@ class _ImportExportModalState extends State<ImportExportModal> {
         ],
       ),
     );
+  }
+
+  Future<String?> _showCustomValueDialog(FieldDefinition field) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add New ${field.label}'),
+        content: TextFormField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: 'New ${field.label} Name',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _validateRow(ImportRow row) {
+    final defs = MigrationConfig.getFields(selectedModule);
+    row.errors.clear();
+    
+    for (var def in defs) {
+      final val = row.data[def.key]?.toString() ?? '';
+      
+      if (def.isRequired && val.isEmpty) {
+        row.errors[def.key] = '${def.label} is required';
+      }
+    }
+
+    // Special validation for COA: Account Type OR Category
+    if (selectedModule == MigrationModule.chartOfAccounts) {
+      final type = row.data['type']?.toString() ?? '';
+      final category = row.data['category']?.toString() ?? '';
+      
+      if (type.isEmpty && category.isEmpty) {
+        row.errors['type'] = 'Account Type or Category is required';
+        row.errors['category'] = 'Account Type or Category is required';
+      }
+    }
   }
 
   String _getMappedHeaderName(String key) {
@@ -365,8 +479,11 @@ class _ImportExportModalState extends State<ImportExportModal> {
   }
 
   Widget _buildMappingSummary(ThemeData theme, List<FieldDefinition> defs) {
-    int mappedCount = _mapping.length;
-    int totalCount = defs.length;
+    // Only count mapped required fields for the numerator
+    final requiredFields = defs.where((d) => d.isRequired).toList();
+    final mappedRequiredCount = requiredFields.where((d) => _mapping.containsKey(d.key)).length;
+    final totalRequiredCount = requiredFields.length;
+    
     int errorCount = _processedRows.where((r) => !r.isValid).length;
 
     return Container(
@@ -376,23 +493,57 @@ class _ImportExportModalState extends State<ImportExportModal> {
         children: [
           _summaryBadge(
             theme,
-            'Mapped: $mappedCount/$totalCount',
-            theme.colorScheme.primary,
+            'Required Mapped: $mappedRequiredCount/$totalRequiredCount',
+            mappedRequiredCount == totalRequiredCount ? theme.colorScheme.primary : theme.colorScheme.error,
           ),
           const SizedBox(width: 12),
           _summaryBadge(
             theme,
-            'Rows: ${_processedRows.length}',
+            'Total Rows: ${_processedRows.length}',
             theme.colorScheme.secondary,
           ),
-          const SizedBox(width: 12),
-          if (errorCount > 0)
+          if (errorCount > 0) ...[
+            const SizedBox(width: 12),
             _summaryBadge(
               theme,
               'Errors: $errorCount',
               theme.colorScheme.error,
             ),
+          ],
           const Spacer(),
+          if (selectedModule == MigrationModule.chartOfAccounts) ...[
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Use Imported Codes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                Switch(
+                  value: _useImportedCodes,
+                  onChanged: (val) => setState(() => _useImportedCodes = val),
+                ),
+              ],
+            ),
+            const SizedBox(width: 16),
+          ],
+          // Duplicate strategy dropdown
+          SizedBox(
+            width: 160,
+            child: DropdownButtonFormField<DuplicateStrategy>(
+              initialValue: _duplicateStrategy,
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                labelText: 'On Duplicate',
+                border: OutlineInputBorder(),
+              ),
+              items: DuplicateStrategy.values.map((s) {
+                return DropdownMenuItem(value: s, child: Text(s.label, style: const TextStyle(fontSize: 12)));
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => _duplicateStrategy = val);
+              },
+            ),
+          ),
+          const SizedBox(width: 16),
           TextButton.icon(
             onPressed: () => _showMappingDialog(theme, defs),
             icon: const Icon(Icons.map),
@@ -421,6 +572,10 @@ class _ImportExportModalState extends State<ImportExportModal> {
                       initialValue: _mapping[d.key],
                       decoration: InputDecoration(
                         labelText: d.label + (d.isRequired ? ' *' : ''),
+                        labelStyle: TextStyle(
+                          color: d.isRequired ? theme.colorScheme.primary : null,
+                          fontWeight: d.isRequired ? FontWeight.bold : null,
+                        ),
                         border: const OutlineInputBorder(),
                       ),
                       items: [
@@ -533,27 +688,77 @@ class _ImportExportModalState extends State<ImportExportModal> {
         selectedModule,
         _processedRows,
         widget.companyId,
+        useImportedCodes: _useImportedCodes,
+        strategy: _duplicateStrategy,
       );
 
       if (mounted) {
         setState(() => _isLoading = false);
         Navigator.pop(context);
+        
+        // Use a small snackbar for success as requested
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Successfully imported ${_processedRows.length} ${selectedModule.label}',
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Text('Imported ${_processedRows.length} ${selectedModule.label}'),
+              ],
             ),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            width: 300,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Import Failed: $e'),
-            backgroundColor: Colors.redAccent,
+        
+        final errorStr = e.toString();
+        if (errorStr.contains('INDEX_REQUIRED')) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Missing Index'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Required database index is missing. Please deploy Firestore indexes and try again.'),
+                  const SizedBox(height: 16),
+                  ExpansionTile(
+                    title: const Text('Technical Details', style: TextStyle(fontSize: 12)),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(errorStr, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+
+        // Log full technical error to console for debugging as requested
+        debugPrint('IMPORT ERROR: $e');
+
+        showDialog(
+          context: context,
+          builder: (context) => ImportErrorDialog(
+            friendlyMessage: 'Some records could not be imported. Please check the file format and try again.',
+            technicalDetails: e.toString(),
           ),
         );
       }

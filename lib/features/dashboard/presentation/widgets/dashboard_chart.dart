@@ -6,9 +6,12 @@ class DashboardChart extends StatelessWidget {
   final String title;
   final bool isLineChart;
   final List<double> data;
+  final List<double>? secondaryData;
   final List<String> labels;
+  final String? emptyMessage;
 
   static const _lineAccent = Color(0xFF5B8DEF);
+  static const _secondaryLineAccent = Color(0xFFD18B45);
   static const _barAccent = Color(0xFF6F93D2);
   static const _barAlternateAccent = Color(0xFFE29A43);
 
@@ -17,7 +20,9 @@ class DashboardChart extends StatelessWidget {
     required this.title,
     this.isLineChart = true,
     required this.data,
+    this.secondaryData,
     required this.labels,
+    this.emptyMessage,
   });
 
   @override
@@ -30,6 +35,21 @@ class DashboardChart extends StatelessWidget {
     final borderColor = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.9)
         : Colors.white.withValues(alpha: 0.86);
+
+    if (data.isEmpty && (secondaryData == null || secondaryData!.isEmpty)) {
+      return Container(
+        height: 280,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor),
+        ),
+        child: Center(
+          child: Text(emptyMessage ?? 'No data available yet', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -61,7 +81,7 @@ class DashboardChart extends StatelessWidget {
                   letterSpacing: -0.2,
                 ),
               ),
-              _buildPeriodSelector(isDark),
+              _buildLegend(isDark),
             ],
           ),
           const SizedBox(height: 24),
@@ -76,27 +96,24 @@ class DashboardChart extends StatelessWidget {
     );
   }
 
-  Widget _buildPeriodSelector(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : Colors.grey[200]!,
-        ),
-      ),
-      child: Row(
-        children: [
-          Text(
-            'This Month',
-            style: TextStyle(
-              fontSize: 11,
-              color: isDark ? AppColors.darkTextSecondary : Colors.grey[600],
-            ),
-          ),
-          const Icon(Icons.arrow_drop_down, size: 16),
-        ],
-      ),
+  Widget _buildLegend(bool isDark) {
+    if (secondaryData == null) return const SizedBox.shrink();
+    return Row(
+      children: [
+        _legendItem('Revenue', _lineAccent),
+        const SizedBox(width: 12),
+        _legendItem('Expenses', _secondaryLineAccent),
+      ],
+    );
+  }
+
+  Widget _legendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
     );
   }
 
@@ -113,12 +130,8 @@ class DashboardChart extends StatelessWidget {
         ),
         titlesData: FlTitlesData(
           show: true,
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -171,6 +184,22 @@ class DashboardChart extends StatelessWidget {
               color: _lineAccent.withValues(alpha: 0.12),
             ),
           ),
+          if (secondaryData != null)
+            LineChartBarData(
+              spots: List.generate(
+                secondaryData!.length,
+                (index) => FlSpot(index.toDouble(), secondaryData![index]),
+              ),
+              isCurved: true,
+              color: _secondaryLineAccent,
+              barWidth: 2,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: _secondaryLineAccent.withValues(alpha: 0.12),
+              ),
+            ),
         ],
       ),
     );
@@ -182,12 +211,8 @@ class DashboardChart extends StatelessWidget {
         gridData: const FlGridData(show: false),
         titlesData: FlTitlesData(
           show: true,
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,

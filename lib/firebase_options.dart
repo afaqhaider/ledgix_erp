@@ -55,7 +55,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBWxlSyJQP5m3fEuekfuggb_YLN0gu9i1Y',
-    appId: '1:486186946253:android:90ed6f9520cac022f8a384',
+    appId: '1:486186946253:android:7b57f5d5644e9653f8a384',
     messagingSenderId: '486186946253',
     projectId: 'ledgix-erp',
     storageBucket: 'ledgix-erp.firebasestorage.app',
@@ -63,19 +63,19 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyB9dx8c6oZLNov7I7J7ARyH3Gjmjouyg-g',
-    appId: '1:486186946253:ios:a1e115f2ea9a4f8af8a384',
+    appId: '1:486186946253:ios:b6a3c050677be3f6f8a384',
     messagingSenderId: '486186946253',
     projectId: 'ledgix-erp',
     storageBucket: 'ledgix-erp.firebasestorage.app',
-    iosBundleId: 'com.ledgix.erp.ledgixerp',
+    iosBundleId: 'com.ledgix.erp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyB9dx8c6oZLNov7I7J7ARyH3Gjmjouyg-g',
-    appId: '1:486186946253:ios:a1e115f2ea9a4f8af8a384',
+    appId: '1:486186946253:ios:b6a3c050677be3f6f8a384',
     messagingSenderId: '486186946253',
     projectId: 'ledgix-erp',
     storageBucket: 'ledgix-erp.firebasestorage.app',
-    iosBundleId: 'com.ledgix.erp.ledgixerp',
+    iosBundleId: 'com.ledgix.erp',
   );
 }

@@ -15,17 +15,30 @@ enum MigrationModule {
   const MigrationModule(this.label);
 }
 
+enum DuplicateStrategy {
+  skip('Skip Duplicates'),
+  update('Update Existing'),
+  createNew('Create as New');
+
+  final String label;
+  const DuplicateStrategy(this.label);
+}
+
 class FieldDefinition {
   final String key;
   final String label;
   final bool isRequired;
   final List<String> aliases;
+  final List<String>? options;
+  final bool allowCustom;
 
   FieldDefinition({
     required this.key,
     required this.label,
     this.isRequired = false,
     this.aliases = const [],
+    this.options,
+    this.allowCustom = false,
   });
 }
 

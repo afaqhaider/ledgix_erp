@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/auth/app_user.dart';
 import '../../../data_migration/models/migration_models.dart';
 import '../../../data_migration/presentation/widgets/import_export_modal.dart';
@@ -9,30 +10,67 @@ class DataManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Data Management')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        _buildHeader(theme),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              _buildDataSection(
+                context,
+                'Customers',
+                'Import or export your customer list.',
+                Icons.people,
+              ),
+              const SizedBox(height: 16),
+              _buildDataSection(
+                context,
+                'Suppliers',
+                'Import or export your supplier list.',
+                Icons.local_shipping,
+              ),
+              const SizedBox(height: 16),
+              _buildDataSection(
+                context,
+                'Chart of Accounts',
+                'Import or export your accounts.',
+                Icons.account_tree,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
         children: [
-          _buildDataSection(
-            context,
-            'Customers',
-            'Import or export your customer list.',
-            Icons.people,
-          ),
-          const SizedBox(height: 16),
-          _buildDataSection(
-            context,
-            'Suppliers',
-            'Import or export your supplier list.',
-            Icons.local_shipping,
-          ),
-          const SizedBox(height: 16),
-          _buildDataSection(
-            context,
-            'Chart of Accounts',
-            'Import or export your accounts.',
-            Icons.account_tree,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Data Management',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Import and export master data records via Excel or CSV',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

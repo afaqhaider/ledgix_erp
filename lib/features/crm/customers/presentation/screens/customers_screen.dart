@@ -31,69 +31,31 @@ class _CustomersScreenState extends State<CustomersScreen> {
       AppPermission.manageCustomers,
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Customers', style: AppTextStyles.h2),
-        actions: [
-          if (canManage) ...[
-            _buildActionButton(
-              onPressed: () => _showImportModal(context),
-              icon: Icons.file_upload_outlined,
-              label: 'Import',
-            ),
-            const SizedBox(width: 8),
-            _buildActionButton(
-              onPressed: () => _showExportModal(context),
-              icon: Icons.file_download_outlined,
-              label: 'Export',
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: () => _showAddCustomerDialog(context),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add New'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-                elevation: 0,
-              ),
-            ),
-          ],
-          const SizedBox(width: 16),
-        ],
-      ),
-      body: StreamBuilder<List<CustomerModel>>(
-        stream: _customerService.getCustomers(widget.user.companyId!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader(theme, canManage),
+        _buildFiltersArea(),
+        Expanded(
+          child: StreamBuilder<List<CustomerModel>>(
+            stream: _customerService.getCustomers(widget.user.companyId!),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          final customers = snapshot.data ?? [];
+              final customers = snapshot.data ?? [];
 
-          if (customers.isEmpty) {
-            return _buildEmptyState(canManage);
-          }
+              if (customers.isEmpty) {
+                return _buildEmptyState(canManage);
+              }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildFiltersArea(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Container(
-                      decoration: BoxDecoration(
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Container(
+                    decoration: BoxDecoration(
                       color: isDark ? AppColors.darkCard : Colors.white,
                       borderRadius: BorderRadius.circular(
                         AppSpacing.borderRadius,
@@ -186,11 +148,69 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     ),
                   ),
                 ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme, bool canManage) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Customers', style: AppTextStyles.h2),
+                Text(
+                  'Manage and track your customer base',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (canManage) ...[
+            _buildActionButton(
+              onPressed: () => _showImportModal(context),
+              icon: Icons.file_upload_outlined,
+              label: 'Import',
+            ),
+            const SizedBox(width: 8),
+            _buildActionButton(
+              onPressed: () => _showExportModal(context),
+              icon: Icons.file_download_outlined,
+              label: 'Export',
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              onPressed: () => _showAddCustomerDialog(context),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add New'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                elevation: 0,
               ),
             ),
           ],
-        );
-      },
+        ],
       ),
     );
   }

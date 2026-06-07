@@ -96,6 +96,16 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
     }
   }
 
+  void _showEditUnavailable() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Edit screen for saved journal entries is not wired yet.',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -126,7 +136,11 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.history_edu, size: 64, color: Colors.grey[400]),
+                      Icon(
+                        Icons.history_edu,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'No journal entries found',
@@ -142,7 +156,8 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
               return ListView.separated(
                 padding: const EdgeInsets.all(24),
                 itemCount: entries.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final entry = entries[index];
                   return Container(
@@ -183,7 +198,9 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
                                 ),
                               ),
                               Text(
-                                DateFormat('MMM').format(entry.date).toUpperCase(),
+                                DateFormat(
+                                  'MMM',
+                                ).format(entry.date).toUpperCase(),
                                 style: TextStyle(
                                   color: theme.colorScheme.primary,
                                   fontSize: 9,
@@ -203,10 +220,7 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            _buildStatusBadge(
-                              entry.status.name,
-                              Colors.blue,
-                            ),
+                            _buildStatusBadge(entry.status.name, Colors.blue),
                             if (entry.approvalStatus != null) ...[
                               const SizedBox(width: 8),
                               _buildStatusBadge(
@@ -233,6 +247,13 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
                             if (entry.status != JournalStatus.posted &&
                                 canManage)
                               IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 20),
+                                tooltip: 'Edit',
+                                onPressed: _showEditUnavailable,
+                              ),
+                            if (entry.status != JournalStatus.posted &&
+                                canManage)
+                              IconButton(
                                 icon: const Icon(
                                   Icons.delete_outline_rounded,
                                   color: Colors.redAccent,
@@ -254,9 +275,7 @@ class _JournalEntriesScreenState extends State<JournalEntriesScreen> {
                             ),
                           ],
                         ),
-                        children: [
-                          _buildEntryLines(theme, isDark, entry),
-                        ],
+                        children: [_buildEntryLines(theme, isDark, entry)],
                       ),
                     ),
                   );

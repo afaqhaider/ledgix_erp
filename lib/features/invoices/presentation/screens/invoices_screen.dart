@@ -101,6 +101,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           _buildColumn('Actions'),
                         ],
                         rows: invoices.map((invoice) {
+                          final canEdit = canManage && !invoice.isPosted;
                           return DataRow(
                             cells: [
                               DataCell(
@@ -152,14 +153,24 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                           MaterialPageRoute(
                                             builder: (context) =>
                                                 InvoiceDetailScreen(
-                                              invoice: invoice,
-                                              user: widget.user,
-                                            ),
+                                                  invoice: invoice,
+                                                  user: widget.user,
+                                                ),
                                           ),
                                         );
                                       },
                                       visualDensity: VisualDensity.compact,
                                     ),
+                                    if (canEdit)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                        ),
+                                        tooltip: 'Edit',
+                                        onPressed: _showEditUnavailable,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
                                     if (canManage && !invoice.isPosted)
                                       IconButton(
                                         icon: const Icon(
@@ -167,7 +178,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                           size: 18,
                                           color: Colors.redAccent,
                                         ),
-                                        onPressed: () => _confirmDelete(invoice),
+                                        onPressed: () =>
+                                            _confirmDelete(invoice),
                                         visualDensity: VisualDensity.compact,
                                       ),
                                   ],
@@ -257,9 +269,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   }
 
   Widget _buildStatusBadge(InvoiceModel invoice) {
-    final color = invoice.isPosted ? Colors.green : _getStatusColor(invoice.status);
-    final text = invoice.isPosted ? 'POSTED' : invoice.status.name.toUpperCase();
-    
+    final color = invoice.isPosted
+        ? Colors.green
+        : _getStatusColor(invoice.status);
+    final text = invoice.isPosted
+        ? 'POSTED'
+        : invoice.status.name.toUpperCase();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -282,11 +298,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.description_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.description_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No invoices found',
@@ -340,16 +352,36 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     }
   }
 
+  void _showEditUnavailable() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Edit screen for saved invoices is not wired yet.'),
+      ),
+    );
+  }
+
   Color _getStatusColor(InvoiceStatus status) {
     switch (status) {
       case InvoiceStatus.draft:
         return Colors.grey;
+      case InvoiceStatus.pendingApproval:
+        return Colors.orangeAccent;
+      case InvoiceStatus.approved:
+        return Colors.lightGreen;
+      case InvoiceStatus.posted:
+        return Colors.green;
       case InvoiceStatus.sent:
         return Colors.blue;
       case InvoiceStatus.partiallyPaid:
         return Colors.orange;
       case InvoiceStatus.paid:
         return Colors.green;
+      case InvoiceStatus.rejected:
+        return Colors.redAccent;
+      case InvoiceStatus.voided:
+        return Colors.blueGrey;
+      case InvoiceStatus.reversed:
+        return Colors.deepPurpleAccent;
       case InvoiceStatus.cancelled:
         return Colors.red;
     }

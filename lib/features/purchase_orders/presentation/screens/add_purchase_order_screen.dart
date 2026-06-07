@@ -237,7 +237,6 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final content = Form(
       key: _formKey,
       child: Column(

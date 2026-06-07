@@ -18,9 +18,20 @@ class UserRepository {
 
   Future<List<AppUserModel>> getCompanyUsers(String companyId) async {
     final snapshot = await _firestore
-        .collection('users')
-        .where('companyIds', arrayContains: companyId)
+        .collection('companies')
+        .doc(companyId)
+        .collection('members')
         .get();
-    return snapshot.docs.map((doc) => AppUserModel.fromFirestore(doc)).toList();
+    
+    // This is a bit tricky because AppUserModel comes from global collection.
+    // We should probably fetch the global profiles for these members.
+    List<AppUserModel> users = [];
+    for (var doc in snapshot.docs) {
+      final userDoc = await _firestore.collection('users').doc(doc.id).get();
+      if (userDoc.exists) {
+        users.add(AppUserModel.fromFirestore(userDoc));
+      }
+    }
+    return users;
   }
 }

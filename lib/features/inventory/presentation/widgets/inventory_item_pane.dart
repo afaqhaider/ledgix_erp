@@ -103,7 +103,7 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
             TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Item Name*'), validator: (v) => v!.isEmpty ? 'Required' : null),
             const SizedBox(height: 12),
             DropdownButtonFormField<InventoryItemType>(
-              value: _itemType,
+              initialValue: _itemType,
               items: InventoryItemType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.label))).toList(),
               onChanged: (v) => setState(() => _itemType = v!),
               decoration: const InputDecoration(labelText: 'Item Type'),
@@ -114,7 +114,7 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
               builder: (context, snapshot) {
                 final cats = snapshot.data ?? [];
                 return DropdownButtonFormField<String>(
-                  value: _categoryId,
+                  initialValue: _categoryId,
                   items: cats.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
                   onChanged: (v) => setState(() => _categoryId = v),
                   decoration: const InputDecoration(labelText: 'Category'),
@@ -127,7 +127,7 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
               builder: (context, snapshot) {
                 final uoms = snapshot.data ?? [];
                 return DropdownButtonFormField<String>(
-                  value: _uomId,
+                  initialValue: _uomId,
                   items: uoms.map((u) => DropdownMenuItem(value: u.id, child: Text(u.uomName))).toList(),
                   onChanged: (v) => setState(() => _uomId = v),
                   decoration: const InputDecoration(labelText: 'Default UOM*'),
@@ -153,21 +153,21 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
                 return Column(
                   children: [
                     DropdownButtonFormField<String>(
-                      value: _inventoryAccountId,
+                      initialValue: _inventoryAccountId,
                       items: accounts.where((a) => a.accountType == AccountType.asset).map((a) => DropdownMenuItem(value: a.id, child: Text(a.accountName))).toList(),
                       onChanged: (v) => setState(() => _inventoryAccountId = v),
                       decoration: const InputDecoration(labelText: 'Inventory Account'),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: _incomeAccountId,
+                      initialValue: _incomeAccountId,
                       items: accounts.where((a) => a.accountType == AccountType.income).map((a) => DropdownMenuItem(value: a.id, child: Text(a.accountName))).toList(),
                       onChanged: (v) => setState(() => _incomeAccountId = v),
                       decoration: const InputDecoration(labelText: 'Income Account'),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: _expenseAccountId,
+                      initialValue: _expenseAccountId,
                       items: accounts.where((a) => a.accountType == AccountType.expense || a.accountType == AccountType.costOfSales).map((a) => DropdownMenuItem(value: a.id, child: Text(a.accountName))).toList(),
                       onChanged: (v) => setState(() => _expenseAccountId = v),
                       decoration: const InputDecoration(labelText: 'Expense/COGS Account'),

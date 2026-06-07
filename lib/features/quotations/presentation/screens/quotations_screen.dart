@@ -396,7 +396,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
     );
     if (confirmed == true) {
       try {
-        await _quotationService.convertToInvoice(quo);
+        await _quotationService.convertToInvoice(quo, widget.user);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Quotation converted to Invoice successfully'), backgroundColor: Colors.green),

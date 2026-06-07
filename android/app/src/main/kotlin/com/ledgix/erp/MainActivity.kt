@@ -1,4 +1,4 @@
-package com.ledgix.erp.ledgixerp
+package com.ledgix.erp
 
 import io.flutter.embedding.android.FlutterActivity
 

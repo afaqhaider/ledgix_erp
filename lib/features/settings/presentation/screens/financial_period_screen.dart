@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
 import '../../../../core/auth/app_user.dart';
 import '../../models/financial_settings_model.dart';
@@ -49,35 +50,87 @@ class _FinancialPeriodScreenState extends State<FinancialPeriodScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Financial Period')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+    return Column(
+      children: [
+        _buildHeader(theme),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              FormLayout(
+                maxWidth: 600,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _activePeriodController,
+                      decoration: const InputDecoration(
+                        labelText: 'Active Accounting Period (YYYY-MM)',
+                        helperText: 'e.g., 2024-03',
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                      ),
+                      child: SwitchListTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        title: const Text('Lock Past Periods', style: TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: const Text('Transactions cannot be posted to closed months'),
+                        value: _settings.lockPastPeriods,
+                        onChanged: (val) => setState(
+                          () => _settings = _settings.copyWith(lockPastPeriods: val),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: _save,
+                      icon: const Icon(Icons.save_rounded),
+                      label: const Text('Save Period Settings'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
         children: [
-          FormLayout(
-            maxWidth: 560,
+          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  controller: _activePeriodController,
-                  decoration: const InputDecoration(
-                    labelText: 'Active Accounting Period (YYYY-MM)',
-                    border: OutlineInputBorder(),
+                Text(
+                  'Financial Period',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Lock Past Periods'),
-                  value: _settings.lockPastPeriods,
-                  onChanged: (val) => setState(
-                    () => _settings = _settings.copyWith(lockPastPeriods: val),
+                Text(
+                  'Manage active and locked accounting periods',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
-                const SizedBox(height: 24),
-                ElevatedButton(onPressed: _save, child: const Text('Save')),
               ],
             ),
           ),

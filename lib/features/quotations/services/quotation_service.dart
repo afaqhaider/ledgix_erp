@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/quotations/models/quotation_model.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/invoices/services/invoice_service.dart';
@@ -75,7 +76,7 @@ class QuotationService {
     ).doc(quotationId).update({'status': status.name});
   }
 
-  Future<void> convertToInvoice(QuotationModel quotation) async {
+  Future<void> convertToInvoice(QuotationModel quotation, AppUser user) async {
     // Conversion usually happens as a new transaction
     // We can use the existing addInvoice which handles transactions
     final invoice = InvoiceModel(
@@ -108,7 +109,7 @@ class QuotationService {
       createdAt: DateTime.now(),
     );
 
-    await _invoiceService.addInvoice(invoice);
+    await _invoiceService.addInvoice(invoice, user);
 
     // Update the quotation status
     await updateQuotationStatus(

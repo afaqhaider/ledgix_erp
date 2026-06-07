@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ledgixerp/core/theme/app_spacing.dart';
-import 'package:ledgixerp/core/theme/app_text_styles.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import '../../services/financial_report_service.dart';
+
+import 'package:google_fonts/google_fonts.dart';
 
 class GeneralLedgerScreen extends StatefulWidget {
   final String companyId;
@@ -50,46 +50,101 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('General Ledger'),
-        actions: [
+    return Column(
+      children: [
+        _buildHeader(theme),
+        _buildFilters(theme, isDark),
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _selectedAccount == null
+              ? _buildEmptyState(
+                theme,
+                'Please select an account to view the ledger',
+                Icons.account_tree_outlined,
+              )
+              : _entries.isEmpty
+              ? _buildEmptyState(
+                theme,
+                'No entries found for the selected period',
+                Icons.search_off_rounded,
+              )
+              : _buildLedgerTable(theme, isDark),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'General Ledger',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Detailed transaction history for specific accounts',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh Ledger',
             onPressed: _selectedAccount != null ? _loadEntries : null,
           ),
-          IconButton(icon: const Icon(Icons.download), onPressed: () {}),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildFilters(),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _selectedAccount == null
-                ? const Center(
-                    child: Text('Please select an account to view the ledger.'),
-                  )
-                : _entries.isEmpty
-                ? const Center(
-                    child: Text('No entries found for the selected period.'),
-                  )
-                : _buildLedgerTable(),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Export PDF',
+            onPressed: () {},
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilters() {
-    final theme = Theme.of(context);
+  Widget _buildEmptyState(ThemeData theme, String message, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilters(ThemeData theme, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        border: Border(bottom: BorderSide(color: theme.dividerColor)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         children: [
@@ -97,7 +152,7 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
             stream: _firestore
                 .collection('companies')
                 .doc(widget.companyId)
-                .collection('accounts')
+                .collection('chartOfAccounts')
                 .where('isActive', isEqualTo: true)
                 .where('allowPosting', isEqualTo: true)
                 .snapshots(),
@@ -119,13 +174,17 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
                 initialValue: _selectedAccount,
                 decoration: const InputDecoration(
                   labelText: 'Select Account',
-                  prefixIcon: Icon(Icons.account_tree_outlined),
+                  prefixIcon: Icon(Icons.account_tree_outlined, size: 20),
+                  isDense: true,
                 ),
                 items: accounts
                     .map(
                       (a) => DropdownMenuItem(
                         value: a,
-                        child: Text('${a.accountCode} - ${a.accountName}'),
+                        child: Text(
+                          '${a.accountCode} - ${a.accountName}',
+                          style: GoogleFonts.inter(fontSize: 14),
+                        ),
                       ),
                     )
                     .toList(),
@@ -136,7 +195,7 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
               );
             },
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -161,11 +220,13 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
                   },
                   child: InputDecorator(
                     decoration: const InputDecoration(
-                      labelText: 'Period',
-                      prefixIcon: Icon(Icons.calendar_month),
+                      labelText: 'Reporting Period',
+                      prefixIcon: Icon(Icons.calendar_month_outlined, size: 20),
+                      isDense: true,
                     ),
                     child: Text(
-                      '${AppFormatters.date(_startDate)} - ${AppFormatters.date(_endDate)}',
+                      '${AppFormatters.date(_startDate)} — ${AppFormatters.date(_endDate)}',
+                      style: GoogleFonts.inter(fontSize: 14),
                     ),
                   ),
                 ),
@@ -177,97 +238,114 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
     );
   }
 
-  Widget _buildLedgerTable() {
+  Widget _buildLedgerTable(ThemeData theme, bool isDark) {
     return SingleChildScrollView(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(
-            Theme.of(context).colorScheme.surface,
+      padding: const EdgeInsets.all(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
-          columnSpacing: 24,
-          columns: [
-            const DataColumn(label: Text('Date')),
-            const DataColumn(label: Text('Description')),
-            const DataColumn(label: Text('Ref')),
-            DataColumn(
-              label: Container(
-                width: 100,
-                alignment: Alignment.centerRight,
-                child: const Text('Debit'),
-              ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: DataTable(
+            headingRowHeight: 48,
+            columnSpacing: 32,
+            headingRowColor: WidgetStateProperty.all(
+              isDark
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : Colors.black.withValues(alpha: 0.02),
             ),
-            DataColumn(
-              label: Container(
-                width: 100,
-                alignment: Alignment.centerRight,
-                child: const Text('Credit'),
-              ),
-            ),
-            DataColumn(
-              label: Container(
-                width: 120,
-                alignment: Alignment.centerRight,
-                child: const Text('Balance'),
-              ),
-            ),
-          ],
-          rows: _entries.map((e) {
-            final debit = e['debit'] as double;
-            final credit = e['credit'] as double;
-            final balance = e['balance'] as double;
-            final isOpening = e['description'] == 'Opening Balance';
+            columns: [
+              _buildColumn('Date'),
+              _buildColumn('Description'),
+              _buildColumn('Ref'),
+              _buildColumn('Debit', numeric: true),
+              _buildColumn('Credit', numeric: true),
+              _buildColumn('Balance', numeric: true),
+            ],
+            rows: _entries.map((e) {
+              final debit = e['debit'] as double;
+              final credit = e['credit'] as double;
+              final balance = e['balance'] as double;
+              final isOpening = e['description'] == 'Opening Balance';
 
-            return DataRow(
-              cells: [
-                DataCell(Text(AppFormatters.date(e['date'] as DateTime))),
-                DataCell(
-                  SizedBox(
-                    width: 250,
-                    child: Text(
-                      e['description'] ?? '',
-                      overflow: TextOverflow.ellipsis,
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Text(
+                      AppFormatters.date(e['date'] as DateTime),
+                      style: GoogleFonts.inter(fontSize: 13),
                     ),
                   ),
-                ),
-                DataCell(Text(e['reference'] ?? '')),
-                DataCell(
-                  Container(
-                    width: 100,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      debit > 0 ? AppFormatters.currency(debit) : '',
-                      style: AppTextStyles.amount,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    width: 100,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      credit > 0 ? AppFormatters.currency(credit) : '',
-                      style: AppTextStyles.amount,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    width: 120,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      AppFormatters.currency(balance),
-                      style: AppTextStyles.amount.copyWith(
-                        fontWeight: isOpening
-                            ? FontWeight.normal
-                            : FontWeight.bold,
+                  DataCell(
+                    SizedBox(
+                      width: 300,
+                      child: Text(
+                        e['description'] ?? '',
+                        style: GoogleFonts.inter(fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          }).toList(),
+                  DataCell(
+                    Text(
+                      e['reference'] ?? '—',
+                      style: GoogleFonts.inter(fontSize: 12),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      debit > 0 ? AppFormatters.currency(debit) : '—',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      credit > 0 ? AppFormatters.currency(credit) : '—',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      AppFormatters.currency(balance),
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 14,
+                        fontWeight: isOpening
+                            ? FontWeight.w500
+                            : FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  DataColumn _buildColumn(String label, {bool numeric = false}) {
+    return DataColumn(
+      numeric: numeric,
+      label: Text(
+        label.toUpperCase(),
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          color: Colors.grey[600],
         ),
       ),
     );

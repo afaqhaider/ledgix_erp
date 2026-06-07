@@ -33,14 +33,13 @@ class AuthService {
       UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
 
-      // Save additional user data to Firestore
+      // Save global user profile to Firestore
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'uid': userCredential.user!.uid,
         'email': email,
-        'fullName': fullName,
-        'companyName': companyName,
-        'role': 'owner',
+        'displayName': fullName,
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       return userCredential;
@@ -51,5 +50,15 @@ class AuthService {
 
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> updatePassword(String newPassword) async {
+    if (_auth.currentUser != null) {
+      await _auth.currentUser!.updatePassword(newPassword);
+    }
   }
 }

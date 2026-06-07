@@ -4,10 +4,10 @@ enum AccountType {
   asset('Asset'),
   liability('Liability'),
   equity('Equity'),
-  income('Income'),
+  income('Revenue'),
   costOfSales('Cost of Sales'),
   expense('Expense'),
-  otherIncome('Other Income'),
+  otherIncome('Other Revenue'),
   otherExpense('Other Expense');
 
   final String label;
@@ -21,12 +21,15 @@ enum AccountCategory {
   cash('Cash'),
   bank('Bank'),
   accountsReceivable('Accounts Receivable'),
+  inventory('Inventory'),
 
   // Liabilities
   currentLiability('Current Liability'),
   nonCurrentLiability('Non Current Liability'),
   accountsPayable('Accounts Payable'),
   vatPayable('VAT Payable'),
+  vatInput('VAT Input / Recoverable VAT'),
+  vatOutput('VAT Output / VAT Payable'),
 
   // Equity
   ownerEquity('Owner Equity'),
@@ -60,6 +63,8 @@ enum BalanceType {
 
   final String label;
   const BalanceType(this.label);
+
+  String get shortLabel => this == BalanceType.debit ? 'Dr' : 'Cr';
 }
 
 class AccountModel {
@@ -78,6 +83,7 @@ class AccountModel {
   final bool isActive;
   final double openingBalance;
   final BalanceType openingBalanceType;
+  final double currentBalance; // New field for denormalized balance
   final DateTime openingBalanceDate;
   final DateTime createdAt;
 
@@ -97,6 +103,7 @@ class AccountModel {
     this.isActive = true,
     this.openingBalance = 0.0,
     required this.openingBalanceType,
+    this.currentBalance = 0.0,
     required this.openingBalanceDate,
     required this.createdAt,
   });
@@ -118,6 +125,7 @@ class AccountModel {
       'isActive': isActive,
       'openingBalance': openingBalance,
       'openingBalanceType': openingBalanceType.name,
+      'currentBalance': currentBalance,
       'openingBalanceDate': Timestamp.fromDate(openingBalanceDate),
       'createdAt': Timestamp.fromDate(createdAt),
     };
@@ -152,9 +160,36 @@ class AccountModel {
         (e) => e.name == map['openingBalanceType'],
         orElse: () => BalanceType.debit,
       ),
+      currentBalance: (map['currentBalance'] as num?)?.toDouble() ?? 0.0,
       openingBalanceDate:
           (map['openingBalanceDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  AccountModel copyWith({
+    double? currentBalance,
+    // Add other fields as needed
+  }) {
+    return AccountModel(
+      id: id,
+      companyId: companyId,
+      accountCode: accountCode,
+      accountName: accountName,
+      accountType: accountType,
+      accountCategory: accountCategory,
+      parentAccountId: parentAccountId,
+      level: level,
+      isGroup: isGroup,
+      allowPosting: allowPosting,
+      normalBalance: normalBalance,
+      isSystemAccount: isSystemAccount,
+      isActive: isActive,
+      openingBalance: openingBalance,
+      openingBalanceType: openingBalanceType,
+      currentBalance: currentBalance ?? this.currentBalance,
+      openingBalanceDate: openingBalanceDate,
+      createdAt: createdAt,
     );
   }
 

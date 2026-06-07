@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/core/theme/app_spacing.dart';
 import 'trial_balance_screen.dart';
 import 'profit_loss_screen.dart';
@@ -16,72 +17,107 @@ class ReportsDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Financial Reports')),
-      body: GridView.count(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        crossAxisCount: 2, // Adjusted for better fit if more items are added
-        crossAxisSpacing: AppSpacing.md,
-        mainAxisSpacing: AppSpacing.md,
+    return Column(
+      children: [
+        _buildHeader(theme),
+        Expanded(
+          child: GridView.count(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            crossAxisCount: 2,
+            crossAxisSpacing: AppSpacing.md,
+            mainAxisSpacing: AppSpacing.md,
+            children: [
+              _buildReportCard(
+                context,
+                'Trial Balance',
+                'Summary of all ledger balances.',
+                Icons.account_balance_wallet,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TrialBalanceScreen(companyId: companyId),
+                  ),
+                ),
+              ),
+              _buildReportCard(
+                context,
+                'Profit & Loss',
+                'Income and expenses overview.',
+                Icons.trending_up,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProfitLossScreen(companyId: companyId),
+                  ),
+                ),
+              ),
+              _buildReportCard(
+                context,
+                'Balance Sheet',
+                'Financial position as of date.',
+                Icons.pie_chart,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BalanceSheetScreen(companyId: companyId),
+                  ),
+                ),
+              ),
+              _buildReportCard(
+                context,
+                'General Ledger',
+                'Detailed drill-down for any specific account.',
+                Icons.list_alt,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => GeneralLedgerScreen(companyId: companyId),
+                  ),
+                ),
+              ),
+              _buildReportCard(
+                context,
+                'Account Statement',
+                'Formal statement for any GL account.',
+                Icons.description_outlined,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AccountStatementScreen(companyId: companyId),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Row(
         children: [
-          _buildReportCard(
-            context,
-            'Trial Balance',
-            'Summary of all ledger balances.',
-            Icons.account_balance_wallet,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TrialBalanceScreen(companyId: companyId),
-              ),
-            ),
-          ),
-          _buildReportCard(
-            context,
-            'Profit & Loss',
-            'Income and expenses overview.',
-            Icons.trending_up,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProfitLossScreen(companyId: companyId),
-              ),
-            ),
-          ),
-          _buildReportCard(
-            context,
-            'Balance Sheet',
-            'Financial position as of date.',
-            Icons.pie_chart,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => BalanceSheetScreen(companyId: companyId),
-              ),
-            ),
-          ),
-          _buildReportCard(
-            context,
-            'General Ledger',
-            'Detailed drill-down for any specific account.',
-            Icons.list_alt,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => GeneralLedgerScreen(companyId: companyId),
-              ),
-            ),
-          ),
-          _buildReportCard(
-            context,
-            'Account Statement',
-            'Formal statement for any GL account.',
-            Icons.description_outlined,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AccountStatementScreen(companyId: companyId),
-              ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Financial Reports',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Analyze your business performance with real-time financial data',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

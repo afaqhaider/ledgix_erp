@@ -1,7 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/core/models/attachment_model.dart';
 
-enum InvoiceStatus { draft, sent, partiallyPaid, paid, cancelled }
+enum InvoiceStatus {
+  draft,
+  pendingApproval,
+  approved,
+  posted,
+  sent,
+  partiallyPaid,
+  paid,
+  rejected,
+  voided,
+  reversed,
+  cancelled,
+}
 
 class InvoiceLineItemModel {
   final String? productId; // Optional link to inventory
@@ -90,6 +102,8 @@ class InvoiceModel {
   final bool isPosted;
   final String? journalEntryId;
   final String? approvalStatus; // pending, approved, rejected
+  final DateTime? postedAt;
+  final String? postedBy;
   final List<AttachmentModel> attachments;
 
   InvoiceModel({
@@ -115,6 +129,8 @@ class InvoiceModel {
     this.isPosted = false,
     this.journalEntryId,
     this.approvalStatus,
+    this.postedAt,
+    this.postedBy,
     this.attachments = const [],
   });
 
@@ -141,6 +157,8 @@ class InvoiceModel {
     bool? isPosted,
     String? journalEntryId,
     String? approvalStatus,
+    DateTime? postedAt,
+    String? postedBy,
     List<AttachmentModel>? attachments,
   }) {
     return InvoiceModel(
@@ -166,6 +184,8 @@ class InvoiceModel {
       isPosted: isPosted ?? this.isPosted,
       journalEntryId: journalEntryId ?? this.journalEntryId,
       approvalStatus: approvalStatus ?? this.approvalStatus,
+      postedAt: postedAt ?? this.postedAt,
+      postedBy: postedBy ?? this.postedBy,
       attachments: attachments ?? this.attachments,
     );
   }
@@ -193,6 +213,8 @@ class InvoiceModel {
       'isPosted': isPosted,
       'journalEntryId': journalEntryId,
       'approvalStatus': approvalStatus,
+      'postedAt': postedAt != null ? Timestamp.fromDate(postedAt!) : null,
+      'postedBy': postedBy,
       'attachments': attachments.map((x) => x.toMap()).toList(),
     };
   }
@@ -231,6 +253,8 @@ class InvoiceModel {
       isPosted: map['isPosted'] ?? false,
       journalEntryId: map['journalEntryId'],
       approvalStatus: map['approvalStatus'],
+      postedAt: (map['postedAt'] as Timestamp?)?.toDate(),
+      postedBy: map['postedBy'],
       attachments:
           (map['attachments'] as List?)
               ?.map((x) => AttachmentModel.fromMap(x))

@@ -2,8 +2,16 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Helper Functions
     function signedIn() {
       return request.auth != null;
+    }
+
+    function isMember(companyId) {
+      // Cross-service rules to check active membership in Firestore
+      return signedIn() &&
+             firestore.get(/databases/(default)/documents/companies/$(companyId)/members/$(request.auth.uid)).data.status == 'active';
     }
 
     function isLogoImage() {
@@ -11,18 +19,34 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    match /companies/{companyId}/branding/{fileName} {
-      allow read: if true;
-      allow create, update: if signedIn() && isLogoImage();
-      allow delete: if signedIn();
+    // Storage path: companies/{companyId}/...
+    match /companies/{companyId}/{allPaths=**} {
+
+      // Strict isolation: must be an active member of the company
+      allow read: if isMember(companyId);
+
+      // Branding (Logos)
+      match /branding/{fileName} {
+        allow write: if isMember(companyId) && isLogoImage();
+      }
+
+      // General documents (attachments for invoices, etc.)
+      match /documents/{fileName} {
+        allow write: if isMember(companyId);
+      }
     }
 
-    match /companies/{companyId}/{fileName} {
-      allow read: if true;
-      allow create, update: if signedIn()
-        && fileName.matches('logo\\..*')
-        && isLogoImage();
-      allow delete: if signedIn() && fileName.matches('logo\\..*');
+    // User profile photos
+    match /users/{uid}/profile/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Fallback: deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

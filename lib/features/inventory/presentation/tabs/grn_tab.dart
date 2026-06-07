@@ -32,7 +32,7 @@ class GrnTab extends StatelessWidget {
         ),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: firestore.collection('companies').doc(user.companyId!).collection('grns').orderBy('date', descending: true).snapshots(),
+            stream: firestore.collection('companies').doc(user.companyId!).collection('goodsReceivedNotes').orderBy('date', descending: true).snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
               final docs = snapshot.data?.docs ?? [];

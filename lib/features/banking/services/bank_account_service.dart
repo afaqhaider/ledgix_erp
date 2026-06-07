@@ -29,6 +29,9 @@ class BankAccountService {
   }
 
   Future<void> updateBankAccount(BankAccountModel account) async {
-    await _getRef(account.companyId).doc(account.id).update(account.toMap());
+    // PROTECT currentBalance: Do not allow direct updates through this method.
+    final Map<String, dynamic> data = account.toMap();
+    data.remove('currentBalance');
+    await _getRef(account.companyId).doc(account.id).update(data);
   }
 }

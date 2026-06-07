@@ -4,7 +4,6 @@ import 'package:ledgixerp/config/app_modules.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/widgets/sidebar_navigation.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
-import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/features/dashboard/services/dashboard_service.dart';
 import 'package:ledgixerp/features/dashboard/presentation/widgets/kpi_card.dart';
 import 'package:ledgixerp/features/dashboard/presentation/widgets/recent_activity_card.dart';
@@ -19,9 +18,10 @@ import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:ledgixerp/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:ledgixerp/features/search/services/search_service.dart';
+import 'package:ledgixerp/features/weather/presentation/widgets/weather_display.dart';
+import 'package:ledgixerp/features/users/presentation/widgets/profile_menu_button.dart';
 
 class DashboardScreen extends StatefulWidget {
   final AppUser user;
@@ -38,6 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _companyService = CompanyService();
   final _searchService = SearchService();
   bool _isQuickActionsCollapsed = false;
+  int _quickActionTabIndex = 0; // 0 for Add, 1 for View
 
   final LayerLink _searchLayerLink = LayerLink();
   OverlayEntry? _searchOverlayEntry;
@@ -176,8 +177,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isMobile = MediaQuery.of(context).size.width < 900;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       drawer: isMobile
           ? Drawer(
+              backgroundColor: theme.scaffoldBackgroundColor,
               child: SidebarNavigation(
                 role: widget.user.role,
                 companyId: widget.user.companyId,
@@ -206,12 +209,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 key: _shellNavigatorKey,
                 onGenerateRoute: (settings) => MaterialPageRoute(
                   builder: (context) => Scaffold(
+                    backgroundColor: Colors.transparent,
                     body: Column(
                       children: [
-                        _buildTopBar(theme, isMobile),
+                        _buildTopBar(context, isMobile),
                         Expanded(
                           child: Container(
-                            color: theme.colorScheme.surface,
+                            color: Theme.of(context).scaffoldBackgroundColor,
                             child: _buildBody(),
                           ),
                         ),
@@ -227,27 +231,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildTopBar(ThemeData theme, bool isMobile) {
+  Widget _buildTopBar(BuildContext context, bool isMobile) {
+    final theme = Theme.of(context);
+    final canGoBack = _selectedModule.id != AppModuleId.dashboard;
+
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: theme.colorScheme.surfaceContainer,
         border: Border(
           bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
       ),
       child: Row(
         children: [
-          if (isMobile)
+          if (canGoBack)
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Back to Dashboard',
+              onPressed: () => setState(() => _selectedModule = AppModules.dashboard),
+            )
+          else if (isMobile)
             Builder(
               builder: (context) => IconButton(
                 icon: const Icon(Icons.menu),
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
             ),
+          const SizedBox(width: 8),
           const Spacer(),
           Expanded(
             flex: 4,
@@ -278,13 +292,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const Spacer(),
           if (!isMobile) ...[
-            const _WeatherWidget(),
+            WeatherDisplay(companyId: widget.user.companyId!, isCompact: true),
             const SizedBox(width: 24),
             const _ClockWidget(),
             const SizedBox(width: 16),
           ],
           StreamBuilder<int>(
-            stream: NotificationService().getUnreadCount(widget.user.uid),
+            stream: NotificationService().getUnreadCount(widget.user.companyId!, widget.user.uid),
             builder: (context, snapshot) {
               final count = snapshot.data ?? 0;
               return Badge(
@@ -310,36 +324,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(width: 8),
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: PopupMenuButton<String>(
-              offset: const Offset(0, 48),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'profile',
-                  child: Text(
-                    'Profile Settings',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Text('Logout', style: TextStyle(fontSize: 13)),
-                ),
-              ],
-              onSelected: (val) {
-                if (val == 'logout') {
-                   AuthService().signOut();
-                }
-              },
-              child: const CircleAvatar(
-                radius: 16,
-                backgroundColor: Color(0xFFE2E8F0),
-                child: Icon(
-                  Icons.person,
-                  size: 18,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ),
+            child: ProfileMenuButton(uid: widget.user.uid),
           ),
         ],
       ),
@@ -465,8 +450,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             value: AppFormatters.currency(stats.totalRevenue, symbol: currency),
             icon: Icons.payments_rounded,
             color: _revenueAccent,
-            trend: '+12.5% vs last month',
-            isTrendUp: true,
+            trend: stats.revenueTrend,
+            isTrendUp: stats.isRevenueUp,
             onTap: () => _selectModule(AppModuleId.salesInvoices),
           ),
           KPICard(
@@ -477,25 +462,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             icon: Icons.receipt_long_rounded,
             color: _expenseAccent,
-            trend: '+8.2% vs last month',
-            isTrendUp: false,
-            onTap: () => _selectModule(AppModuleId.supplierPayments),
+            trend: stats.expenseTrend,
+            isTrendUp: !stats.isExpenseUp, // Good if expenses decreased
+            onTap: () => _selectModule(AppModuleId.bills),
           ),
           KPICard(
             title: 'Net Profit',
             value: AppFormatters.currency(stats.totalProfit, symbol: currency),
             icon: Icons.show_chart_rounded,
             color: _profitAccent,
-            trend: '+20.3% vs last month',
-            isTrendUp: true,
+            trend: stats.profitTrend,
+            isTrendUp: stats.isProfitUp,
             onTap: () => _selectModule(AppModuleId.profitLoss),
           ),
           KPICard(
             title: 'Cash Balance',
-            value: AppFormatters.currency(stats.totalProfit, symbol: currency),
+            value: AppFormatters.currency(stats.cashBalance, symbol: currency),
             icon: Icons.account_balance_wallet_rounded,
             color: _cashAccent,
-            trend: '+5.7% vs last month',
+            trend: null,
             isTrendUp: true,
             onTap: () => _selectModule(AppModuleId.bankAccounts),
           ),
@@ -560,26 +545,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: DashboardChart(
                 title: 'Revenue vs Expenses',
                 isLineChart: true,
-                data: [
-                  45000,
-                  52000,
-                  48000,
-                  61000,
-                  55000,
-                  52500,
-                ], // Mock trend data
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                data: stats.revenueChartData,
+                secondaryData: stats.expenseChartData,
+                labels: stats.chartLabels,
               ),
             ),
             if (isWide) ...[
               const SizedBox(width: 16),
-              const Expanded(
+              Expanded(
                 flex: 1,
                 child: DashboardChart(
                   title: 'Cash Flow',
                   isLineChart: false,
-                  data: [32000, 28000, 35000, 41000],
-                  labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                  data: stats.cashFlowData,
+                  labels: stats.cashFlowLabels,
+                  emptyMessage: 'No cash flow data available yet',
                 ),
               ),
             ],
@@ -664,13 +644,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildQuickActionsRail() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final cardColor = isDark
-        ? AppColors.darkCard.withValues(alpha: 0.82)
-        : Colors.white.withValues(alpha: 0.72);
-    final borderColor = isDark
-        ? AppColors.darkBorder.withValues(alpha: 0.9)
-        : Colors.white.withValues(alpha: 0.86);
-    final dividerColor = isDark ? Colors.white10 : AppColors.lightBorder;
+    final cardColor = theme.colorScheme.surfaceContainer;
+    final borderColor = theme.colorScheme.outlineVariant.withValues(alpha: 0.5);
+    final dividerColor = theme.dividerColor;
 
     if (_isQuickActionsCollapsed) {
       return InkWell(
@@ -767,75 +743,166 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 16),
           // Tab Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'Add',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                  child: InkWell(
+                    onTap: () => setState(() => _quickActionTabIndex = 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _quickActionTabIndex == 0
+                            ? theme.colorScheme.primary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Add',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _quickActionTabIndex == 0
+                              ? Colors.white
+                              : theme.colorScheme.onSurface,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const Expanded(child: SizedBox()), // Placeholder for future tabs
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _quickActionTabIndex = 1),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _quickActionTabIndex == 1
+                            ? theme.colorScheme.primary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'View',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _quickActionTabIndex == 1
+                              ? Colors.white
+                              : theme.colorScheme.onSurface,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          _buildActionItem(
-            'Invoice',
-            'Sales invoice',
-            Icons.receipt_long_rounded,
-            _revenueAccent,
-            () => _openAddInvoice(context),
-          ),
-          Divider(height: 20, color: dividerColor),
-          _buildActionItem(
-            'Bill',
-            'Vendor bill',
-            Icons.assignment_rounded,
-            _expenseAccent,
-            () => _openAddBill(context),
-          ),
-          Divider(height: 20, color: dividerColor),
-          _buildActionItem(
-            'Receipt',
-            'Customer receipt',
-            Icons.payments_rounded,
-            _profitAccent,
-            () => _openAddReceipt(context),
-          ),
-          Divider(height: 20, color: dividerColor),
-          _buildActionItem(
-            'Payment',
-            'Supplier payment',
-            Icons.account_balance_wallet_rounded,
-            _cashAccent,
-            () => _openAddPayment(context),
-          ),
-          Divider(height: 20, color: dividerColor),
-          _buildActionItem(
-            'Expense',
-            'Expense bill',
-            Icons.trending_down_rounded,
-            _dangerAccent,
-            () => _openAddExpense(context),
-          ),
+          if (_quickActionTabIndex == 0) ...[
+            _buildActionItem(
+              'Invoice',
+              'Sales invoice',
+              Icons.receipt_long_rounded,
+              _revenueAccent,
+              () => _openAddInvoice(context),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Bill',
+              'Vendor bill',
+              Icons.assignment_rounded,
+              _expenseAccent,
+              () => _openAddBill(context),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Receipt',
+              'Customer receipt',
+              Icons.payments_rounded,
+              _profitAccent,
+              () => _openAddReceipt(context),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Payment',
+              'Supplier payment',
+              Icons.account_balance_wallet_rounded,
+              _cashAccent,
+              () => _openAddPayment(context),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Expense',
+              'Expense bill',
+              Icons.trending_down_rounded,
+              _dangerAccent,
+              () => _openAddExpense(context),
+            ),
+          ] else ...[
+            _buildActionItem(
+              'Invoices',
+              'Sales invoices list',
+              Icons.receipt_long_outlined,
+              _revenueAccent,
+              () => _selectModule(AppModuleId.salesInvoices),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Receipts',
+              'Customer receipts list',
+              Icons.payments_outlined,
+              _profitAccent,
+              () => _selectModule(AppModuleId.receipts),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Bills',
+              'Vendor bills list',
+              Icons.assignment_outlined,
+              _expenseAccent,
+              () => _selectModule(AppModuleId.bills),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Payments',
+              'Supplier payments list',
+              Icons.paid_outlined,
+              _cashAccent,
+              () => _selectModule(AppModuleId.supplierPayments),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Expenses',
+              'Direct expense bills',
+              Icons.trending_down_rounded,
+              _dangerAccent,
+              () => _selectModule(AppModuleId.bills),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Customers',
+              'Customer directory',
+              Icons.people_outline_rounded,
+              _profitAccent,
+              () => _selectModule(AppModuleId.customers),
+            ),
+            Divider(height: 20, color: dividerColor),
+            _buildActionItem(
+              'Vendors',
+              'Supplier directory',
+              Icons.local_shipping_outlined,
+              _expenseAccent,
+              () => _selectModule(AppModuleId.suppliers),
+            ),
+          ],
         ],
       ),
     );
@@ -968,21 +1035,3 @@ class _ClockWidgetState extends State<_ClockWidget> {
   }
 }
 
-class _WeatherWidget extends StatelessWidget {
-  const _WeatherWidget();
-
-  @override
-  Widget build(BuildContext context) {
-    // Mock weather data
-    return const Row(
-      children: [
-        Icon(Icons.wb_sunny_rounded, color: Colors.orange, size: 18),
-        SizedBox(width: 8),
-        Text(
-          '28°C',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
-}

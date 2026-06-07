@@ -84,7 +84,11 @@ class JournalService {
           );
 
       final docRef = _getJournalRef(entry.companyId).doc();
-      final entryWithId = entry.copyWith(id: docRef.id, reference: finalNumber);
+      final entryWithId = entry.copyWith(
+        id: docRef.id, 
+        reference: finalNumber,
+        status: JournalStatus.draft, // Always force to draft on initial creation
+      );
 
       // 2. Save entry
       transaction.set(docRef, entryWithId.toMap());

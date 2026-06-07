@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:486186946253:android:7b57f5d5644e9653f8a384",
+        "android_client_info": {
+          "package_name": "com.ledgix.erp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWxlSyJQP5m3fEuekfuggb_YLN0gu9i1Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:486186946253:android:90ed6f9520cac022f8a384",
         "android_client_info": {
           "package_name": "com.ledgix.erp.ledgixerp"

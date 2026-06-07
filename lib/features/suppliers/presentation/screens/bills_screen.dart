@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
 import 'package:ledgixerp/features/suppliers/models/bill_model.dart';
 import 'package:ledgixerp/features/suppliers/services/bill_service.dart';
@@ -8,7 +9,6 @@ import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 import 'package:ledgixerp/features/suppliers/presentation/screens/add_bill_screen.dart';
 import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
 import 'package:ledgixerp/core/widgets/attachment_viewer.dart';
-import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class BillsScreen extends StatefulWidget {
@@ -88,6 +88,7 @@ class _BillsScreenState extends State<BillsScreen> {
                           _buildColumn('Actions'),
                         ],
                         rows: bills.map((bill) {
+                          final canEdit = canManage && !bill.isPosted;
                           return DataRow(
                             cells: [
                               DataCell(
@@ -107,19 +108,25 @@ class _BillsScreenState extends State<BillsScreen> {
                               ),
                               DataCell(
                                 Text(
-                                  DateFormat('dd MMM yyyy').format(bill.billDate),
+                                  DateFormat(
+                                    'dd MMM yyyy',
+                                  ).format(bill.billDate),
                                   style: const TextStyle(fontSize: 13),
                                 ),
                               ),
                               DataCell(
                                 Text(
-                                  DateFormat('dd MMM yyyy').format(bill.dueDate),
+                                  DateFormat(
+                                    'dd MMM yyyy',
+                                  ).format(bill.dueDate),
                                   style: const TextStyle(fontSize: 13),
                                 ),
                               ),
                               DataCell(
                                 Text(
-                                  NumberFormat('#,##0.00').format(bill.totalAmount),
+                                  NumberFormat(
+                                    '#,##0.00',
+                                  ).format(bill.totalAmount),
                                   style: GoogleFonts.jetBrainsMono(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -131,12 +138,35 @@ class _BillsScreenState extends State<BillsScreen> {
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.visibility_outlined,
+                                        size: 18,
+                                      ),
+                                      tooltip: 'View',
+                                      onPressed: () => _showBillDetails(bill),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    if (canEdit)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                        ),
+                                        tooltip: 'Edit',
+                                        onPressed: _showEditUnavailable,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
                                     if (!bill.isPosted &&
                                         bill.status == BillStatus.draft)
                                       IconButton(
-                                        icon: const Icon(Icons.send_rounded, size: 18),
+                                        icon: const Icon(
+                                          Icons.send_rounded,
+                                          size: 18,
+                                        ),
                                         tooltip: 'Submit',
-                                        onPressed: () => _submitForApproval(bill),
+                                        onPressed: () =>
+                                            _submitForApproval(bill),
                                         visualDensity: VisualDensity.compact,
                                       ),
                                     if (!bill.isPosted &&
@@ -150,13 +180,16 @@ class _BillsScreenState extends State<BillsScreen> {
                                           size: 18,
                                           color: Colors.orange,
                                         ),
-                                        tooltip: 'Post to Accounting',
-                                        onPressed: () => _postToAccounting(bill),
+                                        tooltip: 'Post',
+                                        onPressed: () =>
+                                            _postToAccounting(bill),
                                         visualDensity: VisualDensity.compact,
                                       ),
                                     if (bill.isPosted)
                                       const Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 8),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
                                         child: Icon(
                                           Icons.check_circle,
                                           color: Colors.blue,
@@ -175,6 +208,17 @@ class _BillsScreenState extends State<BillsScreen> {
                                           context,
                                           bill.attachments,
                                         ),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    if (canManage && !bill.isPosted)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: Colors.redAccent,
+                                        ),
+                                        tooltip: 'Delete',
+                                        onPressed: () => _confirmDelete(bill),
                                         visualDensity: VisualDensity.compact,
                                       ),
                                   ],
@@ -266,7 +310,7 @@ class _BillsScreenState extends State<BillsScreen> {
   Widget _buildStatusBadge(BillModel bill) {
     final color = _getStatusColor(bill.status, bill.isPosted);
     final text = bill.isPosted ? 'POSTED' : bill.status.name.toUpperCase();
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -289,11 +333,7 @@ class _BillsScreenState extends State<BillsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No bills found',
@@ -365,22 +405,94 @@ class _BillsScreenState extends State<BillsScreen> {
         widget.user,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bill posted to accounting successfully'),
-            backgroundColor: Colors.green,
-          ),
+        showErpSuccess(
+          context: context,
+          title: 'Posted',
+          message: 'Bill posted to accounting successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
+        showErpError(
+          context: context,
+          title: 'Posting Failed',
+          message: 'An error occurred while posting the bill to accounting.',
+          technicalDetails: e.toString(),
         );
       }
     }
+  }
+
+  Future<void> _confirmDelete(BillModel bill) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Bill'),
+        content: Text(
+          'Are you sure you want to delete bill ${bill.billNumber}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await _billService.deleteBill(widget.user.companyId!, bill.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bill deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  void _showBillDetails(BillModel bill) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Bill ${bill.billNumber}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Supplier: ${bill.supplierName}'),
+            Text('Date: ${DateFormat('dd MMM yyyy').format(bill.billDate)}'),
+            Text('Due: ${DateFormat('dd MMM yyyy').format(bill.dueDate)}'),
+            Text('Total: ${NumberFormat('#,##0.00').format(bill.totalAmount)}'),
+            Text('Status: ${bill.isPosted ? 'Posted' : bill.status.name}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditUnavailable() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Edit screen for saved bills is not wired yet.'),
+      ),
+    );
   }
 }

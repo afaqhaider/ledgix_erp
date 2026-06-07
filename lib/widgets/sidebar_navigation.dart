@@ -62,9 +62,9 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final sidebarColor = isDark
-        ? AppColors.darkSidebar
-        : AppColors.lightSurface;
+    
+    // Use theme's surface color (which we mapped to darkSidebar in darkTheme)
+    final sidebarColor = theme.colorScheme.surfaceContainer;
     final activeColor = theme.colorScheme.primary;
 
     const double width = 204;
@@ -285,10 +285,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
 
   Widget _buildBottomAction(IconData icon, String label, VoidCallback onTap) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final color = isDark
-        ? Colors.white60
-        : AppColors.lightTextSecondary.withValues(alpha: 0.9);
+    final color = theme.colorScheme.onSurface.withValues(alpha: 0.7);
 
     return ListTile(
       onTap: onTap,
@@ -316,11 +313,8 @@ class _SidebarHeaderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final idleColor = isDark
-        ? Colors.white60
-        : AppColors.lightTextSecondary.withValues(alpha: 0.95);
-    final activeTextColor = isDark ? Colors.white : AppColors.lightTextPrimary;
+    final idleColor = theme.colorScheme.onSurface.withValues(alpha: 0.65);
+    final activeTextColor = theme.colorScheme.onSurface;
 
     return InkWell(
       onTap: onTap,
@@ -352,7 +346,7 @@ class _SidebarHeaderTile extends StatelessWidget {
               isSectionExpanded
                   ? Icons.expand_less_rounded
                   : Icons.expand_more_rounded,
-              color: isDark ? Colors.white38 : AppColors.lightTextSecondary,
+              color: idleColor.withValues(alpha: 0.5),
               size: 14,
             ),
           ],
@@ -386,13 +380,10 @@ class _SidebarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final idleColor = isDark
-        ? Colors.white60
-        : AppColors.lightTextSecondary.withValues(alpha: 0.95);
-    final activeTextColor = isDark ? Colors.white : AppColors.lightTextPrimary;
+    final idleColor = theme.colorScheme.onSurface.withValues(alpha: 0.65);
+    final activeTextColor = theme.colorScheme.onSurface;
     final activeBackground = activeColor.withValues(
-      alpha: isDark ? 0.15 : 0.12,
+      alpha: theme.brightness == Brightness.dark ? 0.15 : 0.12,
     );
 
     return Padding(

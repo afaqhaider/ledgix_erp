@@ -40,7 +40,7 @@ class _InviteUserDialogState extends State<InviteUserDialog> {
       await _userService.inviteUser(
         companyId: widget.companyId,
         email: _emailController.text.trim(),
-        fullName: _nameController.text.trim(),
+        displayName: _nameController.text.trim(),
         role: _selectedRole,
         invitedByUserId: widget.inviterUserId,
       );

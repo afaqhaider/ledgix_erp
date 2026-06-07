@@ -30,8 +30,8 @@ class _UsersScreenState extends State<UsersScreen> {
           const SizedBox(width: 16),
         ],
       ),
-      body: StreamBuilder<List<CompanyUserModel>>(
-        stream: _userService.getCompanyUsers(widget.user.companyId!),
+      body: StreamBuilder<List<CompanyMemberModel>>(
+        stream: _userService.getCompanyMembers(widget.user.companyId!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -40,7 +40,7 @@ class _UsersScreenState extends State<UsersScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          final users = snapshot.data ?? [];
+          final members = snapshot.data ?? [];
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -53,21 +53,21 @@ class _UsersScreenState extends State<UsersScreen> {
                   DataColumn(label: Text('Status')),
                   DataColumn(label: Text('Actions')),
                 ],
-                rows: users
+                rows: members
                     .map(
-                      (u) => DataRow(
+                      (m) => DataRow(
                         cells: [
-                          DataCell(Text(u.fullName)),
-                          DataCell(Text(u.email)),
+                          DataCell(Text(m.displayName)),
+                          DataCell(Text(m.email)),
                           DataCell(
                             DropdownButton<UserRole>(
-                              value: u.role,
+                              value: m.role,
                               underline: const SizedBox(),
                               items: UserRole.values
                                   .where(
                                     (r) =>
                                         r != UserRole.owner ||
-                                        u.role == UserRole.owner,
+                                        m.role == UserRole.owner,
                                   )
                                   .map(
                                     (r) => DropdownMenuItem(
@@ -80,49 +80,49 @@ class _UsersScreenState extends State<UsersScreen> {
                                   )
                                   .toList(),
                               onChanged:
-                                  (u.role == UserRole.owner &&
-                                      u.uid == widget.user.uid)
+                                  (m.role == UserRole.owner &&
+                                      m.uid == widget.user.uid)
                                   ? null // Cannot change own owner role
                                   : (newRole) {
                                       if (newRole != null) {
-                                        _userService.updateUserRole(
+                                        _userService.updateMemberRole(
                                           widget.user.companyId!,
-                                          u.uid,
+                                          m.uid,
                                           newRole,
                                         );
                                       }
                                     },
                             ),
                           ),
-                          DataCell(_buildStatusChip(u.status)),
+                          DataCell(_buildStatusChip(m.status)),
                           DataCell(
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (u.uid !=
+                                if (m.uid !=
                                     widget.user.uid) // Cannot disable self
                                   IconButton(
                                     icon: Icon(
-                                      u.status == UserStatus.disabled
+                                      m.status == UserStatus.disabled
                                           ? Icons.check_circle_outline
                                           : Icons.block,
                                       size: 20,
-                                      color: u.status == UserStatus.disabled
+                                      color: m.status == UserStatus.disabled
                                           ? Colors.green
                                           : Colors.red,
                                     ),
                                     onPressed: () {
                                       final newStatus =
-                                          u.status == UserStatus.disabled
+                                          m.status == UserStatus.disabled
                                           ? UserStatus.active
                                           : UserStatus.disabled;
-                                      _userService.updateUserStatus(
+                                      _userService.updateMemberStatus(
                                         widget.user.companyId!,
-                                        u.uid,
+                                        m.uid,
                                         newStatus,
                                       );
                                     },
-                                    tooltip: u.status == UserStatus.disabled
+                                    tooltip: m.status == UserStatus.disabled
                                         ? 'Enable User'
                                         : 'Disable User',
                                   ),

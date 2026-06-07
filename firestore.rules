@@ -1,18 +1,191 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 7, 1);
+
+    // --- Helper Functions ---
+    function signedIn() { return request.auth != null; }
+
+    function getMemberData(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid)).data;
+    }
+
+    function isMember(companyId) {
+      return signedIn() &&
+             exists(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid)) &&
+             getMemberData(companyId).status == 'active';
+    }
+
+    function hasRole(companyId, roles) {
+      return isMember(companyId) && getMemberData(companyId).role in roles;
+    }
+
+    function isOwner(companyId) {
+      return hasRole(companyId, ['owner', 'superAdmin']);
+    }
+
+    function canPost(companyId) {
+      return hasRole(companyId, ['owner', 'superAdmin', 'admin', 'accountant', 'generalManager']);
+    }
+
+    function isInternal(companyId) {
+      return isMember(companyId) && (
+        getMemberData(companyId).userType == 'internal' ||
+        getMemberData(companyId).role in ['owner', 'superAdmin', 'admin', 'accountant', 'generalManager']
+      );
+    }
+
+    function isCompanyCreator(companyId) {
+      return signedIn() &&
+             exists(/databases/$(database)/documents/companies/$(companyId)) &&
+             get(/databases/$(database)/documents/companies/$(companyId)).data.createdByUserId == request.auth.uid;
+    }
+
+    function affectedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // --- Integrity Helpers ---
+    function isPostingField() {
+      return affectedKeys().hasAny([
+        'isPosted', 'postedAt', 'postedBy', 'journalEntryId',
+        'reversedAt', 'reversedBy', 'currentBalance', 'stockQuantity', 'costPrice',
+        'amountPaid', 'balanceDue'
+      ]);
+    }
+
+    function isPosted() {
+      return resource.data.isPosted == true;
+    }
+
+    function isReversing() {
+      return affectedKeys().hasAny(['status', 'isPosted']) &&
+             affectedKeys().hasOnly(['status', 'isPosted', 'reversedAt', 'reversedBy', 'updatedAt', 'amountPaid', 'balanceDue']) &&
+             (request.resource.data.status in ['void', 'voided', 'cancelled', 'reversed'] || request.resource.data.isPosted == false);
+    }
+
+    // --- Global User Profiles ---
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // --- Companies Collection ---
+    match /companies/{companyId} {
+      allow read: if isMember(companyId);
+      allow create: if signedIn();
+      allow update: if isOwner(companyId);
+
+      match /members/{uid} {
+        allow read: if signedIn() && (request.auth.uid == uid || isMember(companyId));
+        allow write: if isOwner(companyId) || (signedIn() && request.auth.uid == uid);
+      }
+
+      match /settings/{docId} {
+        allow read: if isMember(companyId);
+        allow write: if isOwner(companyId) || isCompanyCreator(companyId);
+      }
+
+      // --- Chart of Accounts Protection ---
+      match /chartOfAccounts/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if isInternal(companyId);
+        allow update: if isInternal(companyId) && (
+          canPost(companyId) ||
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'currentBalance', 'isPosted', 'postedAt', 'postedBy', 'journalEntryId',
+            'reversedAt', 'reversedBy', 'openingBalance', 'accountCode'
+          ])
+        );
+        allow delete: if isOwner(companyId);
+      }
+
+      // --- Bank Accounts Protection ---
+      match /bankAccounts/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if isOwner(companyId);
+        allow update: if isInternal(companyId) && (
+          (!isPostingField() || canPost(companyId)) &&
+          (!affectedKeys().hasAny(['openingBalance', 'currency', 'linkedChartAccountId']) || isOwner(companyId))
+        );
+        allow delete: if isOwner(companyId) && resource.data.currentBalance == 0;
+      }
+
+      // --- Inventory Protection ---
+      match /items/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if isInternal(companyId);
+        allow update: if isInternal(companyId) && (
+          (!isPostingField() || canPost(companyId))
+        );
+        allow delete: if isOwner(companyId) && resource.data.stockQuantity == 0;
+      }
+
+      // --- Document Immutability (Invoices, Bills, Payments) ---
+      match /salesInvoices/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if isInternal(companyId);
+        allow update: if isInternal(companyId) && (
+          (!isPosted() || isReversing()) &&
+          (!isPostingField() || canPost(companyId))
+        );
+        allow delete: if isInternal(companyId) && !isPosted();
+      }
+
+      match /supplierBills/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if isInternal(companyId);
+        allow update: if isInternal(companyId) && (
+          (!isPosted() || isReversing()) &&
+          (!isPostingField() || canPost(companyId))
+        );
+        allow delete: if isInternal(companyId) && !isPosted();
+      }
+
+      match /customerPayments/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if isInternal(companyId);
+        allow update: if isInternal(companyId) && (
+          (!isPosted() || isReversing()) &&
+          (!isPostingField() || canPost(companyId))
+        );
+        allow delete: if isInternal(companyId) && !isPosted();
+      }
+
+      match /supplierPayments/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if isInternal(companyId);
+        allow update: if isInternal(companyId) && (
+          (!isPosted() || isReversing()) &&
+          (!isPostingField() || canPost(companyId))
+        );
+        allow delete: if isInternal(companyId) && !isPosted();
+      }
+
+      // --- Journal Entries Protection ---
+      match /journalEntries/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if canPost(companyId);
+        allow update: if isInternal(companyId) && canPost(companyId) && (
+          // If already posted, only allow status change to 'reversed'
+          (resource.data.status != 'posted') ||
+          (affectedKeys().hasOnly(['status', 'updatedAt']) && request.resource.data.status == 'reversed')
+        );
+        allow delete: if isOwner(companyId) && resource.data.status != 'posted';
+      }
+
+      // --- Audit Logs (Append-only) ---
+      match /auditLogs/{docId} {
+        allow read: if isInternal(companyId);
+        allow create: if isInternal(companyId) || isCompanyCreator(companyId);
+        allow update, delete: if false;
+      }
+
+      // --- Catch-all for Generic Primary Collections ---
+      match /{collectionName}/{docId} {
+        allow read: if isInternal(companyId);
+        allow write: if isInternal(companyId) || isCompanyCreator(companyId);
+      }
     }
   }
 }

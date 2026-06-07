@@ -4,15 +4,17 @@ import '../models/notification_model.dart';
 class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  CollectionReference _getNotificationsRef(String userId) {
+  CollectionReference _getNotificationsRef(String companyId, String userId) {
     return _firestore
-        .collection('users')
+        .collection('companies')
+        .doc(companyId)
+        .collection('members')
         .doc(userId)
         .collection('notifications');
   }
 
-  Stream<List<NotificationModel>> getNotifications(String userId) {
-    return _getNotificationsRef(userId)
+  Stream<List<NotificationModel>> getNotifications(String companyId, String userId) {
+    return _getNotificationsRef(companyId, userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
@@ -27,21 +29,23 @@ class NotificationService {
         );
   }
 
-  Stream<int> getUnreadCount(String userId) {
-    return _getNotificationsRef(userId)
+  Stream<int> getUnreadCount(String companyId, String userId) {
+    return _getNotificationsRef(companyId, userId)
         .where('isRead', isEqualTo: false)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
 
-  Future<void> markAsRead(String userId, String notificationId) async {
+  Future<void> markAsRead(String companyId, String userId, String notificationId) async {
     await _getNotificationsRef(
+      companyId,
       userId,
     ).doc(notificationId).update({'isRead': true});
   }
 
-  Future<void> markAllAsRead(String userId) async {
+  Future<void> markAllAsRead(String companyId, String userId) async {
     final snapshot = await _getNotificationsRef(
+      companyId,
       userId,
     ).where('isRead', isEqualTo: false).get();
     final batch = _firestore.batch();
@@ -72,6 +76,6 @@ class NotificationService {
       createdAt: DateTime.now(),
     );
 
-    await _getNotificationsRef(userId).add(notification.toMap());
+    await _getNotificationsRef(companyId, userId).add(notification.toMap());
   }
 }

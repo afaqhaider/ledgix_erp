@@ -13,7 +13,7 @@ class StockMovementService {
 
   Future<void> createGrn(GrnModel grn) async {
     final batch = _firestore.batch();
-    final grnRef = _getRef(grn.companyId, 'grns').doc();
+    final grnRef = _getRef(grn.companyId, 'goodsReceivedNotes').doc();
     batch.set(grnRef, grn.toMap());
 
     for (var item in grn.items) {
@@ -131,7 +131,7 @@ class StockMovementService {
       'lastUpdated': Timestamp.fromDate(date),
     });
 
-    final ledgerRef = _getRef(companyId, 'stockLedger').doc();
+    final ledgerRef = _getRef(companyId, 'inventoryTransactions').doc();
     final ledgerEntry = StockLedgerModel(
       id: '',
       companyId: companyId,
@@ -148,7 +148,7 @@ class StockMovementService {
   }
 
   Stream<List<StockLedgerModel>> getStockLedger(String companyId, {String? itemId, String? warehouseId}) {
-    Query query = _getRef(companyId, 'stockLedger').orderBy('date', descending: true);
+    Query query = _getRef(companyId, 'inventoryTransactions').orderBy('date', descending: true);
     if (itemId != null) query = query.where('itemId', isEqualTo: itemId);
     if (warehouseId != null) query = query.where('warehouseId', isEqualTo: warehouseId);
     

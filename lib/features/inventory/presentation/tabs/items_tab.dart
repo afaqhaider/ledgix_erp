@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
-import 'package:ledgixerp/core/theme/app_colors.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/core/widgets/side_panel.dart';
 import '../../models/inventory_models.dart';
@@ -14,8 +13,6 @@ class ItemsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inventoryService = InventoryService();
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

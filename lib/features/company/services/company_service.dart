@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import '../../users/models/app_user_model.dart';
 import '../../accounting/chart_of_accounts/account_service.dart';
 import '../../settings/services/financial_settings_service.dart';
 import '../models/company_model.dart';
+import '../../../core/auth/user_role.dart';
 
 class CompanyService {
   static final CompanyService _instance = CompanyService._internal();
@@ -15,48 +17,57 @@ class CompanyService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final Map<String, String> _resolvedLogoUrlCache = {};
 
-  Future<String> setupCompany(CompanyModel company) async {
+  Future<String> setupCompany(CompanyModel company, {String? ownerEmail, String? ownerName}) async {
     final companyRef = _firestore.collection('companies').doc();
     final companyId = companyRef.id;
 
-    debugPrint('CompanyService: [1/4] Creating company doc: $companyId');
+    debugPrint('CompanyService: [1/3] Atomic Batch (Company + Member + User Profile)');
     try {
-      await companyRef.set(company.toMap());
+      final batch = _firestore.batch();
+      
+      // 1. Create Company
+      batch.set(companyRef, company.toMap());
+
+      // 2. Create Membership
+      final memberRef = companyRef.collection('members').doc(company.createdByUserId);
+      batch.set(memberRef, {
+        'uid': company.createdByUserId,
+        'email': ownerEmail ?? company.email ?? '',
+        'displayName': ownerName ?? 'Owner',
+        'role': UserRole.owner.name,
+        'status': UserStatus.active.name,
+        'userType': UserType.internal.name,
+        'permissions': [],
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 3. Update Global User Profile
+      final userRef = _firestore.collection('users').doc(company.createdByUserId);
+      batch.set(userRef, {
+        'defaultCompanyId': companyId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await batch.commit();
     } catch (e) {
-      debugPrint('CompanyService: FAILED at step 1: $e');
+      debugPrint('CompanyService: FAILED at atomic batch: $e');
       rethrow;
     }
 
-    debugPrint('CompanyService: [2/4] Initializing financial settings...');
+    debugPrint('CompanyService: [2/3] Initializing financial settings...');
     try {
+      // Created post-batch to ensure 'isOwner' rule sees the committed membership
       await FinancialSettingsService().getSettings(companyId);
     } catch (e) {
-      debugPrint('CompanyService: Warning at step 2 (Settings): $e');
-      // We don't rethrow here so the user isn't blocked if just settings fail
+      debugPrint('CompanyService: Warning at Settings: $e');
     }
 
-    debugPrint('CompanyService: [3/4] Seeding default accounts...');
+    debugPrint('CompanyService: [3/3] Seeding default accounts...');
     try {
       await AccountService().seedDefaultAccounts(companyId);
     } catch (e) {
-      debugPrint('CompanyService: Warning at step 3 (COA): $e');
-    }
-
-    debugPrint(
-      'CompanyService: [4/4] Updating user profile: ${company.createdByUserId}',
-    );
-    try {
-      final userRef = _firestore
-          .collection('users')
-          .doc(company.createdByUserId);
-      await userRef.set({
-        'companyId': companyId,
-        'companyName': company.tradeName,
-        'role': 'owner',
-      }, SetOptions(merge: true));
-    } catch (e) {
-      debugPrint('CompanyService: FAILED at step 4 (User Update): $e');
-      rethrow;
+      debugPrint('CompanyService: Warning at COA Seeding: $e');
     }
 
     debugPrint('CompanyService: SETUP SUCCESSFUL');

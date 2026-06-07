@@ -13,7 +13,7 @@ class ApprovalService {
     return _db
         .collection('companies')
         .doc(companyId)
-        .collection('approval_rules')
+        .collection('approvalRules')
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
@@ -26,7 +26,7 @@ class ApprovalService {
     final docRef = _db
         .collection('companies')
         .doc(rule.companyId)
-        .collection('approval_rules')
+        .collection('approvalRules')
         .doc(rule.id.isEmpty ? null : rule.id);
 
     final data = rule.toMap();
@@ -45,7 +45,7 @@ class ApprovalService {
     final snapshot = await _db
         .collection('companies')
         .doc(companyId)
-        .collection('approval_rules')
+        .collection('approvalRules')
         .where('module', isEqualTo: module.name)
         .where('isEnabled', isEqualTo: true)
         .get();
@@ -86,7 +86,7 @@ class ApprovalService {
     final docRef = _db
         .collection('companies')
         .doc(companyId)
-        .collection('approval_requests')
+        .collection('approvalRequests')
         .doc();
 
     final request = ApprovalRequestModel(
@@ -135,7 +135,7 @@ class ApprovalService {
     final docRef = _db
         .collection('companies')
         .doc(user.companyId!)
-        .collection('approval_requests')
+        .collection('approvalRequests')
         .doc(requestId);
 
     final snapshot = await docRef.get();
@@ -191,7 +191,7 @@ class ApprovalService {
     return _db
         .collection('companies')
         .doc(companyId)
-        .collection('approval_requests')
+        .collection('approvalRequests')
         .where('status', isEqualTo: 'pending')
         .where('currentApproverRoleId', isEqualTo: roleName)
         .snapshots()
@@ -228,17 +228,17 @@ class ApprovalService {
       case 'quotation':
         return 'quotations';
       case 'sales_invoice':
-        return 'invoices';
+        return 'salesInvoices';
       case 'customer_payment':
-        return 'customer_payments';
+        return 'customerPayments';
       case 'purchase_order':
-        return 'purchase_orders';
+        return 'purchaseOrders';
       case 'supplier_payment':
-        return 'supplier_payments';
+        return 'supplierPayments';
       case 'journal_entry':
-        return 'journal_entries';
+        return 'journalEntries';
       case 'supplier_bill':
-        return 'supplier_bills';
+        return 'supplierBills';
       default:
         return type;
     }

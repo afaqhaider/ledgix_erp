@@ -5,6 +5,7 @@ enum BillStatus {
   draft,
   pendingApproval,
   approved,
+  posted,
   partiallyPaid,
   paid,
   voided,
@@ -22,6 +23,7 @@ class BillModel {
   final double subtotal;
   final double vatAmount;
   final double totalAmount;
+  final double amountPaid;
   final double balanceDue;
   final BillStatus status;
   final String? notes;
@@ -43,6 +45,7 @@ class BillModel {
     required this.subtotal,
     required this.vatAmount,
     required this.totalAmount,
+    this.amountPaid = 0.0,
     required this.balanceDue,
     this.status = BillStatus.draft,
     this.notes,
@@ -65,6 +68,7 @@ class BillModel {
       'subtotal': subtotal,
       'vatAmount': vatAmount,
       'totalAmount': totalAmount,
+      'amountPaid': amountPaid,
       'balanceDue': balanceDue,
       'status': status.name,
       'notes': notes,
@@ -93,6 +97,7 @@ class BillModel {
       subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0.0,
       vatAmount: (map['vatAmount'] as num?)?.toDouble() ?? 0.0,
       totalAmount: (map['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      amountPaid: (map['amountPaid'] as num?)?.toDouble() ?? 0.0,
       balanceDue: (map['balanceDue'] as num?)?.toDouble() ?? 0.0,
       status: BillStatus.values.firstWhere(
         (e) => e.name == map['status'],
@@ -123,6 +128,7 @@ class BillModel {
     double? subtotal,
     double? vatAmount,
     double? totalAmount,
+    double? amountPaid,
     double? balanceDue,
     BillStatus? status,
     String? notes,
@@ -144,6 +150,7 @@ class BillModel {
       subtotal: subtotal ?? this.subtotal,
       vatAmount: vatAmount ?? this.vatAmount,
       totalAmount: totalAmount ?? this.totalAmount,
+      amountPaid: amountPaid ?? this.amountPaid,
       balanceDue: balanceDue ?? this.balanceDue,
       status: status ?? this.status,
       notes: notes ?? this.notes,

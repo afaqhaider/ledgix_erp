@@ -5,14 +5,21 @@ class FinancialSettingsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<FinancialSettingsModel> getSettings(String companyId) async {
-    final doc = await _firestore.collection('settings').doc(companyId).get();
+    final doc = await _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('settings')
+        .doc('financial')
+        .get();
     if (doc.exists) {
       return FinancialSettingsModel.fromMap(doc.data()!);
     } else {
       final defaultSettings = FinancialSettingsModel.defaultSettings(companyId);
       await _firestore
-          .collection('settings')
+          .collection('companies')
           .doc(companyId)
+          .collection('settings')
+          .doc('financial')
           .set(defaultSettings.toMap());
       return defaultSettings;
     }
@@ -20,8 +27,10 @@ class FinancialSettingsService {
 
   Future<void> updateSettings(FinancialSettingsModel settings) async {
     await _firestore
-        .collection('settings')
+        .collection('companies')
         .doc(settings.companyId)
+        .collection('settings')
+        .doc('financial')
         .set(settings.toMap(), SetOptions(merge: true));
   }
 
@@ -77,7 +86,11 @@ class FinancialSettingsService {
     String type, {
     Transaction? transaction,
   }) async {
-    final docRef = _firestore.collection('settings').doc(companyId);
+    final docRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('settings')
+        .doc('financial');
 
     if (transaction != null) {
       return await _processIncrement(transaction, docRef, companyId, type);

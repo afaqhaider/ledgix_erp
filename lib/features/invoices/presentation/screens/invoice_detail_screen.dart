@@ -9,6 +9,7 @@ import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
 class InvoiceDetailScreen extends StatefulWidget {
   final InvoiceModel invoice;
@@ -69,9 +70,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showErpError(
+          context: context,
+          title: 'Approval Failed',
+          message: 'Could not submit invoice for approval.',
+          technicalDetails: e.toString(),
+        );
       }
     } finally {
       if (mounted) setState(() => _isPosting = false);
@@ -106,20 +110,19 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         );
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invoice posted to accounting successfully'),
-            backgroundColor: Colors.green,
-          ),
+        showErpSuccess(
+          context: context,
+          title: 'Posted',
+          message: 'Invoice posted to accounting successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
+        showErpError(
+          context: context,
+          title: 'Posting Failed',
+          message: 'An error occurred while posting the invoice to accounting.',
+          technicalDetails: e.toString(),
         );
       }
     } finally {
@@ -165,7 +168,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                           ),
                         )
                       : const Icon(Icons.account_balance),
-                  label: const Text('Post to Accounting'),
+                  label: const Text('Post'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     foregroundColor: Colors.white,
@@ -335,16 +338,19 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             _buildInfoRow(
+                              context,
                               'Invoice Date',
                               DateFormat(
                                 'dd MMM yyyy',
                               ).format(invoice.invoiceDate),
                             ),
                             _buildInfoRow(
+                              context,
                               'Due Date',
                               DateFormat('dd MMM yyyy').format(invoice.dueDate),
                             ),
                             _buildInfoRow(
+                              context,
                               'Status',
                               invoice.status.name.toUpperCase(),
                             ),
@@ -481,7 +487,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       stream: FirebaseFirestore.instance
           .collection('companies')
           .doc(widget.user.companyId)
-          .collection('approval_requests')
+          .collection('approvalRequests')
           .where('sourceId', isEqualTo: _currentInvoice.id)
           .snapshots()
           .map(
@@ -563,12 +569,16 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(color: Colors.black, fontSize: 13),
+          style: TextStyle(
+            color: theme.textTheme.bodyMedium?.color,
+            fontSize: 13,
+          ),
           children: [
             TextSpan(
               text: '$label: ',

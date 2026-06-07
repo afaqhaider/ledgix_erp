@@ -468,13 +468,6 @@ class _ManualSearchDialogState extends State<ManualSearchDialog> {
                       itemCount: _results.length,
                       itemBuilder: (context, index) {
                         final journal = _results[index];
-                        final amount = journal.lines
-                            .firstWhere(
-                              (l) =>
-                                  l.accountId ==
-                                  widget.selectedAccount.linkedChartAccountId,
-                            )
-                            .debit; // Simplified, should check debit/credit correctly
 
                         // Re-calculate the specific line amount for this account
                         final line = journal.lines.firstWhere(

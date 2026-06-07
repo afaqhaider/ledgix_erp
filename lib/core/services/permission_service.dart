@@ -56,8 +56,9 @@ class PermissionService {
     // Normalize role string if needed
     final normalizedRole = role.toLowerCase().replaceAll(' ', '_');
 
-    if (normalizedRole == 'super_admin' || normalizedRole == 'owner')
+    if (normalizedRole == 'super_admin' || normalizedRole == 'owner') {
       return true;
+    }
 
     // Check custom permissions first
     if (customPermissions != null &&

@@ -147,8 +147,9 @@ class _ImportStatementDialogState extends State<ImportStatementDialog> {
     if (value == null) return 0.0;
     if (value is excel_pkg.DoubleCellValue) return value.value;
     if (value is excel_pkg.IntCellValue) return value.value.toDouble();
-    if (value is excel_pkg.TextCellValue)
+    if (value is excel_pkg.TextCellValue) {
       return double.tryParse(value.value.toString().replaceAll(',', '')) ?? 0.0;
+    }
     return double.tryParse(value.toString().replaceAll(',', '')) ?? 0.0;
   }
 
