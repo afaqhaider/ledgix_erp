@@ -161,8 +161,8 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
   }
 
   double get _totalSubtotal =>
-      _items.fold(0, (sum, item) => sum + item.lineSubtotal);
-  double get _totalVat => _items.fold(0, (sum, item) => sum + item.lineVat);
+      _items.fold(0.0, (sum, item) => sum + item.lineSubtotal);
+  double get _totalVat => _items.fold(0.0, (sum, item) => sum + item.lineVat);
   double get _totalAmount => _totalSubtotal + _totalVat;
 
   Future<void> _save() async {

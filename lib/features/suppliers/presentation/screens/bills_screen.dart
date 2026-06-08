@@ -372,15 +372,18 @@ class _BillsScreenState extends State<BillsScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Processing approval/submission...')),
+        showErpSuccess(
+          context: context,
+          title: 'Submitted',
+          message: 'Bill has been submitted for approval.',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showErpError(
+          context: context,
+          error: e,
+        );
       }
     }
   }
@@ -392,8 +395,10 @@ class _BillsScreenState extends State<BillsScreen> {
     );
 
     if (!isApproved && !canBypass) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bill must be approved before posting')),
+      showErpError(
+        context: context,
+        title: 'Approval Required',
+        message: 'This bill must be approved before it can be posted to the ledger.',
       );
       return;
     }
@@ -415,9 +420,7 @@ class _BillsScreenState extends State<BillsScreen> {
       if (mounted) {
         showErpError(
           context: context,
-          title: 'Posting Failed',
-          message: 'An error occurred while posting the bill to accounting.',
-          technicalDetails: e.toString(),
+          error: e,
         );
       }
     }
@@ -449,15 +452,18 @@ class _BillsScreenState extends State<BillsScreen> {
     try {
       await _billService.deleteBill(widget.user.companyId!, bill.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bill deleted successfully')),
+        showErpSuccess(
+          context: context,
+          title: 'Deleted',
+          message: 'Bill deleted successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showErpError(
+          context: context,
+          error: e,
+        );
       }
     }
   }

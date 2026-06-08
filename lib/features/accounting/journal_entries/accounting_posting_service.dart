@@ -11,6 +11,7 @@ import 'package:ledgixerp/features/suppliers/models/bill_model.dart';
 import 'package:ledgixerp/core/audit/audit_service.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
+import 'package:ledgixerp/core/errors/erp_exception.dart';
 import '../../inventory/models/inventory_models.dart';
 
 class AccountingPostingService {
@@ -1472,7 +1473,7 @@ class AccountingPostingService {
 
   // --- HELPERS ---
 
-  Exception _handleError(
+  ErpException _handleError(
     dynamic e,
     StackTrace stack,
     String context,
@@ -1481,41 +1482,58 @@ class AccountingPostingService {
     debugPrint('AccountingPostingService ERROR ($context)');
     debugPrint('  runtimeType: ${e.runtimeType}');
     debugPrint('  toString: ${e.toString()}');
-    _logBoxedWebError(e);
+    
+    String? boxedInfo = _extractBoxedInfo(e);
+    if (boxedInfo != null) {
+      debugPrint('  Extracted Boxed Info: $boxedInfo');
+    }
+    
     debugPrint('  stackTrace: $stack');
     debugPrint('Resolved Accounts: $resolvedAccounts');
 
-    String message = 'Posting error during $context';
-    String details = e.toString();
+    String title = 'Posting Failed';
+    String message = 'An error occurred while posting $context to accounting.';
+    
+    String details = 'Context: $context\n';
+    if (boxedInfo != null) {
+      details += 'Error: $boxedInfo\n';
+    } else {
+      details += 'Error: $e\n';
+    }
+    
+    if (resolvedAccounts.isNotEmpty) {
+      details += '\nResolved Accounts:\n${resolvedAccounts.join('\n')}';
+    }
+    
+    details += '\n\nStack Trace:\n$stack';
 
     if (e is FirebaseException) {
-      message = 'Database Error [${e.code}]';
-      details =
-          '${e.message}\n\nAccounts used:\n${resolvedAccounts.join('\n')}';
+      title = 'Database Error';
+      message = 'Firestore error [${e.code}]: ${e.message}';
+    } else if (e.toString().contains('locked')) {
+      title = 'Period Locked';
+      message = e.toString().replaceFirst('Exception: ', '');
     } else if (e is Exception) {
       message = e.toString().replaceFirst('Exception: ', '');
-      details =
-          'Technical info: $e\n\nAccounts used:\n${resolvedAccounts.join('\n')}';
     }
 
-    return Exception('$message\n\n$details');
+    return ErpException(
+      title: title,
+      message: message,
+      technicalDetails: details,
+      originalError: e,
+    );
   }
 
-  void _logBoxedWebError(dynamic e) {
+  String? _extractBoxedInfo(dynamic e) {
     try {
-      final boxedError = (e as dynamic).error;
-      debugPrint('  boxed.error runtimeType: ${boxedError.runtimeType}');
-      debugPrint('  boxed.error: $boxedError');
-    } catch (_) {
-      debugPrint('  boxed.error: <not available>');
-    }
-
-    try {
-      final boxedStack = (e as dynamic).stack;
-      debugPrint('  boxed.stack: $boxedStack');
-    } catch (_) {
-      debugPrint('  boxed.stack: <not available>');
-    }
+      // In Flutter Web, some errors are boxed. Try to extract the real message.
+      final dynamic err = e;
+      if (err.error != null) {
+        return err.error.toString();
+      }
+    } catch (_) {}
+    return null;
   }
 
   String _getCollectionForSource(String type) {

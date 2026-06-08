@@ -134,48 +134,12 @@ class InvoiceService {
     }
   }
 
-  Future<void> postInvoice(String companyId, String invoiceId) async {
-    final doc = await _getInvoicesRef(companyId).doc(invoiceId).get();
-    if (!doc.exists) throw Exception('Invoice not found');
-
-    final invoice = InvoiceModel.fromMap(
-      doc.data() as Map<String, dynamic>,
-      doc.id,
-    );
-    if (invoice.isPosted) throw Exception('Invoice already posted');
-
-    // ENFORCE APPROVAL
-    if (invoice.approvalStatus != 'approved') {
-      // Check if it actually needs approval
-      final rule = await _approvalService.findMatchingRule(
-        companyId: companyId,
-        module: ApprovalModule.salesInvoices,
-        amount: invoice.totalAmount,
-      );
-
-      if (rule != null && rule.requiredApproverRoles.isNotEmpty) {
-        throw Exception(
-          'This invoice requires approval before it can be posted.',
-        );
-      }
-    }
-
-    // 1. Process Inventory Updates and Calculate COGS
-    for (var item in invoice.items) {
-      if (item.productId != null && item.productId!.isNotEmpty) {
-        await _inventoryService.recordSale(
-          companyId: companyId,
-          productId: item.productId!,
-          quantity: item.quantity,
-        );
-      }
-    }
-
-    // 2. Mark Invoice as Posted
-    await _getInvoicesRef(companyId).doc(invoiceId).update({
-      'isPosted': true,
-      'approvalStatus': 'approved', // Automatically approve on post for now
-    });
+  Future<void> postInvoice(
+    String companyId,
+    InvoiceModel invoice,
+    AppUser user,
+  ) async {
+    await _postingService.postSalesInvoice(companyId, invoice, user);
   }
 
   Future<void> updateInvoiceStatus(

@@ -368,7 +368,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (hasStatsError) ...[
-                        _buildDashboardDataNotice(),
+                        _buildDashboardDataNotice(statsSnapshot.error),
                         const SizedBox(height: 16),
                       ],
                       _buildKPIGrid(stats, currency),
@@ -403,35 +403,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildDashboardDataNotice() {
+  Widget _buildDashboardDataNotice(Object? error) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.error.withValues(alpha: 0.08),
-        border: Border.all(
-          color: theme.colorScheme.error.withValues(alpha: 0.18),
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.info_outline_rounded,
-            size: 16,
-            color: theme.colorScheme.error,
+    return InkWell(
+      onTap: error != null
+          ? () => showErpError(
+                context: context,
+                title: 'Dashboard Sync Error',
+                message:
+                    'We encountered an issue while fetching some dashboard figures. This usually happens due to missing database indexes or connection issues.',
+                error: error,
+              )
+          : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.error.withValues(alpha: 0.08),
+          border: Border.all(
+            color: theme.colorScheme.error.withValues(alpha: 0.18),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Some dashboard figures could not be refreshed yet.',
-              style: TextStyle(
-                fontSize: 12,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline_rounded,
+              size: 16,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Some dashboard figures could not be refreshed. Tap for details.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                ),
               ),
             ),
-          ),
-        ],
+            const Icon(Icons.chevron_right, size: 14, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

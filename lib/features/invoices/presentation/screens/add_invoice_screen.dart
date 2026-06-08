@@ -176,24 +176,26 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   }
 
   double get _totalSubtotal =>
-      _items.fold(0, (sum, item) => sum + item.lineSubtotal);
-  double get _totalVat => _items.fold(0, (sum, item) => sum + item.lineVat);
+      _items.fold(0.0, (sum, item) => sum + item.lineSubtotal);
+  double get _totalVat => _items.fold(0.0, (sum, item) => sum + item.lineVat);
   double get _totalAmount => _totalSubtotal + _totalVat;
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
+      showErpError(
+        context: context,
+        title: 'Selection Required',
+        message: 'Please select a customer before saving the invoice.',
+      );
       return;
     }
 
     if (_items.any((item) => item.accountId.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('All items must have an account selected'),
-        ),
+      showErpError(
+        context: context,
+        title: 'Account Required',
+        message: 'All items must have a posting account selected.',
       );
       return;
     }
@@ -231,10 +233,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
       if (mounted) {
         showErpError(
           context: context,
-          title: 'Posting Error',
-          message:
-              'The invoice was saved but could not be posted to the ledger automatically.',
-          technicalDetails: e.toString(),
+          error: e,
         );
       }
     } finally {

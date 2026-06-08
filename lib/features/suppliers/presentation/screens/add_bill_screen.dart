@@ -173,24 +173,26 @@ class _AddBillScreenState extends State<AddBillScreen> {
   }
 
   double get _totalSubtotal =>
-      _items.fold(0, (sum, item) => sum + item.lineSubtotal);
-  double get _totalVat => _items.fold(0, (sum, item) => sum + item.lineVat);
+      _items.fold(0.0, (sum, item) => sum + item.lineSubtotal);
+  double get _totalVat => _items.fold(0.0, (sum, item) => sum + item.lineVat);
   double get _totalAmount => _totalSubtotal + _totalVat;
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSupplier == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a supplier')));
+      showErpError(
+        context: context,
+        title: 'Selection Required',
+        message: 'Please select a supplier before saving the bill.',
+      );
       return;
     }
 
     if (_items.any((item) => item.accountId.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('All items must have an account selected'),
-        ),
+      showErpError(
+        context: context,
+        title: 'Account Required',
+        message: 'All items must have a posting account selected.',
       );
       return;
     }
@@ -224,11 +226,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
+        showErpError(
+          context: context,
+          error: e,
         );
       }
     } finally {

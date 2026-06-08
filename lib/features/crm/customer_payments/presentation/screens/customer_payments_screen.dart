@@ -61,9 +61,10 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showErpError(
+          context: context,
+          error: e,
+        );
       }
     }
   }
@@ -108,11 +109,10 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
     // Check approval
     if (payment.approvalStatus != 'approved' &&
         !widget.user.role.hasPermission(AppPermission.manageAccounting)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment must be approved before posting'),
-          backgroundColor: Colors.orange,
-        ),
+      showErpError(
+        context: context,
+        title: 'Approval Required',
+        message: 'This receipt must be approved before it can be posted to the ledger.',
       );
       return;
     }
@@ -168,17 +168,17 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
       try {
         await _paymentService.deletePayment(widget.user.companyId!, payment.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment deleted successfully')),
+          showErpSuccess(
+            context: context,
+            title: 'Deleted',
+            message: 'Receipt deleted successfully',
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: Colors.redAccent,
-            ),
+          showErpError(
+            context: context,
+            error: e,
           );
         }
       }

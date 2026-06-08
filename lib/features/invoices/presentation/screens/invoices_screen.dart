@@ -335,17 +335,17 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       try {
         await _invoiceService.deleteInvoice(widget.user.companyId!, invoice.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invoice deleted successfully')),
+          showErpSuccess(
+            context: context,
+            title: 'Deleted',
+            message: 'Invoice deleted successfully',
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: Colors.redAccent,
-            ),
+          showErpError(
+            context: context,
+            error: e,
           );
         }
       }

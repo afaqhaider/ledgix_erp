@@ -76,8 +76,8 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    double totalDebit = _lines.fold(0, (sum, item) => sum + item.debit);
-    double totalCredit = _lines.fold(0, (sum, item) => sum + item.credit);
+    double totalDebit = _lines.fold(0.0, (sum, item) => sum + item.debit);
+    double totalCredit = _lines.fold(0.0, (sum, item) => sum + item.credit);
 
     if ((totalDebit - totalCredit).abs() > 0.001) {
       ScaffoldMessenger.of(context).showSnackBar(

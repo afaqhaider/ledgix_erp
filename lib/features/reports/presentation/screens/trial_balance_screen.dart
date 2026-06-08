@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import '../../models/report_models.dart';
 import '../../services/financial_report_service.dart';
+import '../widgets/hierarchical_report_row.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -19,6 +20,7 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
   DateTime _asOfDate = DateTime.now();
   TrialBalanceReport? _report;
   bool _isLoading = true;
+  bool _isAllExpanded = false;
 
   @override
   void initState() {
@@ -26,39 +28,138 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
     _loadReport();
   }
 
+  String _searchQuery = '';
+
   Future<void> _loadReport() async {
     setState(() => _isLoading = true);
-    final report = await _reportService.getTrialBalance(
-      widget.companyId,
-      _asOfDate,
-    );
-    setState(() {
-      _report = report;
-      _isLoading = false;
-    });
+    try {
+      final report = await _reportService.getTrialBalance(
+        widget.companyId,
+        _asOfDate,
+      );
+      setState(() {
+        _report = report;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading report: $e')),
+        );
+      }
+    }
+  }
+
+  List<FinancialReportNode> _getFilteredNodes() {
+    if (_report == null) return [];
+    if (_searchQuery.isEmpty) return _report!.nodes;
+
+    return _report!.nodes.map((node) => _filterNode(node)).whereType<FinancialReportNode>().toList();
+  }
+
+  FinancialReportNode? _filterNode(FinancialReportNode node) {
+    bool matches = node.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+        node.code.toLowerCase().contains(_searchQuery.toLowerCase());
+
+    List<FinancialReportNode> filteredChildren = node.children
+        .map((c) => _filterNode(c))
+        .whereType<FinancialReportNode>()
+        .toList();
+
+    if (matches || filteredChildren.isNotEmpty) {
+      return node.copyWith(children: filteredChildren);
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final filteredNodes = _getFilteredNodes();
 
     return Column(
       children: [
         _buildHeader(theme),
+        _buildControls(theme),
         if (_isLoading)
           const Expanded(child: Center(child: CircularProgressIndicator()))
+        else if (filteredNodes.isEmpty)
+          const Expanded(child: Center(child: Text('No matching records found')))
         else
           Expanded(
             child: Column(
               children: [
                 _buildSummaryBar(theme),
-                Expanded(child: _buildReportTable(theme, isDark)),
+                _buildTableHeader(theme),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: filteredNodes.length,
+                    itemBuilder: (context, index) {
+                      return HierarchicalReportRow(
+                        key: ValueKey('tb-${filteredNodes[index].id}-$_isAllExpanded-$_searchQuery'),
+                        companyId: widget.companyId,
+                        node: filteredNodes[index],
+                        displayMode: ReportDisplayMode.trialBalance,
+                        initiallyExpanded: _isAllExpanded || _searchQuery.isNotEmpty,
+                      );
+                    },
+                  ),
+                ),
                 _buildTotalFooter(theme),
               ],
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildControls(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: SearchBar(
+              hintText: 'Search account or code...',
+              leading: const Icon(Icons.search, size: 20),
+              elevation: WidgetStateProperty.all(0),
+              backgroundColor: WidgetStateProperty.all(theme.colorScheme.surfaceContainer),
+              onChanged: (value) => setState(() => _searchQuery = value),
+            ),
+          ),
+          const SizedBox(width: 16),
+          _buildDatePresets(theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDatePresets(ThemeData theme) {
+    return Row(
+      children: [
+        _presetButton('Today', DateTime.now()),
+        _presetButton('End of Last Month', DateTime(DateTime.now().year, DateTime.now().month, 0)),
+        _presetButton('End of Last Year', DateTime(DateTime.now().year, 1, 0)),
+      ],
+    );
+  }
+
+  Widget _presetButton(String label, DateTime date) {
+    final isSelected = DateUtils.isSameDay(_asOfDate, date);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) {
+            setState(() => _asOfDate = date);
+            _loadReport();
+          }
+        },
+      ),
     );
   }
 
@@ -88,6 +189,12 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
               ],
             ),
           ),
+          TextButton.icon(
+            onPressed: () => setState(() => _isAllExpanded = !_isAllExpanded),
+            icon: Icon(_isAllExpanded ? Icons.unfold_less : Icons.unfold_more),
+            label: Text(_isAllExpanded ? 'Collapse All' : 'Expand All'),
+          ),
+          const SizedBox(width: 16),
           OutlinedButton.icon(
             onPressed: () async {
               final date = await showDatePicker(
@@ -113,7 +220,7 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.download_outlined),
-            tooltip: 'Export PDF',
+            tooltip: 'Export',
             onPressed: () {},
           ),
         ],
@@ -139,108 +246,106 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
               fontSize: 14,
             ),
           ),
-          if (_report != null && !_report!.isBalanced)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
-              ),
-              child: const Text(
-                'OUT OF BALANCE',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
+          if (_report != null)
+            Row(
+              children: [
+                if (!_report!.isBalanced)
+                  Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text(
+                      'OUT OF BALANCE',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                Text(
+                  'Difference: ${AppFormatters.currency((_report!.totalDebit - _report!.totalCredit).abs())}',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: _report!.isBalanced ? Colors.green : Colors.red,
+                  ),
                 ),
-              ),
+              ],
             ),
         ],
       ),
     );
   }
 
-  Widget _buildReportTable(ThemeData theme, bool isDark) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: DataTable(
-            headingRowHeight: 48,
-            columns: [
-              _buildColumn('Code'),
-              _buildColumn('Account Name'),
-              _buildColumn('Debit', numeric: true),
-              _buildColumn('Credit', numeric: true),
-            ],
-            rows:
-                _report?.lines.map((l) {
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        Text(
-                          l.code,
-                          style: GoogleFonts.jetBrainsMono(fontSize: 12),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          l.name,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          l.debit > 0 ? AppFormatters.currency(l.debit) : '—',
-                          style: GoogleFonts.jetBrainsMono(fontSize: 13),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          l.credit > 0 ? AppFormatters.currency(l.credit) : '—',
-                          style: GoogleFonts.jetBrainsMono(fontSize: 13),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList() ??
-                [],
-          ),
-        ),
+  Widget _buildTableHeader(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(52, 12, 24, 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainer,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
       ),
-    );
-  }
-
-  DataColumn _buildColumn(String label, {bool numeric = false}) {
-    return DataColumn(
-      numeric: numeric,
-      label: Text(
-        label.toUpperCase(),
-        style: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-          color: Colors.grey[600],
-        ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              'CODE',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'ACCOUNT',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 140,
+            child: Text(
+              'DEBIT',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 140,
+            child: Text(
+              'CREDIT',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildTotalFooter(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(
@@ -253,27 +358,38 @@ class _TrialBalanceScreenState extends State<TrialBalanceScreen> {
         children: [
           const Spacer(),
           Text(
-            'TOTAL',
+            'GRAND TOTAL',
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w800,
               fontSize: 13,
               letterSpacing: 1,
             ),
           ),
-          const SizedBox(width: 48),
-          Text(
-            AppFormatters.currency(_report?.totalDebit ?? 0),
-            style: GoogleFonts.jetBrainsMono(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
+          const SizedBox(width: 32),
+          SizedBox(
+            width: 140,
+            child: Text(
+              AppFormatters.currency(_report?.totalDebit ?? 0),
+              textAlign: TextAlign.right,
+              style: GoogleFonts.jetBrainsMono(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                decoration: TextDecoration.underline,
+                decorationStyle: TextDecorationStyle.double,
+              ),
             ),
           ),
-          const SizedBox(width: 48),
-          Text(
-            AppFormatters.currency(_report?.totalCredit ?? 0),
-            style: GoogleFonts.jetBrainsMono(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
+          SizedBox(
+            width: 140,
+            child: Text(
+              AppFormatters.currency(_report?.totalCredit ?? 0),
+              textAlign: TextAlign.right,
+              style: GoogleFonts.jetBrainsMono(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                decoration: TextDecoration.underline,
+                decorationStyle: TextDecorationStyle.double,
+              ),
             ),
           ),
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ledgixerp/core/errors/erp_exception.dart';
 
 class ErpErrorDialog extends StatelessWidget {
   final String title;
@@ -120,16 +121,29 @@ class ErpErrorDialog extends StatelessWidget {
 
 Future<void> showErpError({
   required BuildContext context,
-  required String title,
-  required String message,
+  String? title,
+  String? message,
   String? technicalDetails,
+  Object? error,
 }) {
+  String finalTitle = title ?? 'Error';
+  String finalMessage = message ?? 'An unexpected error occurred.';
+  String? finalDetails = technicalDetails;
+
+  if (error is ErpException) {
+    finalTitle = error.title;
+    finalMessage = error.message;
+    finalDetails = error.technicalDetails;
+  } else if (error != null) {
+    finalDetails ??= error.toString();
+  }
+
   return showDialog(
     context: context,
     builder: (context) => ErpErrorDialog(
-      title: title,
-      message: message,
-      technicalDetails: technicalDetails,
+      title: finalTitle,
+      message: finalMessage,
+      technicalDetails: finalDetails,
     ),
   );
 }

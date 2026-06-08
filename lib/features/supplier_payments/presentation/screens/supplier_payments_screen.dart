@@ -61,9 +61,10 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showErpError(
+          context: context,
+          error: e,
+        );
       }
     }
   }
@@ -72,11 +73,10 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
     // Check approval
     if (payment.approvalStatus != 'approved' &&
         !widget.user.role.hasPermission(AppPermission.manageAccounting)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment must be approved before posting'),
-          backgroundColor: Colors.orange,
-        ),
+      showErpError(
+        context: context,
+        title: 'Approval Required',
+        message: 'This payment must be approved before it can be posted to the ledger.',
       );
       return;
     }
@@ -98,9 +98,7 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
       if (mounted) {
         showErpError(
           context: context,
-          title: 'Posting Failed',
-          message: 'An error occurred while posting the payment to accounting.',
-          technicalDetails: e.toString(),
+          error: e,
         );
       }
     }
@@ -376,15 +374,18 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
     try {
       await _paymentService.deletePayment(widget.user.companyId!, payment.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment deleted successfully')),
+        showErpSuccess(
+          context: context,
+          title: 'Deleted',
+          message: 'Payment deleted successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showErpError(
+          context: context,
+          error: e,
+        );
       }
     }
   }

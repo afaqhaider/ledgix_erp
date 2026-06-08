@@ -2,7 +2,7 @@
   "indexes": [
     {
       "collectionGroup": "salesInvoices",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "isPosted",
@@ -16,7 +16,7 @@
     },
     {
       "collectionGroup": "supplierBills",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "isPosted",
@@ -30,7 +30,35 @@
     },
     {
       "collectionGroup": "customerPayments",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "isPosted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "customerPayments",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "isPosted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentDate",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "supplierPayments",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "isPosted",
@@ -44,7 +72,7 @@
     },
     {
       "collectionGroup": "supplierPayments",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "isPosted",
@@ -52,13 +80,13 @@
         },
         {
           "fieldPath": "paymentDate",
-          "order": "DESCENDING"
+          "order": "ASCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "approvals",
-      "queryScope": "COLLECTION",
+      "collectionGroup": "approvalRequests",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "status",
@@ -71,8 +99,8 @@
       ]
     },
     {
-      "collectionGroup": "approvals",
-      "queryScope": "COLLECTION",
+      "collectionGroup": "approvalRequests",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "requestedByUserId",
@@ -86,7 +114,7 @@
     },
     {
       "collectionGroup": "journalEntries",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "status",
@@ -99,8 +127,36 @@
       ]
     },
     {
+      "collectionGroup": "salesInvoices",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "isPosted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "balanceDue",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "supplierBills",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "isPosted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "balanceDue",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "chartOfAccounts",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "accountType",
@@ -108,6 +164,78 @@
         },
         {
           "fieldPath": "accountCode",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "salesInvoices",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "customerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isPosted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "invoiceDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "customerPayments",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "customerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isPosted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "supplierBills",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "supplierId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isPosted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "billDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "supplierPayments",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "supplierId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isPosted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentDate",
           "order": "DESCENDING"
         }
       ]

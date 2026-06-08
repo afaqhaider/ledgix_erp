@@ -11,7 +11,10 @@ import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
+import 'package:ledgixerp/features/invoices/services/invoice_service.dart';
+
 class InvoiceDetailScreen extends StatefulWidget {
+  // ...
   final InvoiceModel invoice;
   final AppUser user;
 
@@ -29,6 +32,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   final _postingService = AccountingPostingService();
   final _approvalService = ApprovalService();
   final _companyService = CompanyService();
+  final _invoiceService = InvoiceService();
   bool _isPosting = false;
   late InvoiceModel _currentInvoice;
   CompanyModel? _company;
@@ -64,8 +68,10 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invoice submitted for approval')),
+        showErpSuccess(
+          context: context,
+          title: 'Submitted',
+          message: 'Invoice submitted for approval successfully.',
         );
       }
     } catch (e) {
@@ -74,7 +80,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           context: context,
           title: 'Approval Failed',
           message: 'Could not submit invoice for approval.',
-          technicalDetails: e.toString(),
+          error: e,
         );
       }
     } finally {
@@ -85,30 +91,29 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   Future<void> _postToAccounting() async {
     setState(() => _isPosting = true);
     try {
-      await _postingService.postSalesInvoice(
+      await _invoiceService.postInvoice(
         widget.user.companyId!,
         _currentInvoice,
         widget.user,
       );
-      setState(() {
-        _currentInvoice = InvoiceModel(
-          id: _currentInvoice.id,
-          companyId: _currentInvoice.companyId,
-          invoiceNumber: _currentInvoice.invoiceNumber,
-          customerId: _currentInvoice.customerId,
-          customerName: _currentInvoice.customerName,
-          invoiceDate: _currentInvoice.invoiceDate,
-          dueDate: _currentInvoice.dueDate,
-          status: _currentInvoice.status,
-          items: _currentInvoice.items,
-          subtotal: _currentInvoice.subtotal,
-          vatAmount: _currentInvoice.vatAmount,
-          totalAmount: _currentInvoice.totalAmount,
-          balanceDue: _currentInvoice.balanceDue,
-          createdAt: _currentInvoice.createdAt,
-          isPosted: true,
-        );
-      });
+      
+      // Re-fetch to get updated status/flags from Firestore
+      final updatedDoc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.user.companyId)
+          .collection('salesInvoices')
+          .doc(_currentInvoice.id)
+          .get();
+      
+      if (updatedDoc.exists && mounted) {
+        setState(() {
+          _currentInvoice = InvoiceModel.fromMap(
+            updatedDoc.data()!,
+            updatedDoc.id,
+          );
+        });
+      }
+
       if (mounted) {
         showErpSuccess(
           context: context,
@@ -120,9 +125,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       if (mounted) {
         showErpError(
           context: context,
-          title: 'Posting Failed',
-          message: 'An error occurred while posting the invoice to accounting.',
-          technicalDetails: e.toString(),
+          error: e,
         );
       }
     } finally {
