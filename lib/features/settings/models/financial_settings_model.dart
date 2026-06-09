@@ -18,6 +18,8 @@ class FinancialSettingsModel {
   final String supplierPaymentPrefix;
   final String journalPrefix;
   final String billPrefix;
+  final String jobPrefix;
+  final String expenseVoucherPrefix;
 
   final int nextInvoiceNumber;
   final int nextQuotationNumber;
@@ -26,6 +28,10 @@ class FinancialSettingsModel {
   final int nextSupplierPaymentNumber;
   final int nextJournalNumber;
   final int nextBillNumber;
+  final int nextJobNumber;
+  final int nextExpenseVoucherNumber;
+
+  final bool jobBasedAccountingEnabled;
 
   FinancialSettingsModel({
     required this.companyId,
@@ -41,6 +47,8 @@ class FinancialSettingsModel {
     this.supplierPaymentPrefix = 'SPAY',
     this.journalPrefix = 'JV',
     this.billPrefix = 'BILL',
+    this.jobPrefix = 'JOB',
+    this.expenseVoucherPrefix = 'EXP',
     this.nextInvoiceNumber = 1,
     this.nextQuotationNumber = 1,
     this.nextPurchaseOrderNumber = 1,
@@ -48,6 +56,9 @@ class FinancialSettingsModel {
     this.nextSupplierPaymentNumber = 1,
     this.nextJournalNumber = 1,
     this.nextBillNumber = 1,
+    this.nextJobNumber = 1,
+    this.nextExpenseVoucherNumber = 1,
+    this.jobBasedAccountingEnabled = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -65,6 +76,8 @@ class FinancialSettingsModel {
       'supplierPaymentPrefix': supplierPaymentPrefix,
       'journalPrefix': journalPrefix,
       'billPrefix': billPrefix,
+      'jobPrefix': jobPrefix,
+      'expenseVoucherPrefix': expenseVoucherPrefix,
       'nextInvoiceNumber': nextInvoiceNumber,
       'nextQuotationNumber': nextQuotationNumber,
       'nextPurchaseOrderNumber': nextPurchaseOrderNumber,
@@ -72,6 +85,9 @@ class FinancialSettingsModel {
       'nextSupplierPaymentNumber': nextSupplierPaymentNumber,
       'nextJournalNumber': nextJournalNumber,
       'nextBillNumber': nextBillNumber,
+      'nextJobNumber': nextJobNumber,
+      'nextExpenseVoucherNumber': nextExpenseVoucherNumber,
+      'jobBasedAccountingEnabled': jobBasedAccountingEnabled,
     };
   }
 
@@ -104,6 +120,8 @@ class FinancialSettingsModel {
       supplierPaymentPrefix: map['supplierPaymentPrefix'] ?? 'SPAY',
       journalPrefix: map['journalPrefix'] ?? 'JV',
       billPrefix: map['billPrefix'] ?? 'BILL',
+      jobPrefix: map['jobPrefix'] ?? 'JOB',
+      expenseVoucherPrefix: map['expenseVoucherPrefix'] ?? 'EXP',
       nextInvoiceNumber: map['nextInvoiceNumber'] ?? 1,
       nextQuotationNumber: map['nextQuotationNumber'] ?? 1,
       nextPurchaseOrderNumber: map['nextPurchaseOrderNumber'] ?? 1,
@@ -112,6 +130,9 @@ class FinancialSettingsModel {
       nextSupplierPaymentNumber: map['nextSupplierPaymentNumber'] ?? 1,
       nextJournalNumber: map['nextJournalNumber'] ?? 1,
       nextBillNumber: map['nextBillNumber'] ?? 1,
+      nextJobNumber: map['nextJobNumber'] ?? 1,
+      nextExpenseVoucherNumber: map['nextExpenseVoucherNumber'] ?? 1,
+      jobBasedAccountingEnabled: map['jobBasedAccountingEnabled'] ?? false,
     );
   }
 
@@ -129,6 +150,8 @@ class FinancialSettingsModel {
     String? supplierPaymentPrefix,
     String? journalPrefix,
     String? billPrefix,
+    String? jobPrefix,
+    String? expenseVoucherPrefix,
     int? nextInvoiceNumber,
     int? nextQuotationNumber,
     int? nextPurchaseOrderNumber,
@@ -136,6 +159,9 @@ class FinancialSettingsModel {
     int? nextSupplierPaymentNumber,
     int? nextJournalNumber,
     int? nextBillNumber,
+    int? nextJobNumber,
+    int? nextExpenseVoucherNumber,
+    bool? jobBasedAccountingEnabled,
   }) {
     return FinancialSettingsModel(
       companyId: companyId ?? this.companyId,
@@ -154,6 +180,8 @@ class FinancialSettingsModel {
           supplierPaymentPrefix ?? this.supplierPaymentPrefix,
       journalPrefix: journalPrefix ?? this.journalPrefix,
       billPrefix: billPrefix ?? this.billPrefix,
+      jobPrefix: jobPrefix ?? this.jobPrefix,
+      expenseVoucherPrefix: expenseVoucherPrefix ?? this.expenseVoucherPrefix,
       nextInvoiceNumber: nextInvoiceNumber ?? this.nextInvoiceNumber,
       nextQuotationNumber: nextQuotationNumber ?? this.nextQuotationNumber,
       nextPurchaseOrderNumber:
@@ -163,6 +191,10 @@ class FinancialSettingsModel {
           nextSupplierPaymentNumber ?? this.nextSupplierPaymentNumber,
       nextJournalNumber: nextJournalNumber ?? this.nextJournalNumber,
       nextBillNumber: nextBillNumber ?? this.nextBillNumber,
+      nextJobNumber: nextJobNumber ?? this.nextJobNumber,
+      nextExpenseVoucherNumber: nextExpenseVoucherNumber ?? this.nextExpenseVoucherNumber,
+      jobBasedAccountingEnabled:
+          jobBasedAccountingEnabled ?? this.jobBasedAccountingEnabled,
     );
   }
 

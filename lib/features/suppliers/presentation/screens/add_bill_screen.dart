@@ -20,6 +20,11 @@ import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
+import 'package:ledgixerp/widgets/posting_error_modal.dart';
+import 'package:ledgixerp/core/auth/user_role.dart';
+import 'package:ledgixerp/features/operations/jobs/models/job_model.dart';
+import 'package:ledgixerp/features/operations/jobs/services/job_service.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 
 class AddBillScreen extends StatefulWidget {
   final AppUser user;
@@ -37,6 +42,10 @@ class _AddBillScreenState extends State<AddBillScreen> {
   final _accountService = AccountService();
   final _inventoryService = InventoryService();
   final _termsService = TermsService();
+  final _jobService = JobService();
+  final _settingsService = FinancialSettingsService();
+  final _notesController = TextEditingController();
+  final _referenceController = TextEditingController();
 
   String _previewNumber = 'Loading...';
   SupplierModel? _selectedSupplier;
@@ -49,6 +58,10 @@ class _AddBillScreenState extends State<AddBillScreen> {
   List<AccountModel> _allAccounts = [];
   List<InventoryItemModel> _allProducts = [];
   List<CreditTermModel> _allTerms = [];
+  List<JobModel> _activeJobs = [];
+  JobModel? _selectedJob;
+  bool _jobEnabled = false;
+
   final List<BillLineItemModel> _items = [];
   bool _isLoading = false;
 
@@ -58,6 +71,13 @@ class _AddBillScreenState extends State<AddBillScreen> {
     _loadInitialData();
     _addItem();
     _listenToMasterData();
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    _referenceController.dispose();
+    super.dispose();
   }
 
   void _listenToMasterData() {
@@ -106,11 +126,21 @@ class _AddBillScreenState extends State<AddBillScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _billService.previewNextBillNumber(
-      widget.user.companyId!,
-    );
+    final companyId = widget.user.companyId!;
+    final number = await _billService.previewNextBillNumber(companyId);
+    final settings = await _settingsService.getSettings(companyId);
+    
     if (mounted) {
-      setState(() => _previewNumber = number);
+      setState(() {
+        _previewNumber = number;
+        _jobEnabled = settings.jobBasedAccountingEnabled;
+      });
+      
+      if (_jobEnabled) {
+        _jobService.getActiveJobs(companyId).listen((jobs) {
+          if (mounted) setState(() => _activeJobs = jobs);
+        });
+      }
     }
   }
 
@@ -177,24 +207,37 @@ class _AddBillScreenState extends State<AddBillScreen> {
   double get _totalVat => _items.fold(0.0, (sum, item) => sum + item.lineVat);
   double get _totalAmount => _totalSubtotal + _totalVat;
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedSupplier == null) {
-      showErpError(
-        context: context,
-        title: 'Selection Required',
-        message: 'Please select a supplier before saving the bill.',
-      );
-      return;
-    }
+  bool get _canPost {
+    const highRoles = [
+      UserRole.owner,
+      UserRole.superAdmin,
+      UserRole.admin,
+      UserRole.accountant,
+      UserRole.generalManager,
+    ];
+    return highRoles.contains(widget.user.role);
+  }
 
-    if (_items.any((item) => item.accountId.isEmpty)) {
-      showErpError(
-        context: context,
-        title: 'Account Required',
-        message: 'All items must have a posting account selected.',
-      );
-      return;
+  Future<void> _save({bool shouldPost = false}) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (shouldPost) {
+      if (_selectedSupplier == null) {
+        showErpError(
+          context: context,
+          title: 'Selection Required',
+          message: 'Please select a supplier before posting the bill.',
+        );
+        return;
+      }
+      if (_items.isEmpty || _items.any((item) => item.accountId.isEmpty)) {
+        showErpError(
+          context: context,
+          title: 'Account Required',
+          message: 'All items must have a posting account selected.',
+        );
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -203,8 +246,8 @@ class _AddBillScreenState extends State<AddBillScreen> {
         id: '',
         companyId: widget.user.companyId!,
         billNumber: 'AUTO',
-        supplierId: _selectedSupplier!.id,
-        supplierName: _selectedSupplier!.supplierName,
+        supplierId: _selectedSupplier?.id ?? '',
+        supplierName: _selectedSupplier?.supplierName ?? 'Draft Supplier',
         billDate: _billDate,
         dueDate: _dueDate,
         items: _items,
@@ -212,11 +255,19 @@ class _AddBillScreenState extends State<AddBillScreen> {
         vatAmount: _totalVat,
         totalAmount: _totalAmount,
         balanceDue: _totalAmount,
+        notes: _notesController.text,
+        reference: _referenceController.text,
         createdAt: DateTime.now(),
         attachments: _attachments,
+        status: shouldPost
+            ? (_canPost ? BillStatus.posted : BillStatus.pendingApproval)
+            : BillStatus.draft,
+        jobId: _selectedJob?.id,
+        jobNumber: _selectedJob?.jobNumber,
+        jobName: _selectedJob?.jobName,
       );
 
-      await _billService.addBill(bill);
+      await _billService.addBill(bill, widget.user, shouldPost: shouldPost);
       if (mounted) {
         if (widget.isPane) {
           Navigator.pop(context, true);
@@ -224,12 +275,21 @@ class _AddBillScreenState extends State<AddBillScreen> {
           Navigator.pop(context);
         }
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Error saving bill: $e');
+      debugPrint(stack.toString());
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        if (shouldPost) {
+          PostingErrorModal.show(
+            context: context,
+            title: 'Posting Failed',
+            message:
+                'An error occurred while trying to post the bill. The transaction may not have been completed.',
+            error: e,
+          );
+        } else {
+          showErpError(context: context, error: e);
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -311,13 +371,22 @@ class _AddBillScreenState extends State<AddBillScreen> {
                               addLabel: 'Add New Supplier',
                               onAdd: _showAddSupplierDialog,
                               initialValue: _selectedSupplier,
-                              validator: (v) => _selectedSupplier == null
-                                  ? 'Required'
-                                  : null,
+                              validator: (v) =>
+                                  _selectedSupplier == null ? 'Required' : null,
                             ),
                           ),
                         ],
                       ),
+                      if (_jobEnabled) ...[
+                        const SizedBox(height: 16),
+                        SearchableSelector<JobModel>(
+                          labelText: 'Linked Job (Optional)',
+                          items: _activeJobs,
+                          itemLabelBuilder: (j) => '${j.jobNumber} - ${j.jobName}',
+                          onSelected: (val) => setState(() => _selectedJob = val),
+                          initialValue: _selectedJob,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -356,8 +425,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                             child: _buildDatePicker(
                               label: 'Due Date',
                               selectedDate: _dueDate,
-                              onTap: (date) =>
-                                  setState(() => _dueDate = date),
+                              onTap: (date) => setState(() => _dueDate = date),
                             ),
                           ),
                         ],
@@ -402,9 +470,15 @@ class _AddBillScreenState extends State<AddBillScreen> {
       return ErpSidePane(
         title: 'Create New Bill',
         onCancel: () => Navigator.pop(context),
-        onSave: _save,
+        onSave: () => _save(shouldPost: _canPost),
         isLoading: _isLoading,
-        saveLabel: 'Save Bill',
+        saveLabel: _canPost ? 'Save & Post' : 'Submit for Approval',
+        extraActions: [
+          OutlinedButton(
+            onPressed: _isLoading ? null : () => _save(shouldPost: false),
+            child: const Text('Save Draft'),
+          ),
+        ],
         child: formContent,
       );
     }
@@ -413,13 +487,21 @@ class _AddBillScreenState extends State<AddBillScreen> {
       appBar: AppBar(
         title: const Text('Create New Bill'),
         actions: [
+          OutlinedButton(
+            onPressed: _isLoading ? null : () => _save(shouldPost: false),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: theme.colorScheme.primary),
+            ),
+            child: const Text('Save Draft'),
+          ),
+          const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: _isLoading ? null : _save,
+            onPressed: _isLoading ? null : () => _save(shouldPost: true),
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Save Bill'),
+            child: Text(_canPost ? 'Save & Post' : 'Submit for Approval'),
           ),
           const SizedBox(width: 16),
         ],

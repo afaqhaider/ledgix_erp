@@ -30,7 +30,8 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
   final _suppPayPrefixController = TextEditingController();
   final _journalPrefixController = TextEditingController();
   final _billPrefixController = TextEditingController();
-  final _activePeriodController = TextEditingController();
+  final _jobPrefixController = TextEditingController();
+  final _expenseVoucherPrefixController = TextEditingController();
 
   @override
   void initState() {
@@ -59,7 +60,8 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
           _suppPayPrefixController.text = settings.supplierPaymentPrefix;
           _journalPrefixController.text = settings.journalPrefix;
           _billPrefixController.text = settings.billPrefix;
-          _activePeriodController.text = settings.activeAccountingPeriod;
+          _jobPrefixController.text = settings.jobPrefix;
+          _expenseVoucherPrefixController.text = settings.expenseVoucherPrefix;
           _isLoading = false;
         });
       }
@@ -79,12 +81,7 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
 
     setState(() => _isLoading = true);
 
-    final updatedSettings = FinancialSettingsModel(
-      companyId: widget.user.companyId!,
-      financialYearStart: _settings.financialYearStart,
-      financialYearEnd: _settings.financialYearEnd,
-      activeAccountingPeriod: _activePeriodController.text,
-      lockPastPeriods: _settings.lockPastPeriods,
+    final updatedSettings = _settings.copyWith(
       invoicePrefix: _invoicePrefixController.text,
       quotationPrefix: _quotationPrefixController.text,
       purchaseOrderPrefix: _poPrefixController.text,
@@ -92,13 +89,8 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
       supplierPaymentPrefix: _suppPayPrefixController.text,
       journalPrefix: _journalPrefixController.text,
       billPrefix: _billPrefixController.text,
-      nextInvoiceNumber: _settings.nextInvoiceNumber,
-      nextQuotationNumber: _settings.nextQuotationNumber,
-      nextPurchaseOrderNumber: _settings.nextPurchaseOrderNumber,
-      nextReceiptNumber: _settings.nextReceiptNumber,
-      nextSupplierPaymentNumber: _settings.nextSupplierPaymentNumber,
-      nextJournalNumber: _settings.nextJournalNumber,
-      nextBillNumber: _settings.nextBillNumber,
+      jobPrefix: _jobPrefixController.text,
+      expenseVoucherPrefix: _expenseVoucherPrefixController.text,
     );
 
     try {
@@ -157,40 +149,6 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionHeader('Accounting Period'),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _activePeriodController,
-                        decoration: const InputDecoration(
-                          labelText: 'Active Accounting Period (YYYY-MM)',
-                          helperText: 'Controls which month is currently open for posting',
-                          prefixIcon: Icon(Icons.calendar_month_outlined),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Required';
-                          if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(value)) {
-                            return 'Use YYYY-MM format';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Lock Past Periods', style: TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: const Text(
-                          'Prevent posting or editing transactions in previous months',
-                        ),
-                        value: _settings.lockPastPeriods,
-                        onChanged: (val) => setState(
-                          () =>
-                              _settings = _settings.copyWith(lockPastPeriods: val),
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 32),
-                        child: Divider(),
-                      ),
                       _buildSectionHeader('Document Numbering (Prefixes)'),
                       const SizedBox(height: 24),
                       GridView.count(
@@ -201,7 +159,10 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
                         mainAxisSpacing: 16,
                         childAspectRatio: 3.5,
                         children: [
-                          _buildPrefixField('Invoice Prefix', _invoicePrefixController),
+                          _buildPrefixField(
+                            'Invoice Prefix',
+                            _invoicePrefixController,
+                          ),
                           _buildPrefixField(
                             'Quotation Prefix',
                             _quotationPrefixController,
@@ -210,7 +171,10 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
                             'Purchase Order Prefix',
                             _poPrefixController,
                           ),
-                          _buildPrefixField('Receipt Prefix', _receiptPrefixController),
+                          _buildPrefixField(
+                            'Receipt Prefix',
+                            _receiptPrefixController,
+                          ),
                           _buildPrefixField(
                             'Supplier Payment Prefix',
                             _suppPayPrefixController,
@@ -222,6 +186,14 @@ class _FinancialSettingsScreenState extends State<FinancialSettingsScreen> {
                           _buildPrefixField(
                             'Vendor Bill Prefix',
                             _billPrefixController,
+                          ),
+                          _buildPrefixField(
+                            'Job Prefix',
+                            _jobPrefixController,
+                          ),
+                          _buildPrefixField(
+                            'Expense Voucher Prefix',
+                            _expenseVoucherPrefixController,
                           ),
                         ],
                       ),

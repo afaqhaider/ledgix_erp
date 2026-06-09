@@ -67,7 +67,9 @@ class ImportErrorDialog extends StatelessWidget {
           onPressed: () {
             Clipboard.setData(ClipboardData(text: technicalDetails));
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Error details copied to clipboard')),
+              const SnackBar(
+                content: Text('Error details copied to clipboard'),
+              ),
             );
           },
           child: const Text('Copy Error Details'),

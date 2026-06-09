@@ -1,96 +1,143 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/core/theme/app_spacing.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
+import 'package:ledgixerp/features/settings/models/financial_settings_model.dart';
 import 'trial_balance_screen.dart';
 import 'profit_loss_screen.dart';
 import 'balance_sheet_screen.dart';
-
+import 'job_report_screen.dart';
 import 'general_ledger_screen.dart';
 import 'account_statement_screen.dart';
 
-class ReportsDashboardScreen extends StatelessWidget {
+class ReportsDashboardScreen extends StatefulWidget {
   final String companyId;
 
   const ReportsDashboardScreen({super.key, required this.companyId});
 
   @override
+  State<ReportsDashboardScreen> createState() => _ReportsDashboardScreenState();
+}
+
+class _ReportsDashboardScreenState extends State<ReportsDashboardScreen> {
+  final _settingsService = FinancialSettingsService();
+  bool _jobBasedAccountingEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await _settingsService.getSettings(widget.companyId);
+    if (mounted) {
+      setState(() {
+        _jobBasedAccountingEnabled = settings.jobBasedAccountingEnabled;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      children: [
-        _buildHeader(theme),
-        Expanded(
-          child: GridView.count(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            crossAxisCount: 2,
-            crossAxisSpacing: AppSpacing.md,
-            mainAxisSpacing: AppSpacing.md,
-            children: [
-              _buildReportCard(
-                context,
-                'Trial Balance',
-                'Summary of all ledger balances.',
-                Icons.account_balance_wallet,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => TrialBalanceScreen(companyId: companyId),
+    return StreamBuilder<FinancialSettingsModel>(
+      stream: _settingsService.streamSettings(widget.companyId),
+      builder: (context, snapshot) {
+        final enabled = snapshot.data?.jobBasedAccountingEnabled ?? _jobBasedAccountingEnabled;
+
+        return Column(
+          children: [
+            _buildHeader(theme),
+            Expanded(
+              child: GridView.count(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                crossAxisCount: 2,
+                crossAxisSpacing: AppSpacing.md,
+                mainAxisSpacing: AppSpacing.md,
+                childAspectRatio: 1.5,
+                children: [
+                  _buildReportCard(
+                    context,
+                    'Trial Balance',
+                    'Summary of all ledger balances.',
+                    Icons.account_balance_wallet,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TrialBalanceScreen(companyId: widget.companyId),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              _buildReportCard(
-                context,
-                'Profit & Loss',
-                'Income and expenses overview.',
-                Icons.trending_up,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ProfitLossScreen(companyId: companyId),
+                  _buildReportCard(
+                    context,
+                    'Profit & Loss',
+                    'Income and expenses overview.',
+                    Icons.trending_up,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProfitLossScreen(companyId: widget.companyId),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              _buildReportCard(
-                context,
-                'Balance Sheet',
-                'Financial position as of date.',
-                Icons.pie_chart,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BalanceSheetScreen(companyId: companyId),
+                  _buildReportCard(
+                    context,
+                    'Balance Sheet',
+                    'Financial position as of date.',
+                    Icons.pie_chart,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BalanceSheetScreen(companyId: widget.companyId),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              _buildReportCard(
-                context,
-                'General Ledger',
-                'Detailed drill-down for any specific account.',
-                Icons.list_alt,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => GeneralLedgerScreen(companyId: companyId),
+                  if (enabled)
+                    _buildReportCard(
+                      context,
+                      'Job Profitability',
+                      'Track revenue and expenses per project.',
+                      Icons.assignment_turned_in,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => JobReportScreen(companyId: widget.companyId),
+                        ),
+                      ),
+                    ),
+                  _buildReportCard(
+                    context,
+                    'General Ledger',
+                    'Detailed drill-down for any specific account.',
+                    Icons.list_alt,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GeneralLedgerScreen(companyId: widget.companyId),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              _buildReportCard(
-                context,
-                'Account Statement',
-                'Formal statement for any GL account.',
-                Icons.description_outlined,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AccountStatementScreen(companyId: companyId),
+                  _buildReportCard(
+                    context,
+                    'Account Statement',
+                    'Formal statement for any GL account.',
+                    Icons.description_outlined,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AccountStatementScreen(companyId: widget.companyId),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 

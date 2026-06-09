@@ -21,10 +21,17 @@ class VerificationTab extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Text('Physical Verification', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Physical Verification',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () => SidePanel.show(context: context, title: 'New Verification', child: VerificationPane(user: user)),
+                onPressed: () => SidePanel.show(
+                  context: context,
+                  title: 'New Verification',
+                  child: VerificationPane(user: user),
+                ),
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add New'),
               ),
@@ -33,21 +40,54 @@ class VerificationTab extends StatelessWidget {
         ),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: firestore.collection('companies').doc(user.companyId!).collection('physicalVerifications').orderBy('date', descending: true).snapshots(),
+            stream: firestore
+                .collection('companies')
+                .doc(user.companyId!)
+                .collection('physicalVerifications')
+                .orderBy('date', descending: true)
+                .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
               final docs = snapshot.data?.docs ?? [];
               return ListView.builder(
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
-                  final v = PhysicalVerificationModel.fromMap(docs[index].data() as Map<String, dynamic>, docs[index].id);
+                  final v = PhysicalVerificationModel.fromMap(
+                    docs[index].data() as Map<String, dynamic>,
+                    docs[index].id,
+                  );
                   return ListTile(
                     dense: true,
-                    title: Text(v.countNumber, style: const TextStyle(fontSize: 12)),
-                    subtitle: Text('Warehouse: ${v.warehouseId} | Status: ${v.status}', style: const TextStyle(fontSize: 10)),
-                    trailing: v.status == 'draft' 
-                      ? ElevatedButton(onPressed: () => movementService.approveVerification(v), style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)), child: const Text('Approve', style: TextStyle(fontSize: 10)))
-                      : const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                    title: Text(
+                      v.countNumber,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    subtitle: Text(
+                      'Warehouse: ${v.warehouseId} | Status: ${v.status}',
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                    trailing: v.status == 'draft'
+                        ? ElevatedButton(
+                            onPressed: () =>
+                                movementService.approveVerification(v),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                            ),
+                            child: const Text(
+                              'Approve',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                          )
+                        : const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 20,
+                          ),
                   );
                 },
               );

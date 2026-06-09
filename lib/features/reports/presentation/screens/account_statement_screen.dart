@@ -89,16 +89,16 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               ? const Center(child: CircularProgressIndicator())
               : _selectedAccount == null
               ? _buildEmptyState(
-                theme,
-                'Please select an account',
-                Icons.account_tree_outlined,
-              )
+                  theme,
+                  'Please select an account',
+                  Icons.account_tree_outlined,
+                )
               : _entries.isEmpty
               ? _buildEmptyState(
-                theme,
-                'No entries found for the selected period',
-                Icons.search_off_rounded,
-              )
+                  theme,
+                  'No entries found for the selected period',
+                  Icons.search_off_rounded,
+                )
               : _buildStatementTable(theme, isDark),
         ),
       ],
@@ -271,7 +271,9 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.25,
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -280,13 +282,23 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
           _summaryItem(theme, 'Opening Balance', _openingBalance),
           _summaryItem(theme, 'Total Debit', _totalDebit),
           _summaryItem(theme, 'Total Credit', _totalCredit),
-          _summaryItem(theme, 'Closing Balance', _closingBalance, isPrimary: true),
+          _summaryItem(
+            theme,
+            'Closing Balance',
+            _closingBalance,
+            isPrimary: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _summaryItem(ThemeData theme, String label, double amount, {bool isPrimary = false}) {
+  Widget _summaryItem(
+    ThemeData theme,
+    String label,
+    double amount, {
+    bool isPrimary = false,
+  }) {
     return Column(
       children: [
         Text(
@@ -304,7 +316,9 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
           style: GoogleFonts.jetBrainsMono(
             fontSize: 16,
             fontWeight: isPrimary ? FontWeight.w800 : FontWeight.w700,
-            color: isPrimary ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+            color: isPrimary
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface,
           ),
         ),
       ],
@@ -349,7 +363,9 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               return DataRow(
                 color: isOpening
                     ? WidgetStateProperty.all(
-                        theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                        theme.colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.4,
+                        ),
                       )
                     : null,
                 cells: [
@@ -367,7 +383,9 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontStyle: isOpening ? FontStyle.italic : null,
-                          fontWeight: isOpening ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: isOpening
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -397,8 +415,12 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                       AppFormatters.currency(balance),
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 14,
-                        fontWeight: isOpening ? FontWeight.w600 : FontWeight.w800,
-                        color: isOpening ? theme.colorScheme.onSurface : theme.colorScheme.primary,
+                        fontWeight: isOpening
+                            ? FontWeight.w600
+                            : FontWeight.w800,
+                        color: isOpening
+                            ? theme.colorScheme.onSurface
+                            : theme.colorScheme.primary,
                       ),
                     ),
                   ),

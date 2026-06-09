@@ -6,6 +6,8 @@ import 'package:ledgixerp/core/theme/theme_controller.dart';
 import 'package:ledgixerp/features/auth/services/auth_service.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/features/settings/models/financial_settings_model.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 import 'package:ledgixerp/widgets/app_logo_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -31,30 +33,34 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   String? _expandedSection;
   final Set<AppModuleId> _expandedModules = {};
   final _companyService = CompanyService();
+  final _settingsService = FinancialSettingsService();
   Stream<CompanyModel?>? _companyStream;
+  Stream<FinancialSettingsModel>? _settingsStream;
   String? _lastCompanyId;
 
   @override
   void initState() {
     super.initState();
-    _updateCompanyStream();
+    _updateStreams();
   }
 
   @override
   void didUpdateWidget(SidebarNavigation oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.companyId != widget.companyId) {
-      _updateCompanyStream();
+      _updateStreams();
     }
   }
 
-  void _updateCompanyStream() {
+  void _updateStreams() {
     if (widget.companyId != null && widget.companyId != _lastCompanyId) {
       _lastCompanyId = widget.companyId;
       _companyStream = _companyService.getCompany(widget.companyId!);
+      _settingsStream = _settingsService.streamSettings(widget.companyId!);
     } else if (widget.companyId == null) {
       _lastCompanyId = null;
       _companyStream = null;
+      _settingsStream = null;
     }
   }
 
@@ -62,138 +68,136 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
-    // Use theme's surface color (which we mapped to darkSidebar in darkTheme)
     final sidebarColor = theme.colorScheme.surfaceContainer;
     final activeColor = theme.colorScheme.primary;
-
     const double width = 204;
 
-    return Container(
-      width: width,
-      decoration: BoxDecoration(
-        color: sidebarColor,
-        border: Border(
-          right: BorderSide(
-            color: isDark ? Colors.white10 : AppColors.lightBorder,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          _buildSidebarHeader(),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: AppModules.sections.map((section) {
-                final visibleModules = section.modules
-                    .where(
-                      (module) => widget.role.hasPermission(module.permission),
-                    )
-                    .toList();
+    return StreamBuilder<FinancialSettingsModel>(
+      stream: _settingsStream,
+      builder: (context, settingsSnapshot) {
+        final settings = settingsSnapshot.data;
+        final bool jobEnabled = settings?.jobBasedAccountingEnabled ?? false;
 
-                if (visibleModules.isEmpty) return const SizedBox.shrink();
-
-                final bool isSectionExpanded =
-                    _expandedSection == section.header;
-
-                if (!section.isCollapsible) {
-                  return Column(
-                    children: visibleModules.map((module) {
-                      return _SidebarTile(
-                        module: module,
-                        isSelected: widget.selectedModuleId == module.id,
-                        activeColor: activeColor,
-                        onTap: () => widget.onModuleSelected(module),
-                      );
-                    }).toList(),
-                  );
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SidebarHeaderTile(
-                      title: section.header,
-                      icon: section.icon,
-                      isSectionExpanded: isSectionExpanded,
-                      onTap: () {
-                        setState(() {
-                          _expandedSection = isSectionExpanded
-                              ? null
-                              : section.header;
-                        });
-                      },
-                    ),
-                    if (isSectionExpanded)
-                      ...visibleModules.expand((module) {
-                        final List<Widget> subWidgets = [];
-                        final visibleSubModules = module.subModules
-                            .where(
-                              (sub) =>
-                                  widget.role.hasPermission(sub.permission),
-                            )
-                            .toList();
-                        final hasSubModules = visibleSubModules.isNotEmpty;
-                        final isModuleExpanded = _expandedModules.contains(
-                          module.id,
-                        );
-
-                        subWidgets.add(
-                          _SidebarTile(
-                            module: module,
-                            isSelected:
-                                widget.selectedModuleId == module.id ||
-                                visibleSubModules.any(
-                                  (sub) => widget.selectedModuleId == sub.id,
-                                ),
-                            activeColor: activeColor,
-                            onTap: () {
-                              if (hasSubModules) {
-                                setState(() {
-                                  if (isModuleExpanded) {
-                                    _expandedModules.remove(module.id);
-                                  } else {
-                                    _expandedModules.add(module.id);
-                                  }
-                                });
-                                return;
-                              }
-                              widget.onModuleSelected(module);
-                            },
-                            isIndent: true,
-                            hasSubItems: hasSubModules,
-                            isExpanded: isModuleExpanded,
-                          ),
-                        );
-
-                        if (hasSubModules && isModuleExpanded) {
-                          subWidgets.addAll(
-                            visibleSubModules.map(
-                              (sub) => _SidebarTile(
-                                module: sub,
-                                isSelected: widget.selectedModuleId == sub.id,
-                                activeColor: activeColor,
-                                onTap: () => widget.onModuleSelected(sub),
-                                isSubItem: true,
-                              ),
-                            ),
-                          );
-                        }
-                        return subWidgets;
-                      }),
-                  ],
-                );
-              }).toList(),
+        return Container(
+          width: width,
+          decoration: BoxDecoration(
+            color: sidebarColor,
+            border: Border(
+              right: BorderSide(
+                color: isDark ? Colors.white10 : AppColors.lightBorder,
+              ),
             ),
           ),
-          Divider(
-            color: isDark ? Colors.white10 : AppColors.lightBorder,
-            height: 1,
+          child: Column(
+            children: [
+              _buildSidebarHeader(),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  children: AppModules.sections.map((section) {
+                    final visibleModules = section.modules
+                        .where((module) => widget.role.hasPermission(module.permission))
+                        .where((module) {
+                          if (!jobEnabled && (module.id == AppModuleId.jobs || module.id == AppModuleId.jobReports)) {
+                            return false;
+                          }
+                          return true;
+                        })
+                        .toList();
+
+                    if (visibleModules.isEmpty) return const SizedBox.shrink();
+
+                    final bool isSectionExpanded = _expandedSection == section.header;
+
+                    if (!section.isCollapsible) {
+                      return Column(
+                        children: visibleModules.map((module) {
+                          return _SidebarTile(
+                            module: module,
+                            isSelected: widget.selectedModuleId == module.id,
+                            activeColor: activeColor,
+                            onTap: () => widget.onModuleSelected(module),
+                          );
+                        }).toList(),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SidebarHeaderTile(
+                          title: section.header,
+                          icon: section.icon,
+                          isSectionExpanded: isSectionExpanded,
+                          onTap: () {
+                            setState(() {
+                              _expandedSection = isSectionExpanded ? null : section.header;
+                            });
+                          },
+                        ),
+                        if (isSectionExpanded)
+                          ...visibleModules.expand((module) {
+                            final List<Widget> subWidgets = [];
+                            final visibleSubModules = module.subModules
+                                .where((sub) => widget.role.hasPermission(sub.permission))
+                                .toList();
+                            final hasSubModules = visibleSubModules.isNotEmpty;
+                            final isModuleExpanded = _expandedModules.contains(module.id);
+
+                            subWidgets.add(
+                              _SidebarTile(
+                                module: module,
+                                isSelected: widget.selectedModuleId == module.id ||
+                                    visibleSubModules.any((sub) => widget.selectedModuleId == sub.id),
+                                activeColor: activeColor,
+                                onTap: () {
+                                  if (hasSubModules) {
+                                    setState(() {
+                                      if (isModuleExpanded) {
+                                        _expandedModules.remove(module.id);
+                                      } else {
+                                        _expandedModules.add(module.id);
+                                      }
+                                    });
+                                    return;
+                                  }
+                                  widget.onModuleSelected(module);
+                                },
+                                isIndent: true,
+                                hasSubItems: hasSubModules,
+                                isExpanded: isModuleExpanded,
+                              ),
+                            );
+
+                            if (hasSubModules && isModuleExpanded) {
+                              subWidgets.addAll(
+                                visibleSubModules.map(
+                                  (sub) => _SidebarTile(
+                                    module: sub,
+                                    isSelected: widget.selectedModuleId == sub.id,
+                                    activeColor: activeColor,
+                                    onTap: () => widget.onModuleSelected(sub),
+                                    isSubItem: true,
+                                  ),
+                                ),
+                              );
+                            }
+                            return subWidgets;
+                          }),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+              Divider(
+                color: isDark ? Colors.white10 : AppColors.lightBorder,
+                height: 1,
+              ),
+              _buildBottomSection(),
+            ],
           ),
-          _buildBottomSection(),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -204,10 +208,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
         stream: _companyStream,
         builder: (context, snapshot) {
           final company = snapshot.data;
-          final name =
-              company?.tradeName ??
-              company?.companyLegalName ??
-              "LedGix ERP";
+          final name = company?.tradeName ?? company?.companyLegalName ?? "LedGix ERP";
           final logoUrl = company?.companyLogoUrl;
 
           return Column(
@@ -336,16 +337,12 @@ class _SidebarHeaderTile extends StatelessWidget {
                 style: GoogleFonts.inter(
                   color: isSectionExpanded ? activeTextColor : idleColor,
                   fontSize: 12,
-                  fontWeight: isSectionExpanded
-                      ? FontWeight.w600
-                      : FontWeight.w500,
+                  fontWeight: isSectionExpanded ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
             ),
             Icon(
-              isSectionExpanded
-                  ? Icons.expand_less_rounded
-                  : Icons.expand_more_rounded,
+              isSectionExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
               color: idleColor.withValues(alpha: 0.5),
               size: 14,
             ),
@@ -429,9 +426,7 @@ class _SidebarTile extends StatelessWidget {
                 )
               else if (hasSubItems)
                 Icon(
-                  isExpanded
-                      ? Icons.expand_less_rounded
-                      : Icons.expand_more_rounded,
+                  isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                   size: 14,
                   color: idleColor,
                 ),

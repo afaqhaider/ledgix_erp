@@ -28,6 +28,11 @@ class InvoiceLineItemModel {
   final double lineVat;
   final double lineTotal;
 
+  // Job Link
+  final String? jobId;
+  final String? jobNumber;
+  final String? jobName;
+
   InvoiceLineItemModel({
     this.productId,
     required this.accountId,
@@ -40,6 +45,9 @@ class InvoiceLineItemModel {
     required this.lineSubtotal,
     required this.lineVat,
     required this.lineTotal,
+    this.jobId,
+    this.jobNumber,
+    this.jobName,
   });
 
   Map<String, dynamic> toMap() {
@@ -55,6 +63,9 @@ class InvoiceLineItemModel {
       'lineSubtotal': lineSubtotal,
       'lineVat': lineVat,
       'lineTotal': lineTotal,
+      'jobId': jobId,
+      'jobNumber': jobNumber,
+      'jobName': jobName,
     };
   }
 
@@ -71,6 +82,9 @@ class InvoiceLineItemModel {
       lineSubtotal: (map['lineSubtotal'] as num?)?.toDouble() ?? 0.0,
       lineVat: (map['lineVat'] as num?)?.toDouble() ?? 0.0,
       lineTotal: (map['lineTotal'] as num?)?.toDouble() ?? 0.0,
+      jobId: map['jobId'],
+      jobNumber: map['jobNumber'],
+      jobName: map['jobName'],
     );
   }
 }
@@ -91,6 +105,11 @@ class InvoiceModel {
   final double amountPaid;
   final double balanceDue;
   final DateTime createdAt;
+
+  // Job Link (Header Level - can be used to set default for lines)
+  final String? jobId;
+  final String? jobNumber;
+  final String? jobName;
 
   // Customization fields
   final String? invoiceTemplateId;
@@ -132,6 +151,9 @@ class InvoiceModel {
     this.postedAt,
     this.postedBy,
     this.attachments = const [],
+    this.jobId,
+    this.jobNumber,
+    this.jobName,
   });
 
   InvoiceModel copyWith({
@@ -160,6 +182,9 @@ class InvoiceModel {
     DateTime? postedAt,
     String? postedBy,
     List<AttachmentModel>? attachments,
+    String? jobId,
+    String? jobNumber,
+    String? jobName,
   }) {
     return InvoiceModel(
       id: id ?? this.id,
@@ -187,6 +212,9 @@ class InvoiceModel {
       postedAt: postedAt ?? this.postedAt,
       postedBy: postedBy ?? this.postedBy,
       attachments: attachments ?? this.attachments,
+      jobId: jobId ?? this.jobId,
+      jobNumber: jobNumber ?? this.jobNumber,
+      jobName: jobName ?? this.jobName,
     );
   }
 
@@ -216,6 +244,9 @@ class InvoiceModel {
       'postedAt': postedAt != null ? Timestamp.fromDate(postedAt!) : null,
       'postedBy': postedBy,
       'attachments': attachments.map((x) => x.toMap()).toList(),
+      'jobId': jobId,
+      'jobNumber': jobNumber,
+      'jobName': jobName,
     };
   }
 
@@ -260,6 +291,9 @@ class InvoiceModel {
               ?.map((x) => AttachmentModel.fromMap(x))
               .toList() ??
           [],
+      jobId: map['jobId'],
+      jobNumber: map['jobNumber'],
+      jobName: map['jobName'],
     );
   }
 }

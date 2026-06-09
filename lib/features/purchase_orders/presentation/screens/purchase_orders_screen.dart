@@ -327,11 +327,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.shopping_cart_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No purchase orders found',

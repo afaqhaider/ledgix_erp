@@ -25,11 +25,19 @@ class _WarehousePaneState extends State<WarehousePane> {
   @override
   void initState() {
     super.initState();
-    _codeController = TextEditingController(text: widget.warehouse?.warehouseCode);
-    _nameController = TextEditingController(text: widget.warehouse?.warehouseName);
+    _codeController = TextEditingController(
+      text: widget.warehouse?.warehouseCode,
+    );
+    _nameController = TextEditingController(
+      text: widget.warehouse?.warehouseName,
+    );
     _addressController = TextEditingController(text: widget.warehouse?.address);
-    _contactPersonController = TextEditingController(text: widget.warehouse?.contactPerson);
-    _contactNumberController = TextEditingController(text: widget.warehouse?.contactNumber);
+    _contactPersonController = TextEditingController(
+      text: widget.warehouse?.contactPerson,
+    );
+    _contactNumberController = TextEditingController(
+      text: widget.warehouse?.contactNumber,
+    );
     _isActive = widget.warehouse?.isActive ?? true;
   }
 
@@ -41,17 +49,38 @@ class _WarehousePaneState extends State<WarehousePane> {
       child: SingleChildScrollView(
         child: Column(
           children: [
-            TextFormField(controller: _codeController, decoration: const InputDecoration(labelText: 'Warehouse Code*'), validator: (v) => v!.isEmpty ? 'Required' : null),
+            TextFormField(
+              controller: _codeController,
+              decoration: const InputDecoration(labelText: 'Warehouse Code*'),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
             const SizedBox(height: 12),
-            TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Warehouse Name*'), validator: (v) => v!.isEmpty ? 'Required' : null),
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Warehouse Name*'),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
             const SizedBox(height: 12),
-            TextFormField(controller: _addressController, decoration: const InputDecoration(labelText: 'Address')),
+            TextFormField(
+              controller: _addressController,
+              decoration: const InputDecoration(labelText: 'Address'),
+            ),
             const SizedBox(height: 12),
-            TextFormField(controller: _contactPersonController, decoration: const InputDecoration(labelText: 'Contact Person')),
+            TextFormField(
+              controller: _contactPersonController,
+              decoration: const InputDecoration(labelText: 'Contact Person'),
+            ),
             const SizedBox(height: 12),
-            TextFormField(controller: _contactNumberController, decoration: const InputDecoration(labelText: 'Contact Number')),
+            TextFormField(
+              controller: _contactNumberController,
+              decoration: const InputDecoration(labelText: 'Contact Number'),
+            ),
             const SizedBox(height: 24),
-            SwitchListTile(title: const Text('Is Active'), value: _isActive, onChanged: (v) => setState(() => _isActive = v)),
+            SwitchListTile(
+              title: const Text('Is Active'),
+              value: _isActive,
+              onChanged: (v) => setState(() => _isActive = v),
+            ),
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () async {
@@ -67,7 +96,7 @@ class _WarehousePaneState extends State<WarehousePane> {
                   isActive: _isActive,
                 );
                 await inventoryService.addWarehouse(wh);
-                if (mounted) Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context);
               },
               child: const Text('Save Warehouse'),
             ),

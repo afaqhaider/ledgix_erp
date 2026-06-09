@@ -21,7 +21,10 @@ class ItemsTab extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Text('Inventory Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Inventory Items',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: () => SidePanel.show(
@@ -39,9 +42,11 @@ class ItemsTab extends StatelessWidget {
           child: StreamBuilder<List<InventoryItemModel>>(
             stream: inventoryService.getInventoryItems(user.companyId!),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
               final items = snapshot.data ?? [];
-              
+
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SingleChildScrollView(
@@ -54,26 +59,80 @@ class ItemsTab extends StatelessWidget {
                       DataColumn(label: Text('Name')),
                       DataColumn(label: Text('Type')),
                       DataColumn(label: Text('Category')),
-                      DataColumn(label: Text('Sales Price', textAlign: TextAlign.right)),
-                      DataColumn(label: Text('Stock', textAlign: TextAlign.right)),
+                      DataColumn(
+                        label: Text('Sales Price', textAlign: TextAlign.right),
+                      ),
+                      DataColumn(
+                        label: Text('Stock', textAlign: TextAlign.right),
+                      ),
                       DataColumn(label: Text('Status')),
                     ],
-                    rows: items.map((item) => DataRow(
-                      cells: [
-                        DataCell(Text(item.itemCode, style: const TextStyle(fontSize: 12))),
-                        DataCell(Text(item.itemName, style: const TextStyle(fontSize: 12))),
-                        DataCell(Text(item.itemType.label, style: const TextStyle(fontSize: 12))),
-                        DataCell(Text(item.itemCategoryId ?? '-', style: const TextStyle(fontSize: 12))),
-                        DataCell(Align(alignment: Alignment.centerRight, child: Text(AppFormatters.currency(item.salesPrice), style: const TextStyle(fontSize: 12)))),
-                        DataCell(Align(alignment: Alignment.centerRight, child: Text('0.00', style: const TextStyle(fontSize: 12)))), // Stock balance placeholder
-                        DataCell(Text(item.isActive ? 'Active' : 'Inactive', style: TextStyle(fontSize: 12, color: item.isActive ? Colors.green : Colors.red))),
-                      ],
-                      onSelectChanged: (_) => SidePanel.show(
-                        context: context,
-                        title: 'Edit Item',
-                        child: InventoryItemPane(user: user, item: item),
-                      ),
-                    )).toList(),
+                    rows: items
+                        .map(
+                          (item) => DataRow(
+                            cells: [
+                              DataCell(
+                                Text(
+                                  item.itemCode,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  item.itemName,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  item.itemType.label,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  item.itemCategoryId ?? '-',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              DataCell(
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    AppFormatters.currency(item.salesPrice),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    '0.00',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              ), // Stock balance placeholder
+                              DataCell(
+                                Text(
+                                  item.isActive ? 'Active' : 'Inactive',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: item.isActive
+                                        ? Colors.green
+                                        : Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            onSelectChanged: (_) => SidePanel.show(
+                              context: context,
+                              title: 'Edit Item',
+                              child: InventoryItemPane(user: user, item: item),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               );

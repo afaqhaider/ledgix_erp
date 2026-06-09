@@ -24,7 +24,9 @@ class _UomPaneState extends State<UomPane> {
     super.initState();
     _codeController = TextEditingController(text: widget.uom?.uomCode);
     _nameController = TextEditingController(text: widget.uom?.uomName);
-    _precisionController = TextEditingController(text: widget.uom?.decimalPrecision.toString() ?? '0');
+    _precisionController = TextEditingController(
+      text: widget.uom?.decimalPrecision.toString() ?? '0',
+    );
   }
 
   @override
@@ -34,11 +36,23 @@ class _UomPaneState extends State<UomPane> {
       key: _formKey,
       child: Column(
         children: [
-          TextFormField(controller: _codeController, decoration: const InputDecoration(labelText: 'UOM Code*'), validator: (v) => v!.isEmpty ? 'Required' : null),
+          TextFormField(
+            controller: _codeController,
+            decoration: const InputDecoration(labelText: 'UOM Code*'),
+            validator: (v) => v!.isEmpty ? 'Required' : null,
+          ),
           const SizedBox(height: 12),
-          TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'UOM Name*'), validator: (v) => v!.isEmpty ? 'Required' : null),
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(labelText: 'UOM Name*'),
+            validator: (v) => v!.isEmpty ? 'Required' : null,
+          ),
           const SizedBox(height: 12),
-          TextFormField(controller: _precisionController, decoration: const InputDecoration(labelText: 'Decimal Precision'), keyboardType: TextInputType.number),
+          TextFormField(
+            controller: _precisionController,
+            decoration: const InputDecoration(labelText: 'Decimal Precision'),
+            keyboardType: TextInputType.number,
+          ),
           const SizedBox(height: 40),
           ElevatedButton(
             onPressed: () async {
@@ -51,7 +65,7 @@ class _UomPaneState extends State<UomPane> {
                 decimalPrecision: int.tryParse(_precisionController.text) ?? 0,
               );
               await inventoryService.addUom(uom);
-              if (mounted) Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Save UOM'),
           ),

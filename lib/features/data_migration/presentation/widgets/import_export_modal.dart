@@ -79,7 +79,8 @@ class _ImportExportModalState extends State<ImportExportModal> {
           showDialog(
             context: context,
             builder: (context) => ImportErrorDialog(
-              friendlyMessage: 'We encountered a problem while reading your file.',
+              friendlyMessage:
+                  'We encountered a problem while reading your file.',
               technicalDetails: e.toString(),
             ),
           );
@@ -330,11 +331,13 @@ class _ImportExportModalState extends State<ImportExportModal> {
   void _editCell(ImportRow row, FieldDefinition field) {
     final initialValue = row.data[field.key]?.toString() ?? '';
     final controller = TextEditingController(text: initialValue);
-    
+
     // Check if field has options
     if (field.options != null) {
-      String? selectedValue = field.options!.contains(initialValue) ? initialValue : null;
-      
+      String? selectedValue = field.options!.contains(initialValue)
+          ? initialValue
+          : null;
+
       showDialog(
         context: context,
         builder: (context) => StatefulBuilder(
@@ -350,9 +353,20 @@ class _ImportExportModalState extends State<ImportExportModal> {
                     border: const OutlineInputBorder(),
                   ),
                   items: [
-                    ...field.options!.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))),
+                    ...field.options!.map(
+                      (opt) => DropdownMenuItem(value: opt, child: Text(opt)),
+                    ),
                     if (field.allowCustom)
-                      const DropdownMenuItem(value: 'ADD_NEW', child: Text('+ Add New...', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
+                      const DropdownMenuItem(
+                        value: 'ADD_NEW',
+                        child: Text(
+                          '+ Add New...',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                   ],
                   onChanged: (val) {
                     if (val == 'ADD_NEW') {
@@ -371,7 +385,10 @@ class _ImportExportModalState extends State<ImportExportModal> {
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
@@ -436,7 +453,10 @@ class _ImportExportModalState extends State<ImportExportModal> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('Add'),
@@ -449,10 +469,10 @@ class _ImportExportModalState extends State<ImportExportModal> {
   void _validateRow(ImportRow row) {
     final defs = MigrationConfig.getFields(selectedModule);
     row.errors.clear();
-    
+
     for (var def in defs) {
       final val = row.data[def.key]?.toString() ?? '';
-      
+
       if (def.isRequired && val.isEmpty) {
         row.errors[def.key] = '${def.label} is required';
       }
@@ -462,7 +482,7 @@ class _ImportExportModalState extends State<ImportExportModal> {
     if (selectedModule == MigrationModule.chartOfAccounts) {
       final type = row.data['type']?.toString() ?? '';
       final category = row.data['category']?.toString() ?? '';
-      
+
       if (type.isEmpty && category.isEmpty) {
         row.errors['type'] = 'Account Type or Category is required';
         row.errors['category'] = 'Account Type or Category is required';
@@ -481,9 +501,11 @@ class _ImportExportModalState extends State<ImportExportModal> {
   Widget _buildMappingSummary(ThemeData theme, List<FieldDefinition> defs) {
     // Only count mapped required fields for the numerator
     final requiredFields = defs.where((d) => d.isRequired).toList();
-    final mappedRequiredCount = requiredFields.where((d) => _mapping.containsKey(d.key)).length;
+    final mappedRequiredCount = requiredFields
+        .where((d) => _mapping.containsKey(d.key))
+        .length;
     final totalRequiredCount = requiredFields.length;
-    
+
     int errorCount = _processedRows.where((r) => !r.isValid).length;
 
     return Container(
@@ -494,7 +516,9 @@ class _ImportExportModalState extends State<ImportExportModal> {
           _summaryBadge(
             theme,
             'Required Mapped: $mappedRequiredCount/$totalRequiredCount',
-            mappedRequiredCount == totalRequiredCount ? theme.colorScheme.primary : theme.colorScheme.error,
+            mappedRequiredCount == totalRequiredCount
+                ? theme.colorScheme.primary
+                : theme.colorScheme.error,
           ),
           const SizedBox(width: 12),
           _summaryBadge(
@@ -515,7 +539,10 @@ class _ImportExportModalState extends State<ImportExportModal> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Use Imported Codes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Use Imported Codes',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
                 Switch(
                   value: _useImportedCodes,
                   onChanged: (val) => setState(() => _useImportedCodes = val),
@@ -531,12 +558,18 @@ class _ImportExportModalState extends State<ImportExportModal> {
               initialValue: _duplicateStrategy,
               decoration: const InputDecoration(
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 labelText: 'On Duplicate',
                 border: OutlineInputBorder(),
               ),
               items: DuplicateStrategy.values.map((s) {
-                return DropdownMenuItem(value: s, child: Text(s.label, style: const TextStyle(fontSize: 12)));
+                return DropdownMenuItem(
+                  value: s,
+                  child: Text(s.label, style: const TextStyle(fontSize: 12)),
+                );
               }).toList(),
               onChanged: (val) {
                 if (val != null) setState(() => _duplicateStrategy = val);
@@ -573,7 +606,9 @@ class _ImportExportModalState extends State<ImportExportModal> {
                       decoration: InputDecoration(
                         labelText: d.label + (d.isRequired ? ' *' : ''),
                         labelStyle: TextStyle(
-                          color: d.isRequired ? theme.colorScheme.primary : null,
+                          color: d.isRequired
+                              ? theme.colorScheme.primary
+                              : null,
                           fontWeight: d.isRequired ? FontWeight.bold : null,
                         ),
                         border: const OutlineInputBorder(),
@@ -695,7 +730,7 @@ class _ImportExportModalState extends State<ImportExportModal> {
       if (mounted) {
         setState(() => _isLoading = false);
         Navigator.pop(context);
-        
+
         // Use a small snackbar for success as requested
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -703,7 +738,9 @@ class _ImportExportModalState extends State<ImportExportModal> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
-                Text('Imported ${_processedRows.length} ${selectedModule.label}'),
+                Text(
+                  'Imported ${_processedRows.length} ${selectedModule.label}',
+                ),
               ],
             ),
             backgroundColor: Colors.green,
@@ -716,7 +753,7 @@ class _ImportExportModalState extends State<ImportExportModal> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        
+
         final errorStr = e.toString();
         if (errorStr.contains('INDEX_REQUIRED')) {
           showDialog(
@@ -727,14 +764,25 @@ class _ImportExportModalState extends State<ImportExportModal> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Required database index is missing. Please deploy Firestore indexes and try again.'),
+                  const Text(
+                    'Required database index is missing. Please deploy Firestore indexes and try again.',
+                  ),
                   const SizedBox(height: 16),
                   ExpansionTile(
-                    title: const Text('Technical Details', style: TextStyle(fontSize: 12)),
+                    title: const Text(
+                      'Technical Details',
+                      style: TextStyle(fontSize: 12),
+                    ),
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(8.0),
-                        child: Text(errorStr, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        child: Text(
+                          errorStr,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -757,7 +805,8 @@ class _ImportExportModalState extends State<ImportExportModal> {
         showDialog(
           context: context,
           builder: (context) => ImportErrorDialog(
-            friendlyMessage: 'Some records could not be imported. Please check the file format and try again.',
+            friendlyMessage:
+                'Some records could not be imported. Please check the file format and try again.',
             technicalDetails: e.toString(),
           ),
         );

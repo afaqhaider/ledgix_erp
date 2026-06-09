@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/core/auth/user_role.dart';
 import 'package:ledgixerp/features/suppliers/models/supplier_model.dart';
 import 'package:ledgixerp/features/suppliers/services/supplier_service.dart';
 import 'package:ledgixerp/features/purchase_orders/models/purchase_order_model.dart';
@@ -16,15 +17,19 @@ import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/core/theme/app_spacing.dart';
-import 'package:ledgixerp/core/services/document_number_service.dart';
 import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
+import 'package:ledgixerp/widgets/posting_error_modal.dart';
 
 class AddSupplierPaymentScreen extends StatefulWidget {
   final AppUser user;
   final bool isPane;
-  const AddSupplierPaymentScreen({super.key, required this.user, this.isPane = false});
+  const AddSupplierPaymentScreen({
+    super.key,
+    required this.user,
+    this.isPane = false,
+  });
 
   @override
   State<AddSupplierPaymentScreen> createState() =>
@@ -38,7 +43,6 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
   final _poService = PurchaseOrderService();
   final _bankService = BankAccountService();
   final _companyService = CompanyService();
-  final _docNumberService = DocumentNumberService();
 
   final _amountController = TextEditingController();
   final _referenceController = TextEditingController();
@@ -81,32 +85,42 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
     });
   }
 
-  Future<void> _save() async {
+  bool get _canPost {
+    const highRoles = [
+      UserRole.owner,
+      UserRole.superAdmin,
+      UserRole.admin,
+      UserRole.accountant,
+      UserRole.generalManager,
+    ];
+    return highRoles.contains(widget.user.role);
+  }
+
+  Future<void> _save({bool shouldPost = false}) async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSupplier == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a supplier')));
+      showErpError(
+        context: context,
+        title: 'Selection Required',
+        message: 'Please select a supplier',
+      );
       return;
     }
     if (_selectedBankAccount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a bank/cash account')),
+      showErpError(
+        context: context,
+        title: 'Selection Required',
+        message: 'Please select a bank/cash account',
       );
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final nextNumber = await _docNumberService.getNextNumber(
-        widget.user.companyId!,
-        'payment',
-      );
-
       final payment = SupplierPaymentModel(
         id: '',
         companyId: widget.user.companyId!,
-        paymentNumber: nextNumber,
+        paymentNumber: 'AUTO',
         supplierId: _selectedSupplier!.id,
         supplierName: _selectedSupplier!.supplierName,
         purchaseOrderId: _selectedPO?.id,
@@ -122,18 +136,30 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
             ? null
             : _notesController.text.trim(),
         createdAt: DateTime.now(),
+        isPosted: shouldPost && _canPost,
+        approvalStatus: shouldPost ? (_canPost ? 'approved' : 'pending') : null,
       );
 
-      await _paymentService.addPayment(payment);
+      await _paymentService.addPayment(
+        payment,
+        widget.user,
+        shouldPost: shouldPost,
+      );
       if (mounted) Navigator.pop(context);
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Error saving payment: $e');
+      debugPrint(stack.toString());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        if (shouldPost) {
+          PostingErrorModal.show(
+            context: context,
+            title: 'Posting Failed',
+            message: 'An error occurred while trying to post the payment.',
+            error: e,
+          );
+        } else {
+          showErpError(context: context, error: e);
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -142,6 +168,7 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final formContent = Form(
       key: _formKey,
       child: Column(
@@ -166,9 +193,7 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
                       prefixIcon: Icon(Icons.calendar_today),
                       border: OutlineInputBorder(),
                     ),
-                    child: Text(
-                      DateFormat('dd-MMM-yyyy').format(_paymentDate),
-                    ),
+                    child: Text(DateFormat('dd-MMM-yyyy').format(_paymentDate)),
                   ),
                 ),
               ),
@@ -273,19 +298,39 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
           ),
           if (!widget.isPane) ...[
             const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => _save(shouldPost: false),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: theme.colorScheme.primary),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text('Save Draft'),
+                  ),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Save Payment'),
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => _save(shouldPost: true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            _canPost ? 'Save & Post' : 'Submit for Approval',
+                          ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -296,16 +341,31 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
       return ErpSidePane(
         title: 'Add Supplier Payment',
         onCancel: () => Navigator.pop(context),
-        onSave: _save,
+        onSave: () => _save(shouldPost: true),
         isLoading: _isLoading,
-        saveLabel: 'Save Payment',
-        child: formContent,
+        saveLabel: _canPost ? 'Save & Post' : 'Submit for Approval',
+        extraActions: [
+          OutlinedButton(
+            onPressed: _isLoading ? null : () => _save(shouldPost: false),
+            child: const Text('Save Draft'),
+          ),
+        ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: formContent,
+        ),
       );
     }
 
-    return FormLayout(
-      maxWidth: 640,
-      child: formContent,
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add Supplier Payment')),
+      body: FormLayout(
+        maxWidth: 640,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: formContent,
+        ),
+      ),
     );
   }
 }

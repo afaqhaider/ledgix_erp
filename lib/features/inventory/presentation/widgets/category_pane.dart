@@ -34,17 +34,29 @@ class _CategoryPaneState extends State<CategoryPane> {
       key: _formKey,
       child: Column(
         children: [
-          TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Category Name*'), validator: (v) => v!.isEmpty ? 'Required' : null),
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(labelText: 'Category Name*'),
+            validator: (v) => v!.isEmpty ? 'Required' : null,
+          ),
           const SizedBox(height: 12),
           StreamBuilder<List<InventoryCategoryModel>>(
             stream: inventoryService.getCategories(widget.user.companyId!),
             builder: (context, snapshot) {
               final cats = snapshot.data ?? [];
               return DropdownButtonFormField<String>(
-                value: _parentId,
+                initialValue: _parentId,
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('None (Top Level)')),
-                  ...cats.where((c) => c.id != widget.category?.id).map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('None (Top Level)'),
+                  ),
+                  ...cats
+                      .where((c) => c.id != widget.category?.id)
+                      .map(
+                        (c) =>
+                            DropdownMenuItem(value: c.id, child: Text(c.name)),
+                      ),
                 ],
                 onChanged: (v) => setState(() => _parentId = v),
                 decoration: const InputDecoration(labelText: 'Parent Category'),
@@ -52,7 +64,11 @@ class _CategoryPaneState extends State<CategoryPane> {
             },
           ),
           const SizedBox(height: 24),
-          SwitchListTile(title: const Text('Is Active'), value: _isActive, onChanged: (v) => setState(() => _isActive = v)),
+          SwitchListTile(
+            title: const Text('Is Active'),
+            value: _isActive,
+            onChanged: (v) => setState(() => _isActive = v),
+          ),
           const SizedBox(height: 40),
           ElevatedButton(
             onPressed: () async {
@@ -65,7 +81,7 @@ class _CategoryPaneState extends State<CategoryPane> {
                 isActive: _isActive,
               );
               await inventoryService.addCategory(cat);
-              if (mounted) Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Save Category'),
           ),

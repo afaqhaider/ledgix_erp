@@ -1,4 +1,3 @@
-
 enum TemperatureUnit { celsius, fahrenheit }
 
 class WeatherInfo {
@@ -34,7 +33,7 @@ class WeatherInfo {
     final weather = json['weather'][0];
     final main = json['main'];
     final wind = json['wind'];
-    
+
     return WeatherInfo(
       temperature: (main['temp'] as num).toDouble(),
       feelsLike: (main['feels_like'] as num).toDouble(),

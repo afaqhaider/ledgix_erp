@@ -104,7 +104,8 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                           _buildColumn('Actions'),
                         ],
                         rows: quotations.map((quo) {
-                          final isConverted = quo.status == QuotationStatus.converted;
+                          final isConverted =
+                              quo.status == QuotationStatus.converted;
                           final isApproved = quo.approvalStatus == 'approved';
 
                           return DataRow(
@@ -149,7 +150,10 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.print_outlined, size: 18),
+                                      icon: const Icon(
+                                        Icons.print_outlined,
+                                        size: 18,
+                                      ),
                                       tooltip: 'Print/Download PDF',
                                       onPressed: () => _printQuotation(quo),
                                       visualDensity: VisualDensity.compact,
@@ -160,7 +164,10 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                                             widget.user.role.name == 'Admin' ||
                                             widget.user.role.name == 'Owner'))
                                       IconButton(
-                                        icon: const Icon(Icons.receipt_long, size: 18),
+                                        icon: const Icon(
+                                          Icons.receipt_long,
+                                          size: 18,
+                                        ),
                                         tooltip: 'Convert to Invoice',
                                         color: theme.colorScheme.primary,
                                         onPressed: () => _convertToInvoice(quo),
@@ -216,8 +223,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        AddQuotationScreen(user: widget.user),
+                    builder: (context) => AddQuotationScreen(user: widget.user),
                   ),
                 );
               },
@@ -310,11 +316,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.request_quote_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.request_quote_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No quotations found',
@@ -327,21 +329,31 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
 
   Color _getStatusColor(QuotationStatus status) {
     switch (status) {
-      case QuotationStatus.draft: return Colors.grey;
-      case QuotationStatus.sent: return Colors.blue;
-      case QuotationStatus.accepted: return Colors.green;
-      case QuotationStatus.rejected: return Colors.red;
-      case QuotationStatus.expired: return Colors.orange;
-      case QuotationStatus.converted: return Colors.purple;
+      case QuotationStatus.draft:
+        return Colors.grey;
+      case QuotationStatus.sent:
+        return Colors.blue;
+      case QuotationStatus.accepted:
+        return Colors.green;
+      case QuotationStatus.rejected:
+        return Colors.red;
+      case QuotationStatus.expired:
+        return Colors.orange;
+      case QuotationStatus.converted:
+        return Colors.purple;
     }
   }
 
   Color _getApprovalStatusColor(String status) {
     switch (status) {
-      case 'approved': return Colors.green;
-      case 'pending': return Colors.orange;
-      case 'rejected': return Colors.red;
-      default: return Colors.grey;
+      case 'approved':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -362,21 +374,34 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 
   Future<void> _printQuotation(QuotationModel quo) async {
     try {
-      final company = await _companyService.getCompany(widget.user.companyId!).first;
+      final company = await _companyService
+          .getCompany(widget.user.companyId!)
+          .first;
       if (company == null) throw 'Company not found';
-      final pdfBytes = await QuotationPdfService.generateQuotation(quo, company);
-      await Printing.layoutPdf(onLayout: (format) async => pdfBytes, name: 'Quotation_${quo.quotationNumber}');
+      final pdfBytes = await QuotationPdfService.generateQuotation(
+        quo,
+        company,
+      );
+      await Printing.layoutPdf(
+        onLayout: (format) async => pdfBytes,
+        name: 'Quotation_${quo.quotationNumber}',
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating PDF: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }
@@ -387,10 +412,18 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Convert to Invoice'),
-        content: Text('Do you want to convert Quotation ${quo.quotationNumber} to a Sales Invoice?'),
+        content: Text(
+          'Do you want to convert Quotation ${quo.quotationNumber} to a Sales Invoice?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Convert')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Convert'),
+          ),
         ],
       ),
     );
@@ -399,13 +432,19 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
         await _quotationService.convertToInvoice(quo, widget.user);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Quotation converted to Invoice successfully'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('Quotation converted to Invoice successfully'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error converting to invoice: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error converting to invoice: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }

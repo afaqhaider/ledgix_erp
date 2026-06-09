@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/reports/models/report_models.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'report_drill_down_modal.dart';
 
 enum ReportDisplayMode {
@@ -15,6 +16,7 @@ class HierarchicalReportRow extends StatefulWidget {
   final FinancialReportNode node;
   final ReportDisplayMode displayMode;
   final bool initiallyExpanded;
+  final String? jobId;
 
   const HierarchicalReportRow({
     super.key,
@@ -22,6 +24,7 @@ class HierarchicalReportRow extends StatefulWidget {
     required this.node,
     required this.displayMode,
     this.initiallyExpanded = false,
+    this.jobId,
   });
 
   @override
@@ -55,7 +58,8 @@ class _HierarchicalReportRowState extends State<HierarchicalReportRow> {
         accountId: widget.node.id,
         accountName: widget.node.name,
         accountCode: widget.node.code,
-        category: widget.node.category!,
+        category: widget.node.category ?? AccountCategory.uncategorized,
+        jobId: widget.jobId,
       );
     }
   }
@@ -80,21 +84,29 @@ class _HierarchicalReportRowState extends State<HierarchicalReportRow> {
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.3,
+                  ),
                   width: 0.5,
                 ),
               ),
-              color: node.level == 0 
-                ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
-                : node.level == 1 
-                  ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.1)
+              color: node.level == 0
+                  ? theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.3,
+                    )
+                  : node.level == 1
+                  ? theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.1,
+                    )
                   : null,
             ),
             child: Row(
               children: [
                 if (hasChildren)
                   Icon(
-                    _isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                    _isExpanded
+                        ? Icons.keyboard_arrow_down
+                        : Icons.keyboard_arrow_right,
                     size: 20,
                     color: theme.colorScheme.primary,
                   )
@@ -108,7 +120,9 @@ class _HierarchicalReportRowState extends State<HierarchicalReportRow> {
                       node.code,
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 12,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                   ),
@@ -119,8 +133,12 @@ class _HierarchicalReportRowState extends State<HierarchicalReportRow> {
                     node.name,
                     style: GoogleFonts.inter(
                       fontSize: node.level == 0 ? 15 : 14,
-                      fontWeight: node.level == 0 ? FontWeight.w800 : (node.isGroup ? FontWeight.w700 : FontWeight.w500),
-                      color: (!hasChildren && node.type == 'account') ? theme.colorScheme.primary : null,
+                      fontWeight: node.level == 0
+                          ? FontWeight.w800
+                          : (node.isGroup ? FontWeight.w700 : FontWeight.w500),
+                      color: (!hasChildren && node.type == 'account')
+                          ? theme.colorScheme.primary
+                          : null,
                     ),
                   ),
                 ),
@@ -130,13 +148,16 @@ class _HierarchicalReportRowState extends State<HierarchicalReportRow> {
           ),
         ),
         if (_isExpanded && hasChildren)
-          ...node.children.map((child) => HierarchicalReportRow(
-                key: ValueKey(child.id),
-                companyId: widget.companyId,
-                node: child,
-                displayMode: widget.displayMode,
-                initiallyExpanded: widget.initiallyExpanded,
-              )),
+          ...node.children.map(
+            (child) => HierarchicalReportRow(
+              key: ValueKey(child.id),
+              companyId: widget.companyId,
+              node: child,
+              displayMode: widget.displayMode,
+              initiallyExpanded: widget.initiallyExpanded,
+              jobId: widget.jobId,
+            ),
+          ),
       ],
     );
   }
@@ -156,14 +177,14 @@ class _HierarchicalReportRowState extends State<HierarchicalReportRow> {
           _buildValueCell(node.balance, theme, isBold: node.isGroup),
         ];
       case ReportDisplayMode.singleBalance:
-        return [
-          _buildValueCell(node.balance, theme, isBold: node.isGroup),
-        ];
+        return [_buildValueCell(node.balance, theme, isBold: node.isGroup)];
     }
   }
 
   Widget _buildValueCell(double value, ThemeData theme, {bool isBold = false}) {
-    double width = widget.displayMode == ReportDisplayMode.generalLedger ? 110 : 140;
+    double width = widget.displayMode == ReportDisplayMode.generalLedger
+        ? 110
+        : 140;
     return SizedBox(
       width: width,
       child: Text(
@@ -172,7 +193,11 @@ class _HierarchicalReportRowState extends State<HierarchicalReportRow> {
         style: GoogleFonts.jetBrainsMono(
           fontSize: 12,
           fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
-          color: (value < 0 && widget.displayMode != ReportDisplayMode.trialBalance) ? Colors.red : null,
+          color:
+              (value < 0 &&
+                  widget.displayMode != ReportDisplayMode.trialBalance)
+              ? Colors.red
+              : null,
         ),
       ),
     );

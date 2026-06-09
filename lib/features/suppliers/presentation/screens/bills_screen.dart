@@ -380,10 +380,7 @@ class _BillsScreenState extends State<BillsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        showErpError(context: context, error: e);
       }
     }
   }
@@ -398,7 +395,8 @@ class _BillsScreenState extends State<BillsScreen> {
       showErpError(
         context: context,
         title: 'Approval Required',
-        message: 'This bill must be approved before it can be posted to the ledger.',
+        message:
+            'This bill must be approved before it can be posted to the ledger.',
       );
       return;
     }
@@ -418,10 +416,7 @@ class _BillsScreenState extends State<BillsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        showErpError(context: context, error: e);
       }
     }
   }
@@ -460,10 +455,7 @@ class _BillsScreenState extends State<BillsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        showErpError(context: context, error: e);
       }
     }
   }

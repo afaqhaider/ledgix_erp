@@ -7,7 +7,8 @@ class ThemeController {
     ThemeMode.system,
   );
 
-  static bool isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
 
   static void toggle() {
     if (themeMode.value == ThemeMode.dark) {

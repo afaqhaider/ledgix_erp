@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
-import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
 import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
@@ -29,7 +28,6 @@ class InvoiceDetailScreen extends StatefulWidget {
 }
 
 class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
-  final _postingService = AccountingPostingService();
   final _approvalService = ApprovalService();
   final _companyService = CompanyService();
   final _invoiceService = InvoiceService();
@@ -96,7 +94,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         _currentInvoice,
         widget.user,
       );
-      
+
       // Re-fetch to get updated status/flags from Firestore
       final updatedDoc = await FirebaseFirestore.instance
           .collection('companies')
@@ -104,7 +102,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           .collection('salesInvoices')
           .doc(_currentInvoice.id)
           .get();
-      
+
       if (updatedDoc.exists && mounted) {
         setState(() {
           _currentInvoice = InvoiceModel.fromMap(
@@ -123,10 +121,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        showErpError(context: context, error: e);
       }
     } finally {
       if (mounted) setState(() => _isPosting = false);

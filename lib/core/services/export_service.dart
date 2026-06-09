@@ -55,7 +55,7 @@ class ExportService {
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/$fileName.xlsx');
       await file.writeAsBytes(fileBytes);
-      await Share.shareXFiles([XFile(file.path)], text: 'Exported $fileName');
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], text: 'Exported $fileName'));
     }
   }
 

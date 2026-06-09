@@ -3,6 +3,9 @@ import 'package:ledgixerp/core/utils/app_formatters.dart';
 import '../../models/report_models.dart';
 import '../../services/financial_report_service.dart';
 import '../widgets/hierarchical_report_row.dart';
+import '../widgets/job_filter_selector.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
+import 'package:ledgixerp/features/settings/models/financial_settings_model.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -17,6 +20,7 @@ class ProfitLossScreen extends StatefulWidget {
 
 class _ProfitLossScreenState extends State<ProfitLossScreen> {
   final _reportService = FinancialReportService();
+  final _settingsService = FinancialSettingsService();
   DateTimeRange _dateRange = DateTimeRange(
     start: DateTime(DateTime.now().year, DateTime.now().month, 1),
     end: DateTime.now(),
@@ -24,11 +28,24 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
   ProfitLossReport? _report;
   bool _isLoading = true;
   bool _isAllExpanded = false;
+  bool _showGroups = false;
+  String? _selectedJobId;
+  bool _jobEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    _initSettings();
     _loadReport();
+  }
+
+  Future<void> _initSettings() async {
+    final settings = await _settingsService.getSettings(widget.companyId);
+    if (mounted) {
+      setState(() {
+        _jobEnabled = settings.jobBasedAccountingEnabled;
+      });
+    }
   }
 
   String _searchQuery = '';
@@ -40,6 +57,8 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
         widget.companyId,
         _dateRange.start,
         _dateRange.end,
+        showGroups: _showGroups,
+        jobId: _selectedJobId,
       );
       setState(() {
         _report = report;
@@ -48,9 +67,9 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading report: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading report: $e')));
       }
     }
   }
@@ -59,11 +78,15 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
     if (_report == null) return [];
     if (_searchQuery.isEmpty) return _report!.nodes;
 
-    return _report!.nodes.map((node) => _filterNode(node)).whereType<FinancialReportNode>().toList();
+    return _report!.nodes
+        .map((node) => _filterNode(node))
+        .whereType<FinancialReportNode>()
+        .toList();
   }
 
   FinancialReportNode? _filterNode(FinancialReportNode node) {
-    bool matches = node.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+    bool matches =
+        node.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
         node.code.toLowerCase().contains(_searchQuery.toLowerCase());
 
     List<FinancialReportNode> filteredChildren = node.children
@@ -89,7 +112,9 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
         if (_isLoading)
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else if (filteredNodes.isEmpty)
-          const Expanded(child: Center(child: Text('No matching records found')))
+          const Expanded(
+            child: Center(child: Text('No matching records found')),
+          )
         else
           Expanded(
             child: Column(
@@ -102,11 +127,15 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
                     itemCount: filteredNodes.length,
                     itemBuilder: (context, index) {
                       return HierarchicalReportRow(
-                        key: ValueKey('pl-${filteredNodes[index].id}-$_isAllExpanded-$_searchQuery'),
+                        key: ValueKey(
+                          'pl-${filteredNodes[index].id}-$_isAllExpanded-$_searchQuery',
+                        ),
                         companyId: widget.companyId,
                         node: filteredNodes[index],
                         displayMode: ReportDisplayMode.singleBalance,
-                        initiallyExpanded: _isAllExpanded || _searchQuery.isNotEmpty,
+                        initiallyExpanded:
+                            _isAllExpanded || _searchQuery.isNotEmpty,
+                        jobId: _selectedJobId,
                       );
                     },
                   ),
@@ -124,12 +153,30 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
         children: [
+          StreamBuilder<FinancialSettingsModel>(
+            stream: _settingsService.streamSettings(widget.companyId),
+            builder: (context, snapshot) {
+              final enabled = snapshot.data?.jobBasedAccountingEnabled ?? _jobEnabled;
+              if (!enabled) return const SizedBox.shrink();
+
+              return JobFilterSelector(
+                companyId: widget.companyId,
+                selectedJobId: _selectedJobId,
+                onJobSelected: (jobId) {
+                  setState(() => _selectedJobId = jobId);
+                  _loadReport();
+                },
+              );
+            },
+          ),
           Expanded(
             child: SearchBar(
               hintText: 'Search account or category...',
               leading: const Icon(Icons.search, size: 20),
               elevation: WidgetStateProperty.all(0),
-              backgroundColor: WidgetStateProperty.all(theme.colorScheme.surfaceContainer),
+              backgroundColor: WidgetStateProperty.all(
+                theme.colorScheme.surfaceContainer,
+              ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -144,24 +191,28 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
     final now = DateTime.now();
     return Row(
       children: [
-        _rangePresetButton('This Month', DateTimeRange(
-          start: DateTime(now.year, now.month, 1),
-          end: now,
-        )),
-        _rangePresetButton('This Year', DateTimeRange(
-          start: DateTime(now.year, 1, 1),
-          end: now,
-        )),
-        _rangePresetButton('Last Month', DateTimeRange(
-          start: DateTime(now.year, now.month - 1, 1),
-          end: DateTime(now.year, now.month, 0),
-        )),
+        _rangePresetButton(
+          'This Month',
+          DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
+        ),
+        _rangePresetButton(
+          'This Year',
+          DateTimeRange(start: DateTime(now.year, 1, 1), end: now),
+        ),
+        _rangePresetButton(
+          'Last Month',
+          DateTimeRange(
+            start: DateTime(now.year, now.month - 1, 1),
+            end: DateTime(now.year, now.month, 0),
+          ),
+        ),
       ],
     );
   }
 
   Widget _rangePresetButton(String label, DateTimeRange range) {
-    final isSelected = _dateRange.start == range.start && _dateRange.end == range.end;
+    final isSelected =
+        _dateRange.start == range.start && _dateRange.end == range.end;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
@@ -204,6 +255,15 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
             ),
           ),
           TextButton.icon(
+            onPressed: () {
+              setState(() => _showGroups = !_showGroups);
+              _loadReport();
+            },
+            icon: Icon(_showGroups ? Icons.visibility : Icons.visibility_off),
+            label: Text(_showGroups ? 'Hide Groups' : 'Show Groups'),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
             onPressed: () => setState(() => _isAllExpanded = !_isAllExpanded),
             icon: Icon(_isAllExpanded ? Icons.unfold_less : Icons.unfold_more),
             label: Text(_isAllExpanded ? 'Collapse All' : 'Expand All'),
@@ -223,7 +283,9 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
               }
             },
             icon: const Icon(Icons.date_range, size: 18),
-            label: Text('${AppFormatters.date(_dateRange.start)} - ${AppFormatters.date(_dateRange.end)}'),
+            label: Text(
+              '${AppFormatters.date(_dateRange.start)} - ${AppFormatters.date(_dateRange.end)}',
+            ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               shape: RoundedRectangleBorder(
@@ -318,18 +380,31 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
       child: Column(
         children: [
           _buildSummaryRow(theme, 'TOTAL REVENUE', _report?.totalRevenue ?? 0),
-          _buildSummaryRow(theme, 'TOTAL COST OF SALES', _report?.totalCostOfSales ?? 0),
+          _buildSummaryRow(
+            theme,
+            'TOTAL COST OF SALES',
+            _report?.totalCostOfSales ?? 0,
+          ),
           const Divider(),
-          _buildSummaryRow(theme, 'GROSS PROFIT', (_report?.totalRevenue ?? 0) - (_report?.totalCostOfSales ?? 0), isBold: true),
+          _buildSummaryRow(
+            theme,
+            'GROSS PROFIT',
+            (_report?.totalRevenue ?? 0) - (_report?.totalCostOfSales ?? 0),
+            isBold: true,
+          ),
           const SizedBox(height: 8),
-          _buildSummaryRow(theme, 'TOTAL OPERATING EXPENSES', _report?.totalExpenses ?? 0),
+          _buildSummaryRow(
+            theme,
+            'TOTAL OPERATING EXPENSES',
+            _report?.totalExpenses ?? 0,
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Divider(thickness: 2),
           ),
           _buildSummaryRow(
-            theme, 
-            'NET PROFIT / LOSS', 
+            theme,
+            'NET PROFIT / LOSS',
             _report?.netProfit ?? 0,
             isBold: true,
             isPrimary: true,
@@ -339,7 +414,13 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
     );
   }
 
-  Widget _buildSummaryRow(ThemeData theme, String label, double value, {bool isBold = false, bool isPrimary = false}) {
+  Widget _buildSummaryRow(
+    ThemeData theme,
+    String label,
+    double value, {
+    bool isBold = false,
+    bool isPrimary = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -356,7 +437,9 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
           style: GoogleFonts.jetBrainsMono(
             fontSize: isPrimary ? 17 : 15,
             fontWeight: isBold ? FontWeight.w800 : FontWeight.w700,
-            color: isPrimary ? theme.colorScheme.primary : (value < 0 ? Colors.red : null),
+            color: isPrimary
+                ? theme.colorScheme.primary
+                : (value < 0 ? Colors.red : null),
           ),
         ),
       ],

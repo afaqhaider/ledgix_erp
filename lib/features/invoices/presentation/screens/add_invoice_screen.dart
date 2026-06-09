@@ -21,6 +21,11 @@ import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_item_pane.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
+import 'package:ledgixerp/widgets/posting_error_modal.dart';
+import 'package:ledgixerp/core/auth/user_role.dart';
+import 'package:ledgixerp/features/operations/jobs/models/job_model.dart';
+import 'package:ledgixerp/features/operations/jobs/services/job_service.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 
 class AddInvoiceScreen extends StatefulWidget {
   final AppUser user;
@@ -38,6 +43,8 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   final _accountService = AccountService();
   final _inventoryService = InventoryService();
   final _termsService = TermsService();
+  final _jobService = JobService();
+  final _settingsService = FinancialSettingsService();
 
   String _previewNumber = 'Loading...';
   CustomerModel? _selectedCustomer;
@@ -50,6 +57,10 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   List<AccountModel> _allAccounts = [];
   List<InventoryItemModel> _allProducts = [];
   List<CreditTermModel> _allTerms = [];
+  List<JobModel> _activeJobs = [];
+  JobModel? _selectedJob;
+  bool _jobEnabled = false;
+
   final List<InvoiceLineItemModel> _items = [];
   bool _isLoading = false;
 
@@ -107,11 +118,21 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final number = await _invoiceService.previewNextInvoiceNumber(
-      widget.user.companyId!,
-    );
+    final companyId = widget.user.companyId!;
+    final number = await _invoiceService.previewNextInvoiceNumber(companyId);
+    final settings = await _settingsService.getSettings(companyId);
+    
     if (mounted) {
-      setState(() => _previewNumber = number);
+      setState(() {
+        _previewNumber = number;
+        _jobEnabled = settings.jobBasedAccountingEnabled;
+      });
+      
+      if (_jobEnabled) {
+        _jobService.getActiveJobs(companyId).listen((jobs) {
+          if (mounted) setState(() => _activeJobs = jobs);
+        });
+      }
     }
   }
 
@@ -180,24 +201,42 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   double get _totalVat => _items.fold(0.0, (sum, item) => sum + item.lineVat);
   double get _totalAmount => _totalSubtotal + _totalVat;
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedCustomer == null) {
-      showErpError(
-        context: context,
-        title: 'Selection Required',
-        message: 'Please select a customer before saving the invoice.',
-      );
-      return;
-    }
+  bool get _canPost {
+    const highRoles = [
+      UserRole.owner,
+      UserRole.superAdmin,
+      UserRole.admin,
+      UserRole.accountant,
+      UserRole.generalManager,
+    ];
+    return highRoles.contains(widget.user.role);
+  }
 
-    if (_items.any((item) => item.accountId.isEmpty)) {
-      showErpError(
-        context: context,
-        title: 'Account Required',
-        message: 'All items must have a posting account selected.',
-      );
-      return;
+  Future<void> _save({bool shouldPost = false}) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Draft allowed with minimal data, but Post requires full validation
+    if (shouldPost) {
+      if (_selectedCustomer == null) {
+        showErpError(
+          context: context,
+          title: 'Selection Required',
+          message: 'Please select a customer before posting the invoice.',
+        );
+        return;
+      }
+
+      if (_items.isEmpty || _items.any((item) => item.accountId.isEmpty)) {
+        showErpError(
+          context: context,
+          title: 'Account Required',
+          message: 'All items must have a posting account selected.',
+        );
+        return;
+      }
+    } else {
+      // For draft, at least customer must be there if we want to preview number or just have a basic record
+      // But we can be more lenient
     }
 
     setState(() => _isLoading = true);
@@ -206,8 +245,8 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
         id: '',
         companyId: widget.user.companyId!,
         invoiceNumber: 'AUTO',
-        customerId: _selectedCustomer!.id,
-        customerName: _selectedCustomer!.name,
+        customerId: _selectedCustomer?.id ?? '',
+        customerName: _selectedCustomer?.name ?? 'Draft Customer',
         invoiceDate: _invoiceDate,
         dueDate: _dueDate,
         items: _items,
@@ -217,9 +256,19 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
         balanceDue: _totalAmount,
         createdAt: DateTime.now(),
         attachments: _attachments,
+        status: shouldPost
+            ? (_canPost ? InvoiceStatus.posted : InvoiceStatus.pendingApproval)
+            : InvoiceStatus.draft,
+        jobId: _selectedJob?.id,
+        jobNumber: _selectedJob?.jobNumber,
+        jobName: _selectedJob?.jobName,
       );
 
-      await _invoiceService.addInvoice(invoice, widget.user);
+      await _invoiceService.addInvoice(
+        invoice,
+        widget.user,
+        shouldPost: shouldPost,
+      );
       if (mounted) {
         if (widget.isPane) {
           Navigator.pop(context, true);
@@ -231,10 +280,17 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
       debugPrint('Error saving invoice: $e');
       debugPrint(stack.toString());
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        if (shouldPost) {
+          PostingErrorModal.show(
+            context: context,
+            title: 'Posting Failed',
+            message:
+                'An error occurred while trying to post the invoice. The transaction may not have been completed.',
+            error: e,
+          );
+        } else {
+          showErpError(context: context, error: e);
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -316,13 +372,22 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
                               addLabel: 'Add New Customer',
                               onAdd: _showAddCustomerDialog,
                               initialValue: _selectedCustomer,
-                              validator: (v) => _selectedCustomer == null
-                                  ? 'Required'
-                                  : null,
+                              validator: (v) =>
+                                  _selectedCustomer == null ? 'Required' : null,
                             ),
                           ),
                         ],
                       ),
+                      if (_jobEnabled) ...[
+                        const SizedBox(height: 16),
+                        SearchableSelector<JobModel>(
+                          labelText: 'Linked Job (Optional)',
+                          items: _activeJobs,
+                          itemLabelBuilder: (j) => '${j.jobNumber} - ${j.jobName}',
+                          onSelected: (val) => setState(() => _selectedJob = val),
+                          initialValue: _selectedJob,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -361,8 +426,7 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
                             child: _buildDatePicker(
                               label: 'Due Date',
                               selectedDate: _dueDate,
-                              onTap: (date) =>
-                                  setState(() => _dueDate = date),
+                              onTap: (date) => setState(() => _dueDate = date),
                             ),
                           ),
                         ],
@@ -407,9 +471,15 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
       return ErpSidePane(
         title: 'Create New Sales Invoice',
         onCancel: () => Navigator.pop(context),
-        onSave: _save,
+        onSave: () => _save(shouldPost: _canPost),
         isLoading: _isLoading,
-        saveLabel: 'Save Invoice',
+        saveLabel: _canPost ? 'Save & Post' : 'Submit for Approval',
+        extraActions: [
+          OutlinedButton(
+            onPressed: _isLoading ? null : () => _save(shouldPost: false),
+            child: const Text('Save Draft'),
+          ),
+        ],
         child: formContent,
       );
     }
@@ -418,13 +488,21 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
       appBar: AppBar(
         title: const Text('Create New Sales Invoice'),
         actions: [
+          OutlinedButton(
+            onPressed: _isLoading ? null : () => _save(shouldPost: false),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: theme.colorScheme.primary),
+            ),
+            child: const Text('Save Draft'),
+          ),
+          const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: _isLoading ? null : _save,
+            onPressed: _isLoading ? null : () => _save(shouldPost: true),
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Save Invoice'),
+            child: Text(_canPost ? 'Save & Post' : 'Submit for Approval'),
           ),
           const SizedBox(width: 16),
         ],

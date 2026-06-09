@@ -15,7 +15,10 @@ class DataMigrationService {
         var excel = Excel.decodeBytes(file.bytes!);
         for (var table in excel.tables.keys) {
           return excel.tables[table]!.rows
-              .map((row) => row.map((cell) => _extractCellValue(cell?.value)).toList())
+              .map(
+                (row) =>
+                    row.map((cell) => _extractCellValue(cell?.value)).toList(),
+              )
               .toList();
         }
       } catch (e) {
@@ -32,23 +35,23 @@ class DataMigrationService {
 
   dynamic _extractCellValue(dynamic value) {
     if (value == null) return null;
-    
+
     // The 'excel' package CellValue classes
     final typeName = value.runtimeType.toString();
-    
-    if (typeName.contains('TextCellValue') || 
-        typeName.contains('IntCellValue') || 
-        typeName.contains('DoubleCellValue') || 
+
+    if (typeName.contains('TextCellValue') ||
+        typeName.contains('IntCellValue') ||
+        typeName.contains('DoubleCellValue') ||
         typeName.contains('BoolCellValue')) {
       return value.value;
     }
-    
+
     return value;
   }
 
   dynamic sanitizeValue(dynamic value, {String type = 'string'}) {
     if (value == null) return null;
-    
+
     String strVal = value.toString().trim();
     if (strVal.isEmpty) return null;
 
@@ -60,20 +63,20 @@ class DataMigrationService {
           if (d == d.toInt()) return d.toInt().toString();
         }
         return strVal;
-      
+
       case 'double':
         return double.tryParse(strVal.replaceAll(',', '')) ?? 0.0;
-      
+
       case 'bool':
         final low = strVal.toLowerCase();
         return low == 'yes' || low == 'true' || low == '1' || low == 'y';
-      
+
       case 'balanceType':
         final low = strVal.toLowerCase();
         if (low.startsWith('de') || low == 'dr') return 'debit';
         if (low.startsWith('cr')) return 'credit';
         return 'debit';
-      
+
       default:
         return value;
     }
@@ -161,9 +164,10 @@ class DataMigrationService {
           final data = doc.data();
           String? key;
           if (module == MigrationModule.chartOfAccounts) {
-            key = data['accountCode']?.toString() ??
+            key =
+                data['accountCode']?.toString() ??
                 data['accountName']?.toString().toLowerCase();
-            
+
             // Discover highest codes locally
             final type = data['accountType']?.toString();
             final codeStr = data['accountCode']?.toString();
@@ -177,7 +181,8 @@ class DataMigrationService {
               module == MigrationModule.suppliers) {
             key = data['name']?.toString().toLowerCase();
           } else if (module == MigrationModule.inventory) {
-            key = data['sku']?.toString() ??
+            key =
+                data['sku']?.toString() ??
                 data['name']?.toString().toLowerCase();
           }
 
@@ -187,8 +192,12 @@ class DataMigrationService {
         }
       } catch (e) {
         // Intercept Firestore index errors before the loop
-        if (e is FirebaseException && (e.code == 'failed-precondition' || e.message?.contains('index') == true)) {
-          throw Exception('INDEX_REQUIRED: Required database index is missing. Please deploy Firestore indexes and try again.');
+        if (e is FirebaseException &&
+            (e.code == 'failed-precondition' ||
+                e.message?.contains('index') == true)) {
+          throw Exception(
+            'INDEX_REQUIRED: Required database index is missing. Please deploy Firestore indexes and try again.',
+          );
         }
         rethrow;
       }
@@ -215,7 +224,11 @@ class DataMigrationService {
             finalCode = importedCode;
           } else {
             // Generate code locally using cached highest codes
-            finalCode = _generateLocalCode(typeStr, categoryStr, sessionHighestCodes);
+            finalCode = _generateLocalCode(
+              typeStr,
+              categoryStr,
+              sessionHighestCodes,
+            );
           }
 
           // Check for duplicate
@@ -226,7 +239,9 @@ class DataMigrationService {
             existingId = existingIdsByUniqueKey[lookupKey];
           }
 
-          if (existingId != null && strategy == DuplicateStrategy.skip) continue;
+          if (existingId != null && strategy == DuplicateStrategy.skip) {
+            continue;
+          }
 
           data = {
             'accountCode': finalCode,
@@ -239,10 +254,10 @@ class DataMigrationService {
                 sanitizeValue(row.data['isPostable'], type: 'bool') ?? true,
             'openingBalance':
                 sanitizeValue(row.data['openingBalance'], type: 'double') ??
-                    0.0,
+                0.0,
             'openingBalanceType':
                 sanitizeValue(row.data['normalBalance'], type: 'balanceType') ??
-                    'debit',
+                'debit',
             'isGroup':
                 !(sanitizeValue(row.data['isPostable'], type: 'bool') ?? true),
           };
@@ -252,40 +267,56 @@ class DataMigrationService {
             data['currentBalance'] = data['openingBalance'];
           }
         } else if (module == MigrationModule.suppliers ||
-module == MigrationModule.customers) {
-          final nameKey = module == MigrationModule.customers ? 'name' : 'supplierName';
+            module == MigrationModule.customers) {
+          final nameKey = module == MigrationModule.customers
+              ? 'name'
+              : 'supplierName';
           final name = sanitizeValue(row.data[nameKey]);
-          
+
           if (name != null) {
             existingId = existingIdsByUniqueKey[name.toString().toLowerCase()];
           }
-          
-          if (existingId != null && strategy == DuplicateStrategy.skip) continue;
+
+          if (existingId != null && strategy == DuplicateStrategy.skip) {
+            continue;
+          }
 
           data = {
             'name': name,
             'email': sanitizeValue(row.data['email']),
             'phone': sanitizeValue(row.data['phone']),
             'address': sanitizeValue(row.data['address']),
-            'trnVatNumber': sanitizeValue(row.data['trnVatNumber'] ?? row.data['taxNumber']),
-            'openingBalance': sanitizeValue(row.data['openingBalance'], type: 'double') ?? 0.0,
-            'openingBalanceType': sanitizeValue(row.data['openingBalanceType'], type: 'balanceType') ?? (module == MigrationModule.customers ? 'debit' : 'credit'),
-            'isActive': sanitizeValue(row.data['isActive'], type: 'bool') ?? true,
+            'trnVatNumber': sanitizeValue(
+              row.data['trnVatNumber'] ?? row.data['taxNumber'],
+            ),
+            'openingBalance':
+                sanitizeValue(row.data['openingBalance'], type: 'double') ??
+                0.0,
+            'openingBalanceType':
+                sanitizeValue(
+                  row.data['openingBalanceType'],
+                  type: 'balanceType',
+                ) ??
+                (module == MigrationModule.customers ? 'debit' : 'credit'),
+            'isActive':
+                sanitizeValue(row.data['isActive'], type: 'bool') ?? true,
           };
-          
+
           data['portalAccessEnabled'] = false;
           data['portalUserIds'] = [];
           data['invitedEmails'] = [];
         } else if (module == MigrationModule.inventory) {
           final name = sanitizeValue(row.data['name']);
           final sku = sanitizeValue(row.data['sku']);
-          
+
           final lookupKey = sku ?? name?.toString().toLowerCase();
           if (lookupKey != null) {
             existingId = existingIdsByUniqueKey[lookupKey];
           }
-          
-          if (existingId != null && strategy == DuplicateStrategy.skip) continue;
+
+          if (existingId != null && strategy == DuplicateStrategy.skip) {
+            continue;
+          }
 
           data = {
             'name': name,
@@ -293,8 +324,10 @@ module == MigrationModule.customers) {
             'description': sanitizeValue(row.data['description']),
             'type': sanitizeValue(row.data['type']) ?? 'storable',
             'uom': sanitizeValue(row.data['uom']) ?? 'Units',
-            'salePrice': sanitizeValue(row.data['salePrice'], type: 'double') ?? 0.0,
-            'costPrice': sanitizeValue(row.data['costPrice'], type: 'double') ?? 0.0,
+            'salePrice':
+                sanitizeValue(row.data['salePrice'], type: 'double') ?? 0.0,
+            'costPrice':
+                sanitizeValue(row.data['costPrice'], type: 'double') ?? 0.0,
             'stockQuantity': 0.0,
             'stockBatches': [],
           };
@@ -311,14 +344,21 @@ module == MigrationModule.customers) {
         data.updateAll((key, value) {
           if (value == null) return null;
           // If value is still some complex object (like Excel cell), force to string
-          if (value is! String && value is! num && value is! bool && value is! DateTime && value is! FieldValue && value is! List && value is! Map) {
+          if (value is! String &&
+              value is! num &&
+              value is! bool &&
+              value is! DateTime &&
+              value is! FieldValue &&
+              value is! List &&
+              value is! Map) {
             return value.toString();
           }
           return value;
         });
 
         // Add common fields
-        final docRef = (existingId != null && strategy == DuplicateStrategy.update)
+        final docRef =
+            (existingId != null && strategy == DuplicateStrategy.update)
             ? collection.doc(existingId)
             : collection.doc();
 
@@ -332,8 +372,12 @@ module == MigrationModule.customers) {
         batch.set(docRef, data, SetOptions(merge: true));
       } catch (e) {
         // Exit immediately on index errors to avoid labeling as row errors
-        if (e is FirebaseException && (e.code == 'failed-precondition' || e.message?.contains('index') == true)) {
-          throw Exception('INDEX_REQUIRED: Required database index is missing. Please deploy Firestore indexes and try again.');
+        if (e is FirebaseException &&
+            (e.code == 'failed-precondition' ||
+                e.message?.contains('index') == true)) {
+          throw Exception(
+            'INDEX_REQUIRED: Required database index is missing. Please deploy Firestore indexes and try again.',
+          );
         }
         rowErrors.add('Row ${row.index + 1}: ${e.toString()}');
       }
@@ -346,14 +390,22 @@ module == MigrationModule.customers) {
     try {
       await batch.commit();
     } catch (e) {
-      if (e is FirebaseException && (e.code == 'failed-precondition' || e.message?.contains('index') == true)) {
-        throw Exception('INDEX_REQUIRED: Required database index is missing. Please deploy Firestore indexes and try again.');
+      if (e is FirebaseException &&
+          (e.code == 'failed-precondition' ||
+              e.message?.contains('index') == true)) {
+        throw Exception(
+          'INDEX_REQUIRED: Required database index is missing. Please deploy Firestore indexes and try again.',
+        );
       }
       rethrow;
     }
   }
 
-  String _generateLocalCode(String type, String category, Map<String, int> sessionHighestCodes) {
+  String _generateLocalCode(
+    String type,
+    String category,
+    Map<String, int> sessionHighestCodes,
+  ) {
     final majorType = _mapToAccountType(type, category);
     int startRange;
 
@@ -390,14 +442,34 @@ module == MigrationModule.customers) {
   String _mapToAccountType(String type, String category) {
     final t = type.toLowerCase();
     final c = category.toLowerCase();
-    
-    if (t.contains('asset') || c.contains('asset') || c.contains('cash') || c.contains('bank') || c.contains('receivable')) return 'asset';
-    if (t.contains('liability') || c.contains('liability') || c.contains('payable')) return 'liability';
-    if (t.contains('equity')) return 'equity';
-    if (t.contains('revenue') || t.contains('income') || c.contains('sales')) return 'income';
-    if (t.contains('cost of sales') || c.contains('cost of goods sold') || c.contains('direct cost')) return 'costOfSales';
-    if (t.contains('expense')) return 'expense';
-    
+
+    if (t.contains('asset') ||
+        c.contains('asset') ||
+        c.contains('cash') ||
+        c.contains('bank') ||
+        c.contains('receivable')) {
+      return 'asset';
+    }
+    if (t.contains('liability') ||
+        c.contains('liability') ||
+        c.contains('payable')) {
+      return 'liability';
+    }
+    if (t.contains('equity')) {
+      return 'equity';
+    }
+    if (t.contains('revenue') || t.contains('income') || c.contains('sales')) {
+      return 'income';
+    }
+    if (t.contains('cost of sales') ||
+        c.contains('cost of goods sold') ||
+        c.contains('direct cost')) {
+      return 'costOfSales';
+    }
+    if (t.contains('expense')) {
+      return 'expense';
+    }
+
     return 'asset'; // Fallback
   }
 
@@ -411,9 +483,9 @@ module == MigrationModule.customers) {
     if (c == 'sales' || c == 'revenue') return 'sales';
     if (c.contains('operating')) return 'operatingExpense';
     if (c.contains('admin')) return 'adminExpense';
-    
+
     // Try to find exact match in AccountCategory
-    // Since we don't have easy access to enum names as strings here, 
+    // Since we don't have easy access to enum names as strings here,
     // we'll return the sanitized string and hope it matches or use a default
     return c.replaceAll(' ', '');
   }

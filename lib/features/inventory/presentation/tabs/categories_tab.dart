@@ -19,10 +19,17 @@ class CategoriesTab extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Text('Item Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Item Categories',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () => SidePanel.show(context: context, title: 'Add Category', child: CategoryPane(user: user)),
+                onPressed: () => SidePanel.show(
+                  context: context,
+                  title: 'Add Category',
+                  child: CategoryPane(user: user),
+                ),
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add New'),
               ),
@@ -33,7 +40,9 @@ class CategoriesTab extends StatelessWidget {
           child: StreamBuilder<List<InventoryCategoryModel>>(
             stream: inventoryService.getCategories(user.companyId!),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
               final cats = snapshot.data ?? [];
               return ListView.builder(
                 itemCount: cats.length,
@@ -42,8 +51,18 @@ class CategoriesTab extends StatelessWidget {
                   return ListTile(
                     dense: true,
                     title: Text(cat.name, style: const TextStyle(fontSize: 12)),
-                    subtitle: Text(cat.isActive ? 'Active' : 'Inactive', style: TextStyle(fontSize: 10, color: cat.isActive ? Colors.green : Colors.red)),
-                    onTap: () => SidePanel.show(context: context, title: 'Edit Category', child: CategoryPane(user: user, category: cat)),
+                    subtitle: Text(
+                      cat.isActive ? 'Active' : 'Inactive',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: cat.isActive ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    onTap: () => SidePanel.show(
+                      context: context,
+                      title: 'Edit Category',
+                      child: CategoryPane(user: user, category: cat),
+                    ),
                   );
                 },
               );

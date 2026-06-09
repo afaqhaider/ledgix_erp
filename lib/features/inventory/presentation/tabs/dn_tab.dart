@@ -20,10 +20,17 @@ class DnTab extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Text('Delivery Notes (DN)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Delivery Notes (DN)',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () => SidePanel.show(context: context, title: 'Add Delivery Note', child: DnPane(user: user)),
+                onPressed: () => SidePanel.show(
+                  context: context,
+                  title: 'Add Delivery Note',
+                  child: DnPane(user: user),
+                ),
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add New'),
               ),
@@ -32,11 +39,18 @@ class DnTab extends StatelessWidget {
         ),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: firestore.collection('companies').doc(user.companyId!).collection('deliveryNotes').orderBy('date', descending: true).snapshots(),
+            stream: firestore
+                .collection('companies')
+                .doc(user.companyId!)
+                .collection('deliveryNotes')
+                .orderBy('date', descending: true)
+                .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
               final docs = snapshot.data?.docs ?? [];
-              
+
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SingleChildScrollView(
@@ -52,14 +66,42 @@ class DnTab extends StatelessWidget {
                       DataColumn(label: Text('Items')),
                     ],
                     rows: docs.map((doc) {
-                      final dn = DeliveryNoteModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+                      final dn = DeliveryNoteModel.fromMap(
+                        doc.data() as Map<String, dynamic>,
+                        doc.id,
+                      );
                       return DataRow(
                         cells: [
-                          DataCell(Text(dn.dnNumber, style: const TextStyle(fontSize: 12))),
-                          DataCell(Text(DateFormat('yyyy-MM-dd').format(dn.date), style: const TextStyle(fontSize: 12))),
-                          DataCell(Text(dn.customerId, style: const TextStyle(fontSize: 12))),
-                          DataCell(Text(dn.warehouseId, style: const TextStyle(fontSize: 12))),
-                          DataCell(Text('${dn.items.length} items', style: const TextStyle(fontSize: 12))),
+                          DataCell(
+                            Text(
+                              dn.dnNumber,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              DateFormat('yyyy-MM-dd').format(dn.date),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              dn.customerId,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              dn.warehouseId,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              '${dn.items.length} items',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
                         ],
                       );
                     }).toList(),

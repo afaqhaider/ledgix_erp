@@ -12,11 +12,14 @@ import 'package:ledgixerp/features/crm/customer_payments/presentation/screens/cu
 import 'package:ledgixerp/features/crm/customers/presentation/screens/customers_screen.dart';
 import 'package:ledgixerp/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:ledgixerp/features/invoices/presentation/screens/invoices_screen.dart';
-import 'package:ledgixerp/features/operations/presentation/screens/jobs_screen.dart';
 import 'package:ledgixerp/features/operations/presentation/screens/shifts_screen.dart';
 import 'package:ledgixerp/features/operations/presentation/screens/tasks_screen.dart';
 import 'package:ledgixerp/features/purchase_orders/presentation/screens/purchase_orders_screen.dart';
 import 'package:ledgixerp/features/quotations/presentation/screens/quotations_screen.dart';
+import 'package:ledgixerp/features/expenses/presentation/screens/expense_vouchers_screen.dart';
+import 'package:ledgixerp/features/operations/jobs/presentation/screens/jobs_screen.dart';
+import 'package:ledgixerp/features/reports/presentation/screens/job_report_screen.dart';
+import 'package:ledgixerp/features/reports/presentation/screens/cash_flow_screen.dart';
 import 'package:ledgixerp/features/reports/presentation/screens/account_statement_screen.dart';
 import 'package:ledgixerp/features/reports/presentation/screens/balance_sheet_screen.dart';
 import 'package:ledgixerp/features/reports/presentation/screens/general_ledger_screen.dart';
@@ -49,6 +52,7 @@ enum AppModuleId {
   tasks,
   shifts,
   inventory,
+  expenseVouchers,
   chartOfAccounts,
   journalEntries,
   accountingSettings,
@@ -60,6 +64,8 @@ enum AppModuleId {
   profitLoss,
   balanceSheet,
   generalLedger,
+  jobReports,
+  cashFlowStatement,
   accountStatement,
   companySettings,
   financialSettings,
@@ -298,6 +304,13 @@ class AppModules {
           permission: AppPermission.viewAccounting,
           pageBuilder: (user) => JournalEntriesScreen(user: user),
         ),
+        AppModule(
+          id: AppModuleId.expenseVouchers,
+          icon: Icons.trending_down_rounded,
+          label: 'Expense Vouchers',
+          permission: AppPermission.viewAccounting,
+          pageBuilder: (user) => ExpenseVouchersScreen(user: user),
+        ),
         const AppModule(
           id: AppModuleId.accountingSettings,
           icon: Icons.settings_applications_rounded,
@@ -366,12 +379,26 @@ class AppModules {
               GeneralLedgerScreen(companyId: user.companyId!),
         ),
         AppModule(
+          id: AppModuleId.cashFlowStatement,
+          icon: Icons.unfold_more_rounded,
+          label: 'Cash Flow Statement',
+          permission: AppPermission.viewReports,
+          pageBuilder: (user) => CashFlowScreen(companyId: user.companyId!),
+        ),
+        AppModule(
           id: AppModuleId.accountStatement,
           icon: Icons.description_rounded,
           label: 'Account Statement',
           permission: AppPermission.viewReports,
           pageBuilder: (user) =>
               AccountStatementScreen(companyId: user.companyId!),
+        ),
+        AppModule(
+          id: AppModuleId.jobReports,
+          icon: Icons.assignment_turned_in_rounded,
+          label: 'Job Reports',
+          permission: AppPermission.viewReports,
+          pageBuilder: (user) => JobReportScreen(companyId: user.companyId!),
         ),
       ],
     ),

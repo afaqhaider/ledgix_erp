@@ -34,6 +34,18 @@ class FinancialSettingsService {
         .set(settings.toMap(), SetOptions(merge: true));
   }
 
+  Stream<FinancialSettingsModel> streamSettings(String companyId) {
+    return _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('settings')
+        .doc('financial')
+        .snapshots()
+        .map((doc) => doc.exists 
+            ? FinancialSettingsModel.fromMap(doc.data()!) 
+            : FinancialSettingsModel.defaultSettings(companyId));
+  }
+
   Future<String> previewNextDocumentNumber(
     String companyId,
     String type,

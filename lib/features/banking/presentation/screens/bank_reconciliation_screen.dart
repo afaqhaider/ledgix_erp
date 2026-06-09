@@ -313,7 +313,7 @@ class _BankReconciliationScreenState extends State<BankReconciliationScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: entries.length,
-      separatorBuilder: (_, __) => const Divider(),
+      separatorBuilder: (_, _) => const Divider(),
       itemBuilder: (context, index) {
         final entry = entries[index];
         final isSelected = _selectedEntry?.id == entry.id;

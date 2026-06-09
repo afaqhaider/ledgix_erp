@@ -19,14 +19,19 @@ import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/core/theme/app_spacing.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
-import 'package:ledgixerp/core/services/document_number_service.dart';
 import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
+import 'package:ledgixerp/widgets/posting_error_modal.dart';
+import 'package:ledgixerp/core/auth/user_role.dart';
 
 class AddCustomerPaymentScreen extends StatefulWidget {
   final AppUser user;
   final bool isPane;
-  const AddCustomerPaymentScreen({super.key, required this.user, this.isPane = false});
+  const AddCustomerPaymentScreen({
+    super.key,
+    required this.user,
+    this.isPane = false,
+  });
 
   @override
   State<AddCustomerPaymentScreen> createState() =>
@@ -41,7 +46,6 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
   final _bankService = BankAccountService();
   final _journalService = JournalService();
   final _companyService = CompanyService();
-  final _docNumberService = DocumentNumberService();
 
   final _amountController = TextEditingController();
   final _referenceController = TextEditingController();
@@ -89,35 +93,47 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
     });
   }
 
-  Future<void> _save() async {
+  bool get _canPost {
+    const highRoles = [
+      UserRole.owner,
+      UserRole.superAdmin,
+      UserRole.admin,
+      UserRole.accountant,
+      UserRole.generalManager,
+    ];
+    return highRoles.contains(widget.user.role);
+  }
+
+  Future<void> _save({bool shouldPost = false}) async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
-      return;
-    }
-    if (_selectedBankAccount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a bank/cash account')),
-      );
-      return;
+
+    if (shouldPost) {
+      if (_selectedCustomer == null) {
+        showErpError(
+          context: context,
+          title: 'Selection Required',
+          message: 'Please select a customer before posting the receipt.',
+        );
+        return;
+      }
+      if (_selectedBankAccount == null) {
+        showErpError(
+          context: context,
+          title: 'Account Required',
+          message: 'Please select a bank/cash account.',
+        );
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
     try {
-      // Consume number on save
-      final nextNumber = await _docNumberService.getNextNumber(
-        widget.user.companyId!,
-        'receipt',
-      );
-
       final payment = CustomerPaymentModel(
         id: '',
         companyId: widget.user.companyId!,
-        paymentNumber: nextNumber,
-        customerId: _selectedCustomer!.id,
-        customerName: _selectedCustomer!.name,
+        paymentNumber: 'AUTO',
+        customerId: _selectedCustomer?.id ?? '',
+        customerName: _selectedCustomer?.name ?? 'Draft Customer',
         receiptType: _receiptType,
         invoiceId: _selectedRef is InvoiceModel
             ? _selectedRef.id
@@ -136,7 +152,7 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
                 ),
               ]
             : [],
-        bankAccountId: _selectedBankAccount!.id,
+        bankAccountId: _selectedBankAccount?.id,
         paymentDate: _paymentDate,
         paymentMethod: _paymentMethod,
         referenceNumber: _referenceController.text.trim().isEmpty
@@ -147,18 +163,31 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
             ? null
             : _notesController.text.trim(),
         createdAt: DateTime.now(),
+        isPosted: shouldPost && _canPost,
+        approvalStatus: shouldPost ? (_canPost ? 'approved' : 'pending') : null,
       );
 
-      await _paymentService.addPayment(payment);
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
+      await _paymentService.addPayment(
+        payment,
+        widget.user,
+        shouldPost: shouldPost,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (e, stack) {
+      debugPrint('Error saving payment: $e');
+      debugPrint(stack.toString());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        if (shouldPost) {
+          PostingErrorModal.show(
+            context: context,
+            title: 'Posting Failed',
+            message:
+                'An error occurred while trying to post the receipt. The transaction may not have been completed.',
+            error: e,
+          );
+        } else {
+          showErpError(context: context, error: e);
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -191,9 +220,7 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
                       prefixIcon: Icon(Icons.calendar_today),
                       border: OutlineInputBorder(),
                     ),
-                    child: Text(
-                      DateFormat('dd-MMM-yyyy').format(_paymentDate),
-                    ),
+                    child: Text(DateFormat('dd-MMM-yyyy').format(_paymentDate)),
                   ),
                 ),
               ),
@@ -322,19 +349,40 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
           ),
           if (!widget.isPane) ...[
             const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => _save(shouldPost: false),
+                      child: const Text('Save Draft'),
+                    ),
+                  ),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Save Receipt'),
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => _save(shouldPost: true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              _canPost ? 'Save & Post' : 'Submit for Approval',
+                            ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -345,16 +393,31 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
       return ErpSidePane(
         title: 'Add New Receipt',
         onCancel: () => Navigator.pop(context),
-        onSave: _save,
+        onSave: () => _save(shouldPost: true),
         isLoading: _isLoading,
-        saveLabel: 'Save Receipt',
-        child: formContent,
+        saveLabel: _canPost ? 'Save & Post' : 'Submit for Approval',
+        extraActions: [
+          OutlinedButton(
+            onPressed: _isLoading ? null : () => _save(shouldPost: false),
+            child: const Text('Save Draft'),
+          ),
+        ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: formContent,
+        ),
       );
     }
 
-    return FormLayout(
-      maxWidth: 640,
-      child: formContent,
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add New Receipt')),
+      body: FormLayout(
+        maxWidth: 640,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: formContent,
+        ),
+      ),
     );
   }
 }

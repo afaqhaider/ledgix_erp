@@ -204,9 +204,9 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating logo: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating logo: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -551,14 +551,14 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                             ),
                             child: _newLogoFile != null
                                 ? (kIsWeb
-                                    ? Image.memory(
-                                        _newLogoBytes!,
-                                        fit: BoxFit.contain,
-                                      )
-                                    : Image.file(
-                                        File(_newLogoFile!.path),
-                                        fit: BoxFit.contain,
-                                      ))
+                                      ? Image.memory(
+                                          _newLogoBytes!,
+                                          fit: BoxFit.contain,
+                                        )
+                                      : Image.file(
+                                          File(_newLogoFile!.path),
+                                          fit: BoxFit.contain,
+                                        ))
                                 : CompanyLogoImage(
                                     logoUrl: _company?.companyLogoUrl,
                                     width: 120,

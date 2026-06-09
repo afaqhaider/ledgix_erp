@@ -57,6 +57,11 @@ class CustomerPaymentModel {
   final String? journalEntryId;
   final String? approvalStatus;
 
+  // Job Link
+  final String? jobId;
+  final String? jobNumber;
+  final String? jobName;
+
   CustomerPaymentModel({
     required this.id,
     required this.companyId,
@@ -77,6 +82,9 @@ class CustomerPaymentModel {
     this.approvalStatus,
     this.receiptType = ReceiptType.onAccount,
     this.allocations = const [],
+    this.jobId,
+    this.jobNumber,
+    this.jobName,
   });
 
   CustomerPaymentModel copyWith({
@@ -99,6 +107,9 @@ class CustomerPaymentModel {
     bool? isPosted,
     String? journalEntryId,
     String? approvalStatus,
+    String? jobId,
+    String? jobNumber,
+    String? jobName,
   }) {
     return CustomerPaymentModel(
       id: id ?? this.id,
@@ -120,6 +131,9 @@ class CustomerPaymentModel {
       isPosted: isPosted ?? this.isPosted,
       journalEntryId: journalEntryId ?? this.journalEntryId,
       approvalStatus: approvalStatus ?? this.approvalStatus,
+      jobId: jobId ?? this.jobId,
+      jobNumber: jobNumber ?? this.jobNumber,
+      jobName: jobName ?? this.jobName,
     );
   }
 
@@ -144,6 +158,9 @@ class CustomerPaymentModel {
       'isPosted': isPosted,
       'journalEntryId': journalEntryId,
       'approvalStatus': approvalStatus,
+      'jobId': jobId,
+      'jobNumber': jobNumber,
+      'jobName': jobName,
     };
   }
 
@@ -177,6 +194,9 @@ class CustomerPaymentModel {
       isPosted: map['isPosted'] ?? false,
       journalEntryId: map['journalEntryId'],
       approvalStatus: map['approvalStatus'],
+      jobId: map['jobId'],
+      jobNumber: map['jobNumber'],
+      jobName: map['jobName'],
     );
   }
 }

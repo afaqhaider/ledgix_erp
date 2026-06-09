@@ -16,15 +16,20 @@ class LedgerTab extends StatelessWidget {
       children: [
         const Padding(
           padding: EdgeInsets.all(16),
-          child: Text('Stock Ledger', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Text(
+            'Stock Ledger',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
         ),
         Expanded(
           child: StreamBuilder<List<StockLedgerModel>>(
             stream: movementService.getStockLedger(user.companyId!),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
               final entries = snapshot.data ?? [];
-              
+
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SingleChildScrollView(
@@ -38,20 +43,85 @@ class LedgerTab extends StatelessWidget {
                       DataColumn(label: Text('Type')),
                       DataColumn(label: Text('Warehouse')),
                       DataColumn(label: Text('In', textAlign: TextAlign.right)),
-                      DataColumn(label: Text('Out', textAlign: TextAlign.right)),
-                      DataColumn(label: Text('Balance', textAlign: TextAlign.right)),
+                      DataColumn(
+                        label: Text('Out', textAlign: TextAlign.right),
+                      ),
+                      DataColumn(
+                        label: Text('Balance', textAlign: TextAlign.right),
+                      ),
                     ],
-                    rows: entries.map((e) => DataRow(
-                      cells: [
-                        DataCell(Text(DateFormat('yyyy-MM-dd HH:mm').format(e.date), style: const TextStyle(fontSize: 11))),
-                        DataCell(Text(e.referenceNumber, style: const TextStyle(fontSize: 11))),
-                        DataCell(Text(e.referenceType, style: const TextStyle(fontSize: 11))),
-                        DataCell(Text(e.warehouseId, style: const TextStyle(fontSize: 11))),
-                        DataCell(Align(alignment: Alignment.centerRight, child: Text(e.quantityIn > 0 ? e.quantityIn.toString() : '-', style: const TextStyle(fontSize: 11, color: Colors.green)))),
-                        DataCell(Align(alignment: Alignment.centerRight, child: Text(e.quantityOut > 0 ? e.quantityOut.toString() : '-', style: const TextStyle(fontSize: 11, color: Colors.red)))),
-                        DataCell(Align(alignment: Alignment.centerRight, child: Text(e.balanceAfter.toString(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)))),
-                      ],
-                    )).toList(),
+                    rows: entries
+                        .map(
+                          (e) => DataRow(
+                            cells: [
+                              DataCell(
+                                Text(
+                                  DateFormat('yyyy-MM-dd HH:mm').format(e.date),
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  e.referenceNumber,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  e.referenceType,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  e.warehouseId,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              DataCell(
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    e.quantityIn > 0
+                                        ? e.quantityIn.toString()
+                                        : '-',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    e.quantityOut > 0
+                                        ? e.quantityOut.toString()
+                                        : '-',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    e.balanceAfter.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               );

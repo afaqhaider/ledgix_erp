@@ -3,6 +3,9 @@ import 'package:ledgixerp/core/utils/app_formatters.dart';
 import '../../models/report_models.dart';
 import '../../services/financial_report_service.dart';
 import '../widgets/hierarchical_report_row.dart';
+import '../widgets/job_filter_selector.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
+import 'package:ledgixerp/features/settings/models/financial_settings_model.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -17,6 +20,7 @@ class GeneralLedgerScreen extends StatefulWidget {
 
 class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
   final _reportService = FinancialReportService();
+  final _settingsService = FinancialSettingsService();
   DateTimeRange _dateRange = DateTimeRange(
     start: DateTime(DateTime.now().year, DateTime.now().month, 1),
     end: DateTime.now(),
@@ -24,11 +28,23 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
   GeneralLedgerReport? _report;
   bool _isLoading = true;
   bool _isAllExpanded = false;
+  String? _selectedJobId;
+  bool _jobEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    _initSettings();
     _loadReport();
+  }
+
+  Future<void> _initSettings() async {
+    final settings = await _settingsService.getSettings(widget.companyId);
+    if (mounted) {
+      setState(() {
+        _jobEnabled = settings.jobBasedAccountingEnabled;
+      });
+    }
   }
 
   String _searchQuery = '';
@@ -40,6 +56,7 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
         widget.companyId,
         _dateRange.start,
         _dateRange.end,
+        jobId: _selectedJobId,
       );
       setState(() {
         _report = report;
@@ -48,9 +65,9 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading report: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading report: $e')));
       }
     }
   }
@@ -59,11 +76,15 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
     if (_report == null) return [];
     if (_searchQuery.isEmpty) return _report!.nodes;
 
-    return _report!.nodes.map((node) => _filterNode(node)).whereType<FinancialReportNode>().toList();
+    return _report!.nodes
+        .map((node) => _filterNode(node))
+        .whereType<FinancialReportNode>()
+        .toList();
   }
 
   FinancialReportNode? _filterNode(FinancialReportNode node) {
-    bool matches = node.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+    bool matches =
+        node.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
         node.code.toLowerCase().contains(_searchQuery.toLowerCase());
 
     List<FinancialReportNode> filteredChildren = node.children
@@ -89,7 +110,9 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
         if (_isLoading)
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else if (filteredNodes.isEmpty)
-          const Expanded(child: Center(child: Text('No matching records found')))
+          const Expanded(
+            child: Center(child: Text('No matching records found')),
+          )
         else
           Expanded(
             child: Column(
@@ -102,11 +125,15 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
                     itemCount: filteredNodes.length,
                     itemBuilder: (context, index) {
                       return HierarchicalReportRow(
-                        key: ValueKey('gl-${filteredNodes[index].id}-$_isAllExpanded-$_searchQuery'),
+                        key: ValueKey(
+                          'gl-${filteredNodes[index].id}-$_isAllExpanded-$_searchQuery',
+                        ),
                         companyId: widget.companyId,
                         node: filteredNodes[index],
                         displayMode: ReportDisplayMode.generalLedger,
-                        initiallyExpanded: _isAllExpanded || _searchQuery.isNotEmpty,
+                        initiallyExpanded:
+                            _isAllExpanded || _searchQuery.isNotEmpty,
+                        jobId: _selectedJobId,
                       );
                     },
                   ),
@@ -124,12 +151,30 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
         children: [
+          StreamBuilder<FinancialSettingsModel>(
+            stream: _settingsService.streamSettings(widget.companyId),
+            builder: (context, snapshot) {
+              final enabled = snapshot.data?.jobBasedAccountingEnabled ?? _jobEnabled;
+              if (!enabled) return const SizedBox.shrink();
+              
+              return JobFilterSelector(
+                companyId: widget.companyId,
+                selectedJobId: _selectedJobId,
+                onJobSelected: (jobId) {
+                  setState(() => _selectedJobId = jobId);
+                  _loadReport();
+                },
+              );
+            },
+          ),
           Expanded(
             child: SearchBar(
               hintText: 'Search account or code...',
               leading: const Icon(Icons.search, size: 20),
               elevation: WidgetStateProperty.all(0),
-              backgroundColor: WidgetStateProperty.all(theme.colorScheme.surfaceContainer),
+              backgroundColor: WidgetStateProperty.all(
+                theme.colorScheme.surfaceContainer,
+              ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -144,24 +189,28 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
     final now = DateTime.now();
     return Row(
       children: [
-        _rangePresetButton('This Month', DateTimeRange(
-          start: DateTime(now.year, now.month, 1),
-          end: now,
-        )),
-        _rangePresetButton('This Year', DateTimeRange(
-          start: DateTime(now.year, 1, 1),
-          end: now,
-        )),
-        _rangePresetButton('Last Month', DateTimeRange(
-          start: DateTime(now.year, now.month - 1, 1),
-          end: DateTime(now.year, now.month, 0),
-        )),
+        _rangePresetButton(
+          'This Month',
+          DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
+        ),
+        _rangePresetButton(
+          'This Year',
+          DateTimeRange(start: DateTime(now.year, 1, 1), end: now),
+        ),
+        _rangePresetButton(
+          'Last Month',
+          DateTimeRange(
+            start: DateTime(now.year, now.month - 1, 1),
+            end: DateTime(now.year, now.month, 0),
+          ),
+        ),
       ],
     );
   }
 
   Widget _rangePresetButton(String label, DateTimeRange range) {
-    final isSelected = _dateRange.start == range.start && _dateRange.end == range.end;
+    final isSelected =
+        _dateRange.start == range.start && _dateRange.end == range.end;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
@@ -223,7 +272,9 @@ class _GeneralLedgerScreenState extends State<GeneralLedgerScreen> {
               }
             },
             icon: const Icon(Icons.date_range, size: 18),
-            label: Text('${AppFormatters.date(_dateRange.start)} - ${AppFormatters.date(_dateRange.end)}'),
+            label: Text(
+              '${AppFormatters.date(_dateRange.start)} - ${AppFormatters.date(_dateRange.end)}',
+            ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               shape: RoundedRectangleBorder(

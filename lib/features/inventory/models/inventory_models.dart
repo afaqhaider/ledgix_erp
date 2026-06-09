@@ -35,7 +35,7 @@ class InventoryItemModel {
   final double minimumStock;
   final double maximumStock;
   final double stockQuantity; // Denormalized stock balance
-  final double costPrice;     // Weighted Average Cost
+  final double costPrice; // Weighted Average Cost
   final bool isActive;
   final DateTime createdAt;
 

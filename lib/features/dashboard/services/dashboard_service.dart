@@ -71,12 +71,19 @@ class DashboardService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<DashboardStats> getDashboardStats(String companyId) {
-    final controller = StreamController<DashboardStats>();
+    debugPrint('DashboardService: getDashboardStats called for $companyId');
+    final controller = StreamController<DashboardStats>.broadcast();
+    Timer? debounceTimer;
 
-    void update() async {
+    void performUpdate(String source) async {
       try {
-        debugPrint('Dashboard Debug: Starting update for companyId: $companyId');
-        
+        debugPrint(
+          'DashboardService: performUpdate() executing from source: $source',
+        );
+        debugPrint(
+          'Dashboard Debug: Starting update for companyId: $companyId',
+        );
+
         final now = DateTime.now();
         final currentMonthStart = DateTime(now.year, now.month, 1);
         final prevMonthStart = DateTime(now.year, now.month - 1, 1);
@@ -94,18 +101,22 @@ class DashboardService {
         double totalRevenue = 0;
         double prevMonthRevenue = 0;
 
-        debugPrint('Dashboard Debug: salesInvoices query returned ${allInvoicesSnap.docs.length} documents');
-        
+        debugPrint(
+          'Dashboard Debug: salesInvoices query returned ${allInvoicesSnap.docs.length} documents',
+        );
+
         if (allInvoicesSnap.docs.isNotEmpty) {
           final first = allInvoicesSnap.docs.first.data();
-          debugPrint('Dashboard Debug: First Invoice Sample - isPosted: ${first['isPosted']}, status: ${first['status']}, date: ${first['invoiceDate']}, totalAmount: ${first['totalAmount']}');
+          debugPrint(
+            'Dashboard Debug: First Invoice Sample - isPosted: ${first['isPosted']}, status: ${first['status']}, date: ${first['invoiceDate']}, totalAmount: ${first['totalAmount']}',
+          );
         }
 
         for (var doc in allInvoicesSnap.docs) {
           final data = doc.data();
           final inv = InvoiceModel.fromMap(data, doc.id);
           totalRevenue += inv.totalAmount;
-          
+
           if (!inv.invoiceDate.isBefore(prevMonthStart)) {
             if (inv.invoiceDate.isBefore(currentMonthStart)) {
               prevMonthRevenue += inv.totalAmount;
@@ -124,18 +135,22 @@ class DashboardService {
         double totalExpenses = 0;
         double prevMonthExpenses = 0;
 
-        debugPrint('Dashboard Debug: supplierBills query returned ${allBillsSnap.docs.length} documents');
+        debugPrint(
+          'Dashboard Debug: supplierBills query returned ${allBillsSnap.docs.length} documents',
+        );
 
         if (allBillsSnap.docs.isNotEmpty) {
           final first = allBillsSnap.docs.first.data();
-          debugPrint('Dashboard Debug: First Bill Sample - isPosted: ${first['isPosted']}, status: ${first['status']}, date: ${first['billDate']}, totalAmount: ${first['totalAmount']}');
+          debugPrint(
+            'Dashboard Debug: First Bill Sample - isPosted: ${first['isPosted']}, status: ${first['status']}, date: ${first['billDate']}, totalAmount: ${first['totalAmount']}',
+          );
         }
 
         for (var doc in allBillsSnap.docs) {
           final data = doc.data();
           final bill = BillModel.fromMap(data, doc.id);
           totalExpenses += bill.totalAmount;
-          
+
           if (!bill.billDate.isBefore(prevMonthStart)) {
             if (bill.billDate.isBefore(currentMonthStart)) {
               prevMonthExpenses += bill.totalAmount;
@@ -170,16 +185,19 @@ class DashboardService {
             .collection('companies')
             .doc(companyId)
             .collection('salesInvoices')
-            .where('status', whereIn: [
-              'draft',
-              'pendingApproval',
-              'approved',
-              'posted',
-              'sent',
-              'partiallyPaid'
-            ])
+            .where(
+              'status',
+              whereIn: [
+                'draft',
+                'pendingApproval',
+                'approved',
+                'posted',
+                'sent',
+                'partiallyPaid',
+              ],
+            )
             .get();
-        
+
         for (var doc in pendingInvSnap.docs) {
           final inv = InvoiceModel.fromMap(doc.data(), doc.id);
           if (inv.status != InvoiceStatus.paid) {
@@ -218,7 +236,9 @@ class DashboardService {
           if (history != null && history.isNotEmpty) {
             final lastAction = history.last;
             if (lastAction is Map && lastAction['timestamp'] is Timestamp) {
-              if ((lastAction['timestamp'] as Timestamp).toDate().isAfter(startOfToday)) {
+              if ((lastAction['timestamp'] as Timestamp).toDate().isAfter(
+                startOfToday,
+              )) {
                 approvedToday++;
               }
             }
@@ -238,7 +258,9 @@ class DashboardService {
 
         for (var doc in allInvoicesSnap.docs) {
           final inv = InvoiceModel.fromMap(doc.data(), doc.id);
-          final monthDiff = (now.year - inv.invoiceDate.year) * 12 + (now.month - inv.invoiceDate.month);
+          final monthDiff =
+              (now.year - inv.invoiceDate.year) * 12 +
+              (now.month - inv.invoiceDate.month);
           if (monthDiff >= 0 && monthDiff < 6) {
             revenueChartData[5 - monthDiff] += inv.totalAmount;
           }
@@ -246,7 +268,9 @@ class DashboardService {
 
         for (var doc in allBillsSnap.docs) {
           final bill = BillModel.fromMap(doc.data(), doc.id);
-          final monthDiff = (now.year - bill.billDate.year) * 12 + (now.month - bill.billDate.month);
+          final monthDiff =
+              (now.year - bill.billDate.year) * 12 +
+              (now.month - bill.billDate.month);
           if (monthDiff >= 0 && monthDiff < 6) {
             expenseChartData[5 - monthDiff] += bill.totalAmount;
           }
@@ -257,7 +281,10 @@ class DashboardService {
             .doc(companyId)
             .collection('customerPayments')
             .where('isPosted', isEqualTo: true)
-            .where('paymentDate', isGreaterThanOrEqualTo: Timestamp.fromDate(sixMonthsAgo))
+            .where(
+              'paymentDate',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(sixMonthsAgo),
+            )
             .get();
 
         final spSnap = await _firestore
@@ -265,19 +292,26 @@ class DashboardService {
             .doc(companyId)
             .collection('supplierPayments')
             .where('isPosted', isEqualTo: true)
-            .where('paymentDate', isGreaterThanOrEqualTo: Timestamp.fromDate(sixMonthsAgo))
+            .where(
+              'paymentDate',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(sixMonthsAgo),
+            )
             .get();
 
         for (var doc in cpSnap.docs) {
           final p = CustomerPaymentModel.fromMap(doc.data(), doc.id);
-          final monthDiff = (now.year - p.paymentDate.year) * 12 + (now.month - p.paymentDate.month);
+          final monthDiff =
+              (now.year - p.paymentDate.year) * 12 +
+              (now.month - p.paymentDate.month);
           if (monthDiff >= 0 && monthDiff < 6) {
             cashFlowData[5 - monthDiff] += p.amount;
           }
         }
         for (var doc in spSnap.docs) {
           final p = SupplierPaymentModel.fromMap(doc.data(), doc.id);
-          final monthDiff = (now.year - p.paymentDate.year) * 12 + (now.month - p.paymentDate.month);
+          final monthDiff =
+              (now.year - p.paymentDate.year) * 12 +
+              (now.month - p.paymentDate.month);
           if (monthDiff >= 0 && monthDiff < 6) {
             cashFlowData[5 - monthDiff] -= p.amount;
           }
@@ -306,7 +340,6 @@ class DashboardService {
             ),
           );
         }
-
       } catch (error, stackTrace) {
         debugPrint('Dashboard CRITICAL Error: $error');
         debugPrint('Dashboard StackTrace: $stackTrace');
@@ -316,51 +349,66 @@ class DashboardService {
       }
     }
 
+    void update(String source) {
+      debugPrint(
+        'DashboardService: update() requested from source: $source (debouncing)',
+      );
+      debounceTimer?.cancel();
+      debounceTimer = Timer(
+        const Duration(milliseconds: 300),
+        () => performUpdate(source),
+      );
+    }
+
     // Listen to changes
     final sub1 = _firestore
         .collection('companies')
         .doc(companyId)
         .collection('salesInvoices')
         .snapshots()
-        .listen((_) => update());
+        .listen((_) => update('salesInvoices change'));
     final sub2 = _firestore
         .collection('companies')
         .doc(companyId)
         .collection('supplierBills')
         .snapshots()
-        .listen((_) => update());
+        .listen((_) => update('supplierBills change'));
     final sub3 = _firestore
         .collection('companies')
         .doc(companyId)
         .collection('bankAccounts')
         .snapshots()
-        .listen((_) => update());
+        .listen((_) => update('bankAccounts change'));
     final sub4 = _firestore
         .collection('companies')
         .doc(companyId)
         .collection('approvalRequests')
         .snapshots()
-        .listen((_) => update());
+        .listen((_) => update('approvalRequests change'));
     final sub5 = _firestore
         .collection('companies')
         .doc(companyId)
         .collection('customerPayments')
         .snapshots()
-        .listen((_) => update());
+        .listen((_) => update('customerPayments change'));
     final sub6 = _firestore
         .collection('companies')
         .doc(companyId)
         .collection('supplierPayments')
         .snapshots()
-        .listen((_) => update());
+        .listen((_) => update('supplierPayments change'));
     final sub7 = _firestore
         .collection('companies')
         .doc(companyId)
         .collection('chartOfAccounts')
         .snapshots()
-        .listen((_) => update());
+        .listen((_) => update('chartOfAccounts change'));
 
     controller.onCancel = () {
+      debugPrint(
+        'DashboardService: Stream cancelled, disposing listeners and timer',
+      );
+      debounceTimer?.cancel();
       sub1.cancel();
       sub2.cancel();
       sub3.cancel();
@@ -370,7 +418,7 @@ class DashboardService {
       sub7.cancel();
     };
 
-    update();
+    performUpdate('initial call');
     return controller.stream;
   }
 

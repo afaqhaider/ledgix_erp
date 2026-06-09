@@ -30,7 +30,8 @@ class BranchService {
   Future<void> deleteBranch(String companyId, String branchId) async {
     // Check if it's the main branch
     final doc = await _getBranchRef(companyId).doc(branchId).get();
-    if (doc.exists && (doc.data() as Map<String, dynamic>)['isMainBranch'] == true) {
+    if (doc.exists &&
+        (doc.data() as Map<String, dynamic>)['isMainBranch'] == true) {
       throw Exception('Cannot delete the main branch.');
     }
     await _getBranchRef(companyId).doc(branchId).delete();

@@ -23,6 +23,8 @@ import 'package:ledgixerp/features/search/services/search_service.dart';
 import 'package:ledgixerp/features/weather/presentation/widgets/weather_display.dart';
 import 'package:ledgixerp/features/users/presentation/widgets/profile_menu_button.dart';
 
+import 'package:ledgixerp/features/expenses/presentation/screens/add_expense_voucher_screen.dart';
+
 class DashboardScreen extends StatefulWidget {
   final AppUser user;
   const DashboardScreen({super.key, required this.user});
@@ -32,13 +34,31 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _shellNavigatorKey =
+      GlobalKey<NavigatorState>();
   AppModule _selectedModule = AppModules.dashboard;
   final _dashboardService = DashboardService();
   final _companyService = CompanyService();
   final _searchService = SearchService();
   bool _isQuickActionsCollapsed = false;
   int _quickActionTabIndex = 0; // 0 for Add, 1 for View
+
+  late Stream<DashboardStats> _statsStream;
+  late Stream<CompanyModel?> _companyStream;
+  late Stream<int> _unreadNotificationsStream;
+  StreamSubscription? _settingsSub;
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('DashboardScreen: initState');
+    _statsStream = _dashboardService.getDashboardStats(widget.user.companyId!);
+    _companyStream = _companyService.getCompany(widget.user.companyId!);
+    _unreadNotificationsStream = NotificationService().getUnreadCount(
+      widget.user.companyId!,
+      widget.user.uid,
+    );
+  }
 
   final LayerLink _searchLayerLink = LayerLink();
   OverlayEntry? _searchOverlayEntry;
@@ -48,6 +68,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
+    debugPrint('DashboardScreen: dispose');
+    _settingsSub?.cancel();
     _removeSearchOverlay();
     _searchController.dispose();
     super.dispose();
@@ -80,37 +102,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
               child: _isSearching
                   ? const Padding(
                       padding: EdgeInsets.all(16.0),
-                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     )
                   : _searchResults.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text('No results found'),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          padding: EdgeInsets.zero,
-                          itemCount: _searchResults.length,
-                          itemBuilder: (context, index) {
-                            final result = _searchResults[index];
-                            return ListTile(
-                              leading: Icon(_getSearchIcon(result.type), size: 20),
-                              title: Text(result.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              subtitle: Text(result.subtitle, style: const TextStyle(fontSize: 11)),
-                              trailing: Text(DateFormat('MMM dd').format(result.date), style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                              onTap: () {
-                                _handleSearchResultTap(result);
-                                _removeSearchOverlay();
-                                _searchController.clear();
-                              },
-                            );
+                  ? const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No results found'),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, index) {
+                        final result = _searchResults[index];
+                        return ListTile(
+                          leading: Icon(_getSearchIcon(result.type), size: 20),
+                          title: Text(
+                            result.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          subtitle: Text(
+                            result.subtitle,
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          trailing: Text(
+                            DateFormat('MMM dd').format(result.date),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          onTap: () {
+                            _handleSearchResultTap(result);
+                            _removeSearchOverlay();
+                            _searchController.clear();
                           },
-                        ),
+                        );
+                      },
+                    ),
             ),
           ),
         ),
@@ -120,26 +161,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   IconData _getSearchIcon(String type) {
     switch (type) {
-      case 'customer': return Icons.person_outline;
-      case 'supplier': return Icons.local_shipping_outlined;
-      case 'invoice': return Icons.receipt_long_outlined;
-      case 'bill': return Icons.assignment_outlined;
-      case 'journal': return Icons.history_edu_outlined;
-      case 'payment': return Icons.payments_outlined;
-      default: return Icons.search;
+      case 'customer':
+        return Icons.person_outline;
+      case 'supplier':
+        return Icons.local_shipping_outlined;
+      case 'invoice':
+        return Icons.receipt_long_outlined;
+      case 'bill':
+        return Icons.assignment_outlined;
+      case 'journal':
+        return Icons.history_edu_outlined;
+      case 'payment':
+        return Icons.payments_outlined;
+      default:
+        return Icons.search;
     }
   }
 
   void _handleSearchResultTap(SearchResult result) {
     AppModuleId? targetId;
     switch (result.type) {
-      case 'customer': targetId = AppModuleId.customers; break;
-      case 'invoice': targetId = AppModuleId.salesInvoices; break;
-      case 'bill': targetId = AppModuleId.bills; break;
-      case 'journal': targetId = AppModuleId.journalEntries; break;
-      case 'payment': targetId = result.data.containsKey('customerName') ? AppModuleId.receipts : AppModuleId.supplierPayments; break;
+      case 'customer':
+        targetId = AppModuleId.customers;
+        break;
+      case 'invoice':
+        targetId = AppModuleId.salesInvoices;
+        break;
+      case 'bill':
+        targetId = AppModuleId.bills;
+        break;
+      case 'expenseVoucher':
+        targetId = AppModuleId.expenseVouchers;
+        break;
+      case 'journal':
+        targetId = AppModuleId.journalEntries;
+        break;
+      case 'payment':
+        targetId = result.data.containsKey('customerName')
+            ? AppModuleId.receipts
+            : AppModuleId.supplierPayments;
+        break;
     }
-    
+
     if (targetId != null) {
       setState(() => _selectedModule = AppModules.moduleById(targetId!));
     }
@@ -153,15 +216,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     _showSearchOverlay();
     setState(() => _isSearching = true);
-    
-    final results = await _searchService.globalSearch(widget.user.companyId!, query);
-    
+
+    final results = await _searchService.globalSearch(
+      widget.user.companyId!,
+      query,
+    );
+
     if (mounted) {
       setState(() {
         _searchResults = results;
         _isSearching = false;
       });
-      _showSearchOverlay(); 
+      _showSearchOverlay();
     }
   }
 
@@ -173,6 +239,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('DashboardScreen: build');
     final theme = Theme.of(context);
     final isMobile = MediaQuery.of(context).size.width < 900;
 
@@ -252,7 +319,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             IconButton(
               icon: const Icon(Icons.arrow_back),
               tooltip: 'Back to Dashboard',
-              onPressed: () => setState(() => _selectedModule = AppModules.dashboard),
+              onPressed: () =>
+                  setState(() => _selectedModule = AppModules.dashboard),
             )
           else if (isMobile)
             Builder(
@@ -270,9 +338,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.3,
+                  ),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.8)),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.8,
+                    ),
+                  ),
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -280,7 +354,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: const TextStyle(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Global Search',
-                    hintStyle: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                     prefixIcon: const Icon(Icons.search, size: 20),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -298,7 +375,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 16),
           ],
           StreamBuilder<int>(
-            stream: NotificationService().getUnreadCount(widget.user.companyId!, widget.user.uid),
+            stream: _unreadNotificationsStream,
             builder: (context, snapshot) {
               final count = snapshot.data ?? 0;
               return Badge(
@@ -343,17 +420,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildDashboardOverview() {
-    final companyId = widget.user.companyId!;
     final screenWidth = MediaQuery.of(context).size.width;
     final padding = screenWidth < 600 ? 12.0 : 24.0;
 
     return StreamBuilder<CompanyModel?>(
-      stream: _companyService.getCompany(companyId),
+      stream: _companyStream,
       builder: (context, companySnapshot) {
         final currency = companySnapshot.data?.baseCurrency ?? 'AED';
 
         return StreamBuilder<DashboardStats>(
-          stream: _dashboardService.getDashboardStats(companyId),
+          stream: _statsStream,
           initialData: DashboardStats(),
           builder: (context, statsSnapshot) {
             final stats = statsSnapshot.data ?? DashboardStats();
@@ -375,7 +451,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 16),
                       _buildChartsRow(stats),
                       const SizedBox(height: 16),
-                      _buildActivityGrid(companyId, currency, stats),
+                      _buildActivityGrid(widget.user.companyId!, currency, stats),
                     ],
                   );
 
@@ -408,12 +484,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return InkWell(
       onTap: error != null
           ? () => showErpError(
-                context: context,
-                title: 'Dashboard Sync Error',
-                message:
-                    'We encountered an issue while fetching some dashboard figures. This usually happens due to missing database indexes or connection issues.',
-                error: error,
-              )
+              context: context,
+              title: 'Dashboard Sync Error',
+              message:
+                  'We encountered an issue while fetching some dashboard figures. This usually happens due to missing database indexes or connection issues.',
+              error: error,
+            )
           : null,
       borderRadius: BorderRadius.circular(8),
       child: Container(
@@ -854,7 +930,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Divider(height: 20, color: dividerColor),
             _buildActionItem(
               'Expense',
-              'Expense bill',
+              'Expense voucher',
               Icons.trending_down_rounded,
               _dangerAccent,
               () => _openAddExpense(context),
@@ -894,10 +970,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Divider(height: 20, color: dividerColor),
             _buildActionItem(
               'Expenses',
-              'Direct expense bills',
+              'Direct expense vouchers',
               Icons.trending_down_rounded,
               _dangerAccent,
-              () => _selectModule(AppModuleId.bills),
+              () => _selectModule(AppModuleId.expenseVouchers),
             ),
             Divider(height: 20, color: dividerColor),
             _buildActionItem(
@@ -952,7 +1028,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _openAddExpense(BuildContext context) {
     showErpSidePane(
       context: context,
-      builder: AddBillScreen(user: widget.user, isPane: true),
+      builder: AddExpenseVoucherScreen(user: widget.user, isPane: true),
     );
   }
 
@@ -1047,4 +1123,3 @@ class _ClockWidgetState extends State<_ClockWidget> {
     );
   }
 }
-

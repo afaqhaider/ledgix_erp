@@ -20,6 +20,11 @@ class JournalEntryModel {
   final String? sourceNumber;
   final String? approvalStatus;
 
+  // Header level Job Link (Optional, lines can have different jobs)
+  final String? jobId;
+  final String? jobNumber;
+  final String? jobName;
+
   JournalEntryModel({
     required this.id,
     required this.companyId,
@@ -34,6 +39,9 @@ class JournalEntryModel {
     this.sourceId,
     this.sourceNumber,
     this.approvalStatus,
+    this.jobId,
+    this.jobNumber,
+    this.jobName,
   });
 
   JournalEntryModel copyWith({
@@ -83,6 +91,9 @@ class JournalEntryModel {
       'sourceId': sourceId,
       'sourceNumber': sourceNumber,
       'approvalStatus': approvalStatus,
+      'jobId': jobId,
+      'jobNumber': jobNumber,
+      'jobName': jobName,
     };
   }
 
@@ -112,6 +123,9 @@ class JournalEntryModel {
       sourceId: map['sourceId'],
       sourceNumber: map['sourceNumber'],
       approvalStatus: map['approvalStatus'],
+      jobId: map['jobId'],
+      jobNumber: map['jobNumber'],
+      jobName: map['jobName'],
     );
   }
 }

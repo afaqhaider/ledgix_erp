@@ -23,9 +23,22 @@ class UomTab extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Text('UOMs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'UOMs',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Spacer(),
-                    IconButton(onPressed: () => SidePanel.show(context: context, title: 'Add UOM', child: UomPane(user: user)), icon: const Icon(Icons.add, size: 18)),
+                    IconButton(
+                      onPressed: () => SidePanel.show(
+                        context: context,
+                        title: 'Add UOM',
+                        child: UomPane(user: user),
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                    ),
                   ],
                 ),
               ),
@@ -40,9 +53,19 @@ class UomTab extends StatelessWidget {
                         final uom = uoms[index];
                         return ListTile(
                           dense: true,
-                          title: Text(uom.uomName, style: const TextStyle(fontSize: 12)),
-                          subtitle: Text(uom.uomCode, style: const TextStyle(fontSize: 10)),
-                          onTap: () => SidePanel.show(context: context, title: 'Edit UOM', child: UomPane(user: user, uom: uom)),
+                          title: Text(
+                            uom.uomName,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          subtitle: Text(
+                            uom.uomCode,
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                          onTap: () => SidePanel.show(
+                            context: context,
+                            title: 'Edit UOM',
+                            child: UomPane(user: user, uom: uom),
+                          ),
                         );
                       },
                     );
@@ -61,9 +84,22 @@ class UomTab extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Text('Conversions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Conversions',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Spacer(),
-                    IconButton(onPressed: () => SidePanel.show(context: context, title: 'Add Conversion', child: UomConversionPane(user: user)), icon: const Icon(Icons.add, size: 18)),
+                    IconButton(
+                      onPressed: () => SidePanel.show(
+                        context: context,
+                        title: 'Add Conversion',
+                        child: UomConversionPane(user: user),
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                    ),
                   ],
                 ),
               ),
@@ -78,9 +114,22 @@ class UomTab extends StatelessWidget {
                         final conv = convs[index];
                         return ListTile(
                           dense: true,
-                          title: Text('1 ${conv.fromUomId} = ${conv.conversionFactor} ${conv.toUomId}', style: const TextStyle(fontSize: 12)),
-                          subtitle: Text(conv.itemId != null ? 'Item Specific' : 'Global', style: const TextStyle(fontSize: 10)),
-                          onTap: () => SidePanel.show(context: context, title: 'Edit Conversion', child: UomConversionPane(user: user, conversion: conv)),
+                          title: Text(
+                            '1 ${conv.fromUomId} = ${conv.conversionFactor} ${conv.toUomId}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          subtitle: Text(
+                            conv.itemId != null ? 'Item Specific' : 'Global',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                          onTap: () => SidePanel.show(
+                            context: context,
+                            title: 'Edit Conversion',
+                            child: UomConversionPane(
+                              user: user,
+                              conversion: conv,
+                            ),
+                          ),
                         );
                       },
                     );

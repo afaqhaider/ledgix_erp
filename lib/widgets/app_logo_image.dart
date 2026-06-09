@@ -124,14 +124,16 @@ class _CompanyLogoImageState extends State<CompanyLogoImage> {
                         strokeWidth: 2,
                         value: loadingProgress.expectedTotalBytes != null
                             ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
+                                  loadingProgress.expectedTotalBytes!
                             : null,
                       ),
                     ),
                   );
                 },
                 errorBuilder: (context, error, stackTrace) {
-                  debugPrint('CompanyLogoImage: Error loading network image: $error');
+                  debugPrint(
+                    'CompanyLogoImage: Error loading network image: $error',
+                  );
                   return _fallbackLogoContents();
                 },
               ),

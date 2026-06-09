@@ -12,13 +12,20 @@ enum DocumentType {
 
   String get label {
     switch (this) {
-      case DocumentType.quotation: return 'Quotation';
-      case DocumentType.salesInvoice: return 'Sales Invoice';
-      case DocumentType.purchaseOrder: return 'Purchase Order';
-      case DocumentType.receiptVoucher: return 'Receipt Voucher';
-      case DocumentType.paymentVoucher: return 'Payment Voucher';
-      case DocumentType.creditNote: return 'Credit Note';
-      case DocumentType.debitNote: return 'Debit Note';
+      case DocumentType.quotation:
+        return 'Quotation';
+      case DocumentType.salesInvoice:
+        return 'Sales Invoice';
+      case DocumentType.purchaseOrder:
+        return 'Purchase Order';
+      case DocumentType.receiptVoucher:
+        return 'Receipt Voucher';
+      case DocumentType.paymentVoucher:
+        return 'Payment Voucher';
+      case DocumentType.creditNote:
+        return 'Credit Note';
+      case DocumentType.debitNote:
+        return 'Debit Note';
     }
   }
 }
@@ -37,7 +44,7 @@ class DocumentHeader {
   final String createdBy;
   final DateTime createdAt;
   final List<DocumentLine> lines;
-  
+
   // Totals
   final double subtotal;
   final double taxTotal;
@@ -85,20 +92,30 @@ class DocumentHeader {
     };
   }
 
-  factory DocumentHeader.fromMap(Map<String, dynamic> map, {List<DocumentLine> lines = const []}) {
+  factory DocumentHeader.fromMap(
+    Map<String, dynamic> map, {
+    List<DocumentLine> lines = const [],
+  }) {
     return DocumentHeader(
       documentId: map['documentId'] ?? '',
       documentNumber: map['documentNumber'] ?? '',
-      documentDate: DateTime.parse(map['documentDate'] ?? DateTime.now().toIso8601String()),
+      documentDate: DateTime.parse(
+        map['documentDate'] ?? DateTime.now().toIso8601String(),
+      ),
       companyId: map['companyId'] ?? '',
       entityId: map['entityId'] ?? '',
       entityName: map['entityName'] ?? '',
       currency: map['currency'] ?? 'AED',
-      status: DocumentStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => DocumentStatus.draft),
+      status: DocumentStatus.values.firstWhere(
+        (e) => e.name == map['status'],
+        orElse: () => DocumentStatus.draft,
+      ),
       type: DocumentType.values.firstWhere((e) => e.name == map['type']),
       notes: map['notes'] ?? '',
       createdBy: map['createdBy'] ?? '',
-      createdAt: DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        map['createdAt'] ?? DateTime.now().toIso8601String(),
+      ),
       lines: lines,
       subtotal: (map['subtotal'] ?? 0.0).toDouble(),
       taxTotal: (map['taxTotal'] ?? 0.0).toDouble(),

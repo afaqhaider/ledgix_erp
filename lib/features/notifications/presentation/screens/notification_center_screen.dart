@@ -23,8 +23,10 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         title: const Text('Notifications'),
         actions: [
           TextButton(
-            onPressed: () =>
-                _notificationService.markAllAsRead(widget.user.companyId!, widget.user.uid),
+            onPressed: () => _notificationService.markAllAsRead(
+              widget.user.companyId!,
+              widget.user.uid,
+            ),
             child: const Text(
               'Mark all as read',
               style: TextStyle(color: Colors.white),
@@ -34,7 +36,10 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         ],
       ),
       body: StreamBuilder<List<NotificationModel>>(
-        stream: _notificationService.getNotifications(widget.user.companyId!, widget.user.uid),
+        stream: _notificationService.getNotifications(
+          widget.user.companyId!,
+          widget.user.uid,
+        ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

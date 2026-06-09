@@ -23,8 +23,12 @@ class AccountService {
 
   Future<void> addAccount(AccountModel account) async {
     // When adding a new account, currentBalance should initially be openingBalance
-    final accountWithBalance = account.copyWith(currentBalance: account.openingBalance);
-    await _getAccountsRef(account.companyId).doc().set(accountWithBalance.toMap());
+    final accountWithBalance = account.copyWith(
+      currentBalance: account.openingBalance,
+    );
+    await _getAccountsRef(
+      account.companyId,
+    ).doc().set(accountWithBalance.toMap());
   }
 
   Future<void> updateAccount(AccountModel account) async {
@@ -32,23 +36,24 @@ class AccountService {
     // Use posting engine for balance changes.
     final Map<String, dynamic> data = account.toMap();
     data.remove('currentBalance');
-    
-    await _getAccountsRef(
-      account.companyId,
-    ).doc(account.id).update(data);
+
+    await _getAccountsRef(account.companyId).doc(account.id).update(data);
   }
 
-  Future<Map<String, dynamic>> initializeCurrentBalances(String companyId) async {
+  Future<Map<String, dynamic>> initializeCurrentBalances(
+    String companyId,
+  ) async {
     final snapshot = await _getAccountsRef(companyId).get();
     final batch = _firestore.batch();
     int migratedCount = 0;
     int invalidCount = 0;
-    
+
     for (var doc in snapshot.docs) {
       final data = doc.data() as Map<String, dynamic>;
-      final openingBalance = (data['openingBalance'] as num?)?.toDouble() ?? 0.0;
+      final openingBalance =
+          (data['openingBalance'] as num?)?.toDouble() ?? 0.0;
       final currentBalance = data['currentBalance'];
-      
+
       bool needsUpdate = false;
       Map<String, dynamic> updates = {};
 
@@ -69,15 +74,12 @@ class AccountService {
         migratedCount++;
       }
     }
-    
+
     if (migratedCount > 0) {
       await batch.commit();
     }
-    
-    return {
-      'migratedCount': migratedCount,
-      'invalidCount': invalidCount,
-    };
+
+    return {'migratedCount': migratedCount, 'invalidCount': invalidCount};
   }
 
   Future<void> toggleAccountStatus(
@@ -100,16 +102,16 @@ class AccountService {
     }
 
     // 2. Check if it has children (if it's a group)
-    final children = await _getAccountsRef(companyId)
-        .where('parentAccountId', isEqualTo: accountId)
-        .limit(1)
-        .get();
+    final children = await _getAccountsRef(
+      companyId,
+    ).where('parentAccountId', isEqualTo: accountId).limit(1).get();
     if (children.docs.isNotEmpty) {
       throw Exception('Cannot delete a group that has child accounts.');
     }
 
     // 3. Check if it has any balance (denormalized)
-    final double currentBalance = (data['currentBalance'] as num?)?.toDouble() ?? 0.0;
+    final double currentBalance =
+        (data['currentBalance'] as num?)?.toDouble() ?? 0.0;
     if (currentBalance.abs() > 0.001) {
       throw Exception('Cannot delete an account with a non-zero balance.');
     }
@@ -118,7 +120,7 @@ class AccountService {
     // This is a bit tricky since lines are nested in JournalEntryModel
     // but for now we rely on the balance check and perhaps a manual search if needed.
     // In a real app, we'd query a flattened journalLines collection.
-    
+
     // For now, if currentBalance is 0 and it has no children, we allow deletion.
     await _getAccountsRef(companyId).doc(accountId).delete();
   }
@@ -129,6 +131,7 @@ class AccountService {
       case AccountType.expense:
       case AccountType.costOfSales:
       case AccountType.otherExpense:
+      case AccountType.unknown:
         return BalanceType.debit;
       case AccountType.liability:
       case AccountType.equity:

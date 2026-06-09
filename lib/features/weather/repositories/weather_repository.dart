@@ -52,11 +52,16 @@ class WeatherRepository {
     } catch (_) {}
   }
 
-  Future<WeatherInfo> getWeather(String city, TemperatureUnit unit, {bool forceRefresh = false}) async {
+  Future<WeatherInfo> getWeather(
+    String city,
+    TemperatureUnit unit, {
+    bool forceRefresh = false,
+  }) async {
     if (!forceRefresh) {
       final cached = await getCachedWeather();
       // Only use cache if it's the same city and not expired
-      if (cached != null && cached.cityName.toLowerCase().contains(city.toLowerCase())) {
+      if (cached != null &&
+          cached.cityName.toLowerCase().contains(city.toLowerCase())) {
         return cached;
       }
     }

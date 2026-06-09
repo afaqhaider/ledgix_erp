@@ -42,17 +42,15 @@ class ProfileMenuButton extends StatelessWidget {
                     ),
                     Text(
                       user?.email ?? '',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[500],
-                      ),
+                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                     ),
                   ],
                 ),
               ),
             PopupMenuButton<String>(
               offset: const Offset(0, 48),
-              onSelected: (value) => _handleMenuSelection(context, value, authService),
+              onSelected: (value) =>
+                  _handleMenuSelection(context, value, authService),
               itemBuilder: (context) => [
                 _buildMenuItem(
                   value: 'profile',
@@ -71,8 +69,12 @@ class ProfileMenuButton extends StatelessWidget {
                 ),
                 _buildMenuItem(
                   value: 'theme',
-                  icon: ThemeController.isDark(context) ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                  label: ThemeController.isDark(context) ? 'Light Mode' : 'Dark Mode',
+                  icon: ThemeController.isDark(context)
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                  label: ThemeController.isDark(context)
+                      ? 'Light Mode'
+                      : 'Dark Mode',
                 ),
                 const PopupMenuDivider(),
                 _buildMenuItem(
@@ -86,8 +88,12 @@ class ProfileMenuButton extends StatelessWidget {
                 cursor: SystemMouseCursors.click,
                 child: CircleAvatar(
                   radius: 18,
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                  backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  backgroundImage: photoUrl != null
+                      ? NetworkImage(photoUrl)
+                      : null,
                   child: photoUrl == null
                       ? Text(
                           displayName.substring(0, 1).toUpperCase(),
@@ -119,19 +125,17 @@ class ProfileMenuButton extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: color),
           const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: color,
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 13, color: color)),
         ],
       ),
     );
   }
 
-  void _handleMenuSelection(BuildContext context, String value, AuthService authService) {
+  void _handleMenuSelection(
+    BuildContext context,
+    String value,
+    AuthService authService,
+  ) {
     switch (value) {
       case 'profile':
         showDialog(
@@ -154,7 +158,10 @@ class ProfileMenuButton extends StatelessWidget {
     }
   }
 
-  void _showChangePasswordDialog(BuildContext context, AuthService authService) {
+  void _showChangePasswordDialog(
+    BuildContext context,
+    AuthService authService,
+  ) {
     final email = authService.currentUser?.email;
     final theme = Theme.of(context);
 
@@ -192,7 +199,9 @@ class ProfileMenuButton extends StatelessWidget {
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Password reset email sent')),
+                      const SnackBar(
+                        content: Text('Password reset email sent'),
+                      ),
                     );
                   }
                 } catch (e) {
@@ -213,7 +222,7 @@ class ProfileMenuButton extends StatelessWidget {
 
   void _showSwitchCompanyDialog(BuildContext context) {
     final userService = UserService();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -229,7 +238,7 @@ class ProfileMenuButton extends StatelessWidget {
                   child: Center(child: CircularProgressIndicator()),
                 );
               }
-              
+
               final companies = snapshot.data ?? [];
               if (companies.isEmpty) {
                 return const Text('No other companies found.');
@@ -246,10 +255,12 @@ class ProfileMenuButton extends StatelessWidget {
                       if (context.mounted) {
                         Navigator.pop(context);
                         // Force a reload by navigating to home or using a provider
-                        // For now, just show a message. In a real app, 
+                        // For now, just show a message. In a real app,
                         // you'd want to trigger a global state update.
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Switched to ${company['name']}')),
+                          SnackBar(
+                            content: Text('Switched to ${company['name']}'),
+                          ),
                         );
                         // Force a full reload of the app gate
                         if (context.mounted) {

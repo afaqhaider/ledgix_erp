@@ -22,7 +22,7 @@ class UserRepository {
         .doc(companyId)
         .collection('members')
         .get();
-    
+
     // This is a bit tricky because AppUserModel comes from global collection.
     // We should probably fetch the global profiles for these members.
     List<AppUserModel> users = [];

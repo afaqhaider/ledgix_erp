@@ -493,10 +493,12 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
                     labelText: '',
                     items: [..._allProducts, ..._allAccounts],
                     itemLabelBuilder: (val) {
-                      if (val is InventoryItemModel)
+                      if (val is InventoryItemModel) {
                         return '${val.itemCode} - ${val.itemName}';
-                      if (val is AccountModel)
+                      }
+                      if (val is AccountModel) {
                         return '${val.accountCode} - ${val.accountName}';
+                      }
                       return '';
                     },
                     onSelected: (val) {

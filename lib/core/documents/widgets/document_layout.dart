@@ -40,10 +40,7 @@ class DocumentLayout extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: DocumentNotes(notes: header.notes),
-                ),
+                Expanded(flex: 2, child: DocumentNotes(notes: header.notes)),
                 const SizedBox(width: 48),
                 Expanded(
                   flex: 1,
@@ -81,19 +78,30 @@ class DocumentLayout extends StatelessWidget {
           children: [
             _statusBadge(header.status),
             const SizedBox(height: 16),
-            _infoItem('Currency', header.currency, crossAxisAlignment: CrossAxisAlignment.end),
+            _infoItem(
+              'Currency',
+              header.currency,
+              crossAxisAlignment: CrossAxisAlignment.end,
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _infoItem(String label, String value, {CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.start}) {
+  Widget _infoItem(
+    String label,
+    String value, {
+    CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.start,
+  }) {
     return Column(
       crossAxisAlignment: crossAxisAlignment,
       children: [
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -101,11 +109,21 @@ class DocumentLayout extends StatelessWidget {
   Widget _statusBadge(DocumentStatus status) {
     Color color = Colors.grey;
     switch (status) {
-      case DocumentStatus.draft: color = Colors.grey; break;
-      case DocumentStatus.pendingApproval: color = Colors.orange; break;
-      case DocumentStatus.approved: color = Colors.green; break;
-      case DocumentStatus.posted: color = Colors.blue; break;
-      case DocumentStatus.cancelled: color = Colors.red; break;
+      case DocumentStatus.draft:
+        color = Colors.grey;
+        break;
+      case DocumentStatus.pendingApproval:
+        color = Colors.orange;
+        break;
+      case DocumentStatus.approved:
+        color = Colors.green;
+        break;
+      case DocumentStatus.posted:
+        color = Colors.blue;
+        break;
+      case DocumentStatus.cancelled:
+        color = Colors.red;
+        break;
     }
 
     return Container(
@@ -117,7 +135,11 @@ class DocumentLayout extends StatelessWidget {
       ),
       child: Text(
         status.label.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

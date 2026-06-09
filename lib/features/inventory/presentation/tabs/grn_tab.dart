@@ -20,10 +20,17 @@ class GrnTab extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Text('Goods Receipt Notes (GRN)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Goods Receipt Notes (GRN)',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () => SidePanel.show(context: context, title: 'Add GRN', child: GrnPane(user: user)),
+                onPressed: () => SidePanel.show(
+                  context: context,
+                  title: 'Add GRN',
+                  child: GrnPane(user: user),
+                ),
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add New'),
               ),
@@ -32,11 +39,18 @@ class GrnTab extends StatelessWidget {
         ),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: firestore.collection('companies').doc(user.companyId!).collection('goodsReceivedNotes').orderBy('date', descending: true).snapshots(),
+            stream: firestore
+                .collection('companies')
+                .doc(user.companyId!)
+                .collection('goodsReceivedNotes')
+                .orderBy('date', descending: true)
+                .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
               final docs = snapshot.data?.docs ?? [];
-              
+
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SingleChildScrollView(
@@ -52,17 +66,45 @@ class GrnTab extends StatelessWidget {
                       DataColumn(label: Text('Items')),
                     ],
                     rows: docs.map((doc) {
-                      final grn = GrnModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+                      final grn = GrnModel.fromMap(
+                        doc.data() as Map<String, dynamic>,
+                        doc.id,
+                      );
                       return DataRow(
                         cells: [
-                          DataCell(Text(grn.grnNumber, style: const TextStyle(fontSize: 12))),
-                          DataCell(Text(DateFormat('yyyy-MM-dd').format(grn.date), style: const TextStyle(fontSize: 12))),
-                          DataCell(Text(grn.supplierId, style: const TextStyle(fontSize: 12))),
-                          DataCell(Text(grn.warehouseId, style: const TextStyle(fontSize: 12))),
-                          DataCell(Text('${grn.items.length} items', style: const TextStyle(fontSize: 12))),
+                          DataCell(
+                            Text(
+                              grn.grnNumber,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              DateFormat('yyyy-MM-dd').format(grn.date),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              grn.supplierId,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              grn.warehouseId,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              '${grn.items.length} items',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
                         ],
                         onSelectChanged: (_) {
-                           // View details or edit if allowed
+                          // View details or edit if allowed
                         },
                       );
                     }).toList(),

@@ -24,7 +24,7 @@ class WeatherDisplay extends StatefulWidget {
 class _WeatherDisplayState extends State<WeatherDisplay> {
   final _repository = WeatherRepository(WeatherService());
   final _companyService = CompanyService();
-  
+
   WeatherInfo? _weatherInfo;
   WeatherSettings _settings = WeatherSettings();
   bool _isLoading = false;
@@ -53,7 +53,7 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
 
   Future<void> _loadData({bool forceRefresh = false}) async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -61,7 +61,7 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
 
     try {
       _settings = await _repository.getSettings();
-      
+
       if (!_settings.isEnabled) {
         if (mounted) setState(() => _isLoading = false);
         return;
@@ -69,7 +69,9 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
 
       String? city = _settings.manualCity;
       if (city == null || city.isEmpty) {
-        final company = await _companyService.getCompany(widget.companyId).first;
+        final company = await _companyService
+            .getCompany(widget.companyId)
+            .first;
         city = company?.city;
       }
 
@@ -78,9 +80,9 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
       }
 
       final info = await _repository.getWeather(
-        city, 
-        _settings.unit, 
-        forceRefresh: forceRefresh
+        city,
+        _settings.unit,
+        forceRefresh: forceRefresh,
       );
 
       if (mounted) {
@@ -140,14 +142,29 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Could not fetch weather data:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Could not fetch weather data:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Text(_error ?? 'Unknown error'),
             const SizedBox(height: 16),
-            const Text('Troubleshooting:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-            const Text('• Check your internet connection.', style: TextStyle(fontSize: 12)),
-            const Text('• Verify the city name in Company Settings.', style: TextStyle(fontSize: 12)),
-            const Text('• Ensure the OpenWeather API key is valid.', style: TextStyle(fontSize: 12)),
+            const Text(
+              'Troubleshooting:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+            const Text(
+              '• Check your internet connection.',
+              style: TextStyle(fontSize: 12),
+            ),
+            const Text(
+              '• Verify the city name in Company Settings.',
+              style: TextStyle(fontSize: 12),
+            ),
+            const Text(
+              '• Ensure the OpenWeather API key is valid.',
+              style: TextStyle(fontSize: 12),
+            ),
           ],
         ),
         actions: [
@@ -184,7 +201,11 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
           message: 'Weather Error. Click for details.',
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 4),
-            child: Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange),
+            child: Icon(
+              Icons.warning_amber_rounded,
+              size: 18,
+              color: Colors.orange,
+            ),
           ),
         ),
       );
@@ -210,7 +231,11 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.refresh_rounded, size: 14, color: Colors.grey.withValues(alpha: 0.5)),
+            Icon(
+              Icons.refresh_rounded,
+              size: 14,
+              color: Colors.grey.withValues(alpha: 0.5),
+            ),
           ],
         ),
       ),
@@ -222,11 +247,8 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
       url,
       width: 24,
       height: 24,
-      errorBuilder: (_, __, ___) => const Icon(
-        Icons.wb_sunny_rounded, 
-        color: Colors.orange, 
-        size: 18
-      ),
+      errorBuilder: (_, _, _) =>
+          const Icon(Icons.wb_sunny_rounded, color: Colors.orange, size: 18),
     );
   }
 }

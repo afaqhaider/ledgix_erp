@@ -5,7 +5,8 @@ class SearchResult {
   final String id;
   final String title;
   final String subtitle;
-  final String type; // 'customer', 'supplier', 'invoice', 'bill', 'journal', 'payment'
+  final String
+  type; // 'customer', 'supplier', 'invoice', 'bill', 'journal', 'payment'
   final DateTime date;
   final Map<String, dynamic> data;
 
@@ -22,21 +23,66 @@ class SearchResult {
 class SearchService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<List<SearchResult>> globalSearch(String companyId, String query) async {
+  Future<List<SearchResult>> globalSearch(
+    String companyId,
+    String query,
+  ) async {
     if (query.length < 2) return [];
-    
+
     final searchQuery = query.toLowerCase().trim();
     final List<SearchResult> results = [];
 
     // Search Collections in Parallel
     final futures = [
-      _searchCollection(companyId, 'customers', 'name', searchQuery, 'customer'),
-      _searchCollection(companyId, 'suppliers', 'name', searchQuery, 'supplier'),
-      _searchCollection(companyId, 'salesInvoices', 'invoiceNumber', searchQuery, 'invoice'),
-      _searchCollection(companyId, 'supplierBills', 'billNumber', searchQuery, 'bill'),
-      _searchCollection(companyId, 'journalEntries', 'reference', searchQuery, 'journal'),
-      _searchCollection(companyId, 'customerPayments', 'paymentNumber', searchQuery, 'payment'),
-      _searchCollection(companyId, 'supplierPayments', 'paymentNumber', searchQuery, 'payment'),
+      _searchCollection(
+        companyId,
+        'customers',
+        'name',
+        searchQuery,
+        'customer',
+      ),
+      _searchCollection(
+        companyId,
+        'suppliers',
+        'name',
+        searchQuery,
+        'supplier',
+      ),
+      _searchCollection(
+        companyId,
+        'salesInvoices',
+        'invoiceNumber',
+        searchQuery,
+        'invoice',
+      ),
+      _searchCollection(
+        companyId,
+        'supplierBills',
+        'billNumber',
+        searchQuery,
+        'bill',
+      ),
+      _searchCollection(
+        companyId,
+        'journalEntries',
+        'reference',
+        searchQuery,
+        'journal',
+      ),
+      _searchCollection(
+        companyId,
+        'customerPayments',
+        'paymentNumber',
+        searchQuery,
+        'payment',
+      ),
+      _searchCollection(
+        companyId,
+        'supplierPayments',
+        'paymentNumber',
+        searchQuery,
+        'payment',
+      ),
     ];
 
     final searchBatches = await Future.wait(futures);
@@ -46,7 +92,7 @@ class SearchService {
 
     // Sort by date (descending)
     results.sort((a, b) => b.date.compareTo(a.date));
-    
+
     return results.take(20).toList();
   }
 
@@ -78,7 +124,11 @@ class SearchService {
     }
   }
 
-  SearchResult _mapToSearchResult(String id, Map<String, dynamic> data, String type) {
+  SearchResult _mapToSearchResult(
+    String id,
+    Map<String, dynamic> data,
+    String type,
+  ) {
     String title = '';
     String subtitle = '';
     DateTime date = DateTime.now();
@@ -107,7 +157,8 @@ class SearchService {
         break;
       case 'payment':
         title = data['paymentNumber'] ?? 'PAY-?';
-        subtitle = '${data['customerName'] ?? data['supplierName'] ?? 'Member'} - ${data['amount']}';
+        subtitle =
+            '${data['customerName'] ?? data['supplierName'] ?? 'Member'} - ${data['amount']}';
         date = (data['paymentDate'] as Timestamp?)?.toDate() ?? DateTime.now();
         break;
     }

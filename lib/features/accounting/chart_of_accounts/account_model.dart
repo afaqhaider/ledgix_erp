@@ -8,7 +8,8 @@ enum AccountType {
   costOfSales('Cost of Sales'),
   expense('Expense'),
   otherIncome('Other Revenue'),
-  otherExpense('Other Expense');
+  otherExpense('Other Expense'),
+  unknown('Unknown Type');
 
   final String label;
   const AccountType(this.label);
@@ -51,10 +52,21 @@ enum AccountCategory {
   staffCost('Staff Cost'),
   rent('Rent'),
   utilities('Utilities'),
-  depreciation('Depreciation');
+  depreciation('Depreciation'),
+  uncategorized('Uncategorized');
 
   final String label;
   const AccountCategory(this.label);
+}
+
+enum CashFlowSection {
+  operating('Operating Activities'),
+  investing('Investing Activities'),
+  financing('Financing Activities'),
+  none('None');
+
+  final String label;
+  const CashFlowSection(this.label);
 }
 
 enum BalanceType {
@@ -83,7 +95,8 @@ class AccountModel {
   final bool isActive;
   final double openingBalance;
   final BalanceType openingBalanceType;
-  final double currentBalance; // New field for denormalized balance
+  final double currentBalance;
+  final CashFlowSection cashFlowSection;
   final DateTime openingBalanceDate;
   final DateTime createdAt;
 
@@ -104,6 +117,7 @@ class AccountModel {
     this.openingBalance = 0.0,
     required this.openingBalanceType,
     this.currentBalance = 0.0,
+    this.cashFlowSection = CashFlowSection.none,
     required this.openingBalanceDate,
     required this.createdAt,
   });
@@ -126,6 +140,7 @@ class AccountModel {
       'openingBalance': openingBalance,
       'openingBalanceType': openingBalanceType.name,
       'currentBalance': currentBalance,
+      'cashFlowSection': cashFlowSection.name,
       'openingBalanceDate': Timestamp.fromDate(openingBalanceDate),
       'createdAt': Timestamp.fromDate(createdAt),
     };
@@ -138,12 +153,12 @@ class AccountModel {
       accountCode: map['accountCode'] ?? '',
       accountName: map['accountName'] ?? '',
       accountType: AccountType.values.firstWhere(
-        (e) => e.name == map['accountType'],
-        orElse: () => AccountType.asset,
+        (e) => e.name == (map['accountType'] ?? ''),
+        orElse: () => AccountType.unknown,
       ),
       accountCategory: AccountCategory.values.firstWhere(
-        (e) => e.name == map['accountCategory'],
-        orElse: () => AccountCategory.currentAsset,
+        (e) => e.name == (map['accountCategory'] ?? ''),
+        orElse: () => AccountCategory.uncategorized,
       ),
       parentAccountId: map['parentAccountId'],
       level: map['level'] ?? 0,
@@ -161,6 +176,19 @@ class AccountModel {
         orElse: () => BalanceType.debit,
       ),
       currentBalance: (map['currentBalance'] as num?)?.toDouble() ?? 0.0,
+      cashFlowSection: CashFlowSection.values.firstWhere(
+        (e) => e.name == map['cashFlowSection'],
+        orElse: () => _getDefaultCashFlowSection(
+          AccountType.values.firstWhere(
+            (e) => e.name == (map['accountType'] ?? ''),
+            orElse: () => AccountType.unknown,
+          ),
+          AccountCategory.values.firstWhere(
+            (e) => e.name == (map['accountCategory'] ?? ''),
+            orElse: () => AccountCategory.uncategorized,
+          ),
+        ),
+      ),
       openingBalanceDate:
           (map['openingBalanceDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -202,4 +230,34 @@ class AccountModel {
 
   @override
   int get hashCode => id.hashCode;
+
+  static CashFlowSection _getDefaultCashFlowSection(
+    AccountType type,
+    AccountCategory category,
+  ) {
+    if (category == AccountCategory.cash || category == AccountCategory.bank) {
+      return CashFlowSection.none; // Cash itself isn't a section, it's the target
+    }
+
+    switch (type) {
+      case AccountType.income:
+      case AccountType.costOfSales:
+      case AccountType.expense:
+      case AccountType.otherIncome:
+      case AccountType.otherExpense:
+        return CashFlowSection.operating;
+      case AccountType.asset:
+        return category == AccountCategory.nonCurrentAsset
+            ? CashFlowSection.investing
+            : CashFlowSection.operating;
+      case AccountType.liability:
+        return category == AccountCategory.nonCurrentLiability
+            ? CashFlowSection.financing
+            : CashFlowSection.operating;
+      case AccountType.equity:
+        return CashFlowSection.financing;
+      default:
+        return CashFlowSection.none;
+    }
+  }
 }

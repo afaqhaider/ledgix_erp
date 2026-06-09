@@ -1,10 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/features/accounting/journal/models/journal_entry_model.dart';
+import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/core/auth/user_role.dart';
+import 'package:ledgixerp/features/approvals/services/approval_service.dart';
 import '../../../settings/services/financial_settings_service.dart';
 
 class JournalService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _settingsService = FinancialSettingsService();
+  final _approvalService = ApprovalService();
 
   CollectionReference _getJournalRef(String companyId) {
     return _firestore
@@ -33,10 +37,36 @@ class JournalService {
     );
   }
 
-  Future<void> addJournalEntry(JournalEntryModel entry) async {
-    // Check if period is locked
-    if (await _settingsService.isPeriodLocked(entry.companyId, entry.date)) {
+  Future<void> addJournalEntry(
+    JournalEntryModel entry,
+    AppUser user, {
+    bool shouldPost = false,
+  }) async {
+    if (shouldPost &&
+        await _settingsService.isPeriodLocked(entry.companyId, entry.date)) {
       throw Exception('Accounting period for this date is locked.');
+    }
+
+    // Determine initial status based on role and action
+    final highRoles = [
+      UserRole.owner,
+      UserRole.superAdmin,
+      UserRole.admin,
+      UserRole.accountant,
+      UserRole.generalManager,
+    ];
+
+    bool isAuthorizedToPost = highRoles.contains(user.role);
+    bool actualPost = shouldPost && isAuthorizedToPost;
+
+    JournalStatus finalStatus = JournalStatus.draft;
+    String? initialApprovalStatus = 'pending';
+
+    if (actualPost) {
+      finalStatus = JournalStatus.posted;
+      initialApprovalStatus = 'approved';
+    } else if (shouldPost && !isAuthorizedToPost) {
+      initialApprovalStatus = 'pending';
     }
 
     // Basic validation: Debits must equal Credits
@@ -61,22 +91,29 @@ class JournalService {
           .collection('chartOfAccounts')
           .doc(line.accountId)
           .get();
-      
+
       if (accDoc.exists) {
         final isGroup = accDoc.data()?['isGroup'] ?? false;
         final allowPosting = accDoc.data()?['allowPosting'] ?? true;
         if (isGroup) {
-          throw Exception('Account "${line.accountName}" is a group account and cannot be posted to.');
+          throw Exception(
+            'Account "${line.accountName}" is a group account and cannot be posted to.',
+          );
         }
         if (!allowPosting) {
-          throw Exception('Account "${line.accountName}" does not allow posting.');
+          throw Exception(
+            'Account "${line.accountName}" does not allow posting.',
+          );
         }
       }
     }
 
+    String? entryId;
+    String? finalJournalNumber;
+
     await _firestore.runTransaction((transaction) async {
       // 1. Generate final number and increment within transaction
-      final finalNumber = await _settingsService
+      finalJournalNumber = await _settingsService
           .getNextDocumentNumberAndIncrement(
             entry.companyId,
             'journal',
@@ -84,14 +121,17 @@ class JournalService {
           );
 
       final docRef = _getJournalRef(entry.companyId).doc();
-      final entryWithId = entry.copyWith(
-        id: docRef.id, 
-        reference: finalNumber,
-        status: JournalStatus.draft, // Always force to draft on initial creation
+      entryId = docRef.id;
+
+      final entryToSave = entry.copyWith(
+        id: docRef.id,
+        reference: finalJournalNumber!,
+        status: finalStatus,
+        approvalStatus: initialApprovalStatus,
       );
 
       // 2. Save entry
-      transaction.set(docRef, entryWithId.toMap());
+      transaction.set(docRef, entryToSave.toMap());
 
       // Update source document if applicable
       if (entry.sourceId != null && entry.sourceType != null) {
@@ -104,6 +144,17 @@ class JournalService {
         );
       }
     });
+
+    if (shouldPost && !isAuthorizedToPost && entryId != null) {
+      await _approvalService.submitForApproval(
+        user: user,
+        companyId: entry.companyId,
+        sourceType: 'journal_entry',
+        sourceId: entryId!,
+        sourceNumber: finalJournalNumber ?? 'AUTO',
+        amount: totalDebit,
+      );
+    }
   }
 
   Future<void> _updateSourceDocumentInTransaction(

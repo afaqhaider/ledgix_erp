@@ -17,19 +17,27 @@ class CompanyService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final Map<String, String> _resolvedLogoUrlCache = {};
 
-  Future<String> setupCompany(CompanyModel company, {String? ownerEmail, String? ownerName}) async {
+  Future<String> setupCompany(
+    CompanyModel company, {
+    String? ownerEmail,
+    String? ownerName,
+  }) async {
     final companyRef = _firestore.collection('companies').doc();
     final companyId = companyRef.id;
 
-    debugPrint('CompanyService: [1/3] Atomic Batch (Company + Member + User Profile)');
+    debugPrint(
+      'CompanyService: [1/3] Atomic Batch (Company + Member + User Profile)',
+    );
     try {
       final batch = _firestore.batch();
-      
+
       // 1. Create Company
       batch.set(companyRef, company.toMap());
 
       // 2. Create Membership
-      final memberRef = companyRef.collection('members').doc(company.createdByUserId);
+      final memberRef = companyRef
+          .collection('members')
+          .doc(company.createdByUserId);
       batch.set(memberRef, {
         'uid': company.createdByUserId,
         'email': ownerEmail ?? company.email ?? '',
@@ -43,7 +51,9 @@ class CompanyService {
       });
 
       // 3. Update Global User Profile
-      final userRef = _firestore.collection('users').doc(company.createdByUserId);
+      final userRef = _firestore
+          .collection('users')
+          .doc(company.createdByUserId);
       batch.set(userRef, {
         'defaultCompanyId': companyId,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -86,14 +96,18 @@ class CompanyService {
 
   Future<String?> resolveLogoUrl(String? logoUrl) async {
     if (logoUrl == null) return null;
-    
+
     // 1. Clean the input URL: trim and remove newlines/carriage returns
     final cleanedInput = logoUrl.trim().replaceAll(RegExp(r'[\n\r]'), '');
     if (cleanedInput.isEmpty) return null;
 
     if (kDebugMode) {
-      debugPrint('CompanyService.resolveLogoUrl: Input length: ${logoUrl.length}');
-      debugPrint('CompanyService.resolveLogoUrl: Cleaned input length: ${cleanedInput.length}');
+      debugPrint(
+        'CompanyService.resolveLogoUrl: Input length: ${logoUrl.length}',
+      );
+      debugPrint(
+        'CompanyService.resolveLogoUrl: Cleaned input length: ${cleanedInput.length}',
+      );
     }
 
     final cachedUrl = _resolvedLogoUrlCache[cleanedInput];
@@ -112,7 +126,8 @@ class CompanyService {
     }
 
     // 3. If it starts with http/https but NOT Firebase Storage, just return it after cleaning
-    if (cleanedInput.startsWith('http://') || cleanedInput.startsWith('https://')) {
+    if (cleanedInput.startsWith('http://') ||
+        cleanedInput.startsWith('https://')) {
       _resolvedLogoUrlCache[cleanedInput] = cleanedInput;
       return cleanedInput;
     }
@@ -128,10 +143,14 @@ class CompanyService {
 
       // Clean the resulting download URL as well
       final finalUrl = resolvedUrl.trim().replaceAll(RegExp(r'[\n\r]'), '');
-      
+
       if (kDebugMode) {
-        debugPrint('CompanyService: Resolved URL length: ${resolvedUrl.length}');
-        debugPrint('CompanyService: Final cleaned URL length: ${finalUrl.length}');
+        debugPrint(
+          'CompanyService: Resolved URL length: ${resolvedUrl.length}',
+        );
+        debugPrint(
+          'CompanyService: Final cleaned URL length: ${finalUrl.length}',
+        );
       }
 
       _resolvedLogoUrlCache[cleanedInput] = finalUrl;
@@ -177,19 +196,21 @@ class CompanyService {
       }
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
-      
+
       // Clean the URL: remove any potential whitespaces or newlines
       final cleanUrl = downloadUrl.trim().replaceAll(RegExp(r'[\n\r]'), '');
-      
+
       if (kDebugMode) {
-        debugPrint('CompanyService: Original URL length: ${downloadUrl.length}');
+        debugPrint(
+          'CompanyService: Original URL length: ${downloadUrl.length}',
+        );
         debugPrint('CompanyService: Cleaned URL length: ${cleanUrl.length}');
         debugPrint('CompanyService: Cleaned URL: $cleanUrl');
       }
 
       _resolvedLogoUrlCache[snapshot.ref.fullPath] = cleanUrl;
       _resolvedLogoUrlCache[cleanUrl] = cleanUrl;
-      
+
       debugPrint(
         'CompanyService: Logo uploaded successfully: ${snapshot.ref.fullPath}',
       );

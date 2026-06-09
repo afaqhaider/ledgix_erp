@@ -28,12 +28,11 @@ class BillAllocation {
     'amount': amount,
   };
 
-  factory BillAllocation.fromMap(Map<String, dynamic> map) =>
-      BillAllocation(
-        billId: map['billId'] ?? '',
-        billNumber: map['billNumber'] ?? '',
-        amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
-      );
+  factory BillAllocation.fromMap(Map<String, dynamic> map) => BillAllocation(
+    billId: map['billId'] ?? '',
+    billNumber: map['billNumber'] ?? '',
+    amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+  );
 }
 
 class SupplierPaymentModel {
@@ -43,7 +42,7 @@ class SupplierPaymentModel {
   final String supplierId;
   final String supplierName;
   final SupplierPaymentType paymentType;
-  final String? billId; 
+  final String? billId;
   final String? billNumber;
   final List<BillAllocation> allocations;
   final String? purchaseOrderId;
@@ -60,6 +59,11 @@ class SupplierPaymentModel {
   final bool isPosted;
   final String? journalEntryId;
   final String? approvalStatus;
+
+  // Job Link
+  final String? jobId;
+  final String? jobNumber;
+  final String? jobName;
 
   SupplierPaymentModel({
     required this.id,
@@ -83,6 +87,9 @@ class SupplierPaymentModel {
     this.approvalStatus,
     this.paymentType = SupplierPaymentType.onAccount,
     this.allocations = const [],
+    this.jobId,
+    this.jobNumber,
+    this.jobName,
   });
 
   SupplierPaymentModel copyWith({
@@ -107,6 +114,9 @@ class SupplierPaymentModel {
     bool? isPosted,
     String? journalEntryId,
     String? approvalStatus,
+    String? jobId,
+    String? jobNumber,
+    String? jobName,
   }) {
     return SupplierPaymentModel(
       id: id ?? this.id,
@@ -130,6 +140,9 @@ class SupplierPaymentModel {
       isPosted: isPosted ?? this.isPosted,
       journalEntryId: journalEntryId ?? this.journalEntryId,
       approvalStatus: approvalStatus ?? this.approvalStatus,
+      jobId: jobId ?? this.jobId,
+      jobNumber: jobNumber ?? this.jobNumber,
+      jobName: jobName ?? this.jobName,
     );
   }
 
@@ -156,6 +169,9 @@ class SupplierPaymentModel {
       'isPosted': isPosted,
       'journalEntryId': journalEntryId,
       'approvalStatus': approvalStatus,
+      'jobId': jobId,
+      'jobNumber': jobNumber,
+      'jobName': jobName,
     };
   }
 
@@ -191,6 +207,9 @@ class SupplierPaymentModel {
       isPosted: map['isPosted'] ?? false,
       journalEntryId: map['journalEntryId'],
       approvalStatus: map['approvalStatus'],
+      jobId: map['jobId'],
+      jobNumber: map['jobNumber'],
+      jobName: map['jobName'],
     );
   }
 }

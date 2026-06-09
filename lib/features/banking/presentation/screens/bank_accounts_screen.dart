@@ -119,8 +119,9 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: (account.isActive ? Colors.green : Colors.red)
-                                  .withValues(alpha: 0.1),
+                              color:
+                                  (account.isActive ? Colors.green : Colors.red)
+                                      .withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(

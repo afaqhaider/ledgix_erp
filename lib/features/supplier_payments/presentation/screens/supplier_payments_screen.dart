@@ -61,10 +61,7 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        showErpError(context: context, error: e);
       }
     }
   }
@@ -76,7 +73,8 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
       showErpError(
         context: context,
         title: 'Approval Required',
-        message: 'This payment must be approved before it can be posted to the ledger.',
+        message:
+            'This payment must be approved before it can be posted to the ledger.',
       );
       return;
     }
@@ -96,10 +94,7 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        showErpError(context: context, error: e);
       }
     }
   }
@@ -382,10 +377,7 @@ class _SupplierPaymentsScreenState extends State<SupplierPaymentsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        showErpError(context: context, error: e);
       }
     }
   }

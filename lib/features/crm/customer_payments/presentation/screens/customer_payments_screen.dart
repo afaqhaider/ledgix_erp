@@ -61,10 +61,7 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showErpError(
-          context: context,
-          error: e,
-        );
+        showErpError(context: context, error: e);
       }
     }
   }
@@ -112,7 +109,8 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
       showErpError(
         context: context,
         title: 'Approval Required',
-        message: 'This receipt must be approved before it can be posted to the ledger.',
+        message:
+            'This receipt must be approved before it can be posted to the ledger.',
       );
       return;
     }
@@ -176,10 +174,7 @@ class _ReceiptsScreenState extends State<CustomerPaymentsScreen> {
         }
       } catch (e) {
         if (mounted) {
-          showErpError(
-            context: context,
-            error: e,
-          );
+          showErpError(context: context, error: e);
         }
       }
     }

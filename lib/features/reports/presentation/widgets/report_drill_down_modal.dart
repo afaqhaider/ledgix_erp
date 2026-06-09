@@ -10,6 +10,7 @@ class ReportDrillDownModal extends StatefulWidget {
   final String accountName;
   final String accountCode;
   final AccountCategory category;
+  final String? jobId;
 
   const ReportDrillDownModal({
     super.key,
@@ -18,6 +19,7 @@ class ReportDrillDownModal extends StatefulWidget {
     required this.accountName,
     required this.accountCode,
     required this.category,
+    this.jobId,
   });
 
   static void show(
@@ -27,6 +29,7 @@ class ReportDrillDownModal extends StatefulWidget {
     required String accountName,
     required String accountCode,
     required AccountCategory category,
+    String? jobId,
   }) {
     showDialog(
       context: context,
@@ -38,6 +41,7 @@ class ReportDrillDownModal extends StatefulWidget {
           accountName: accountName,
           accountCode: accountCode,
           category: category,
+          jobId: jobId,
         ),
       ),
     );
@@ -64,9 +68,13 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
     try {
       List<dynamic> data;
       if (widget.category == AccountCategory.accountsReceivable) {
-        data = await _reportService.getAccountsReceivableDetailed(widget.companyId);
+        data = await _reportService.getAccountsReceivableDetailed(
+          widget.companyId,
+        );
       } else if (widget.category == AccountCategory.accountsPayable) {
-        data = await _reportService.getAccountsPayableDetailed(widget.companyId);
+        data = await _reportService.getAccountsPayableDetailed(
+          widget.companyId,
+        );
       } else {
         // Default to General Ledger lines for this account
         data = await _reportService.getGeneralLedger(
@@ -74,6 +82,7 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
           widget.accountId,
           DateTime(DateTime.now().year, 1, 1),
           DateTime.now(),
+          jobId: widget.jobId,
         );
       }
       setState(() {
@@ -83,9 +92,9 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -109,8 +118,8 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _data.isEmpty
-                    ? _buildEmptyState()
-                    : _buildTable(theme),
+                ? _buildEmptyState()
+                : _buildTable(theme),
           ),
           _buildFooter(theme),
         ],
@@ -135,7 +144,10 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(4),
@@ -199,10 +211,7 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
             tooltip: 'Export to Excel',
             onPressed: () {},
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchData,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchData),
         ],
       ),
     );
@@ -232,8 +241,13 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
   }
 
   Widget _buildARTable(ThemeData theme) {
-    final filtered = _data.where((item) =>
-        item['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    final filtered = _data
+        .where(
+          (item) => item['name'].toString().toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          ),
+        )
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -247,16 +261,25 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
         ],
         rows: filtered.map((item) {
           return DataRow(
-            onSelectChanged: (_) => _showCustomerLedger(item['id'], item['name']),
+            onSelectChanged: (_) =>
+                _showCustomerLedger(item['id'], item['name']),
             cells: [
-              DataCell(Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold))),
+              DataCell(
+                Text(
+                  item['name'],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
               DataCell(Text(item['invoiceCount'].toString())),
               DataCell(Text(AppFormatters.currency(item['totalInvoiced']))),
               DataCell(Text(AppFormatters.currency(item['totalPaid']))),
               DataCell(
                 Text(
                   AppFormatters.currency(item['outstanding']),
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
                 ),
               ),
             ],
@@ -267,8 +290,13 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
   }
 
   Widget _buildAPTable(ThemeData theme) {
-    final filtered = _data.where((item) =>
-        item['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    final filtered = _data
+        .where(
+          (item) => item['name'].toString().toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          ),
+        )
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -282,16 +310,25 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
         ],
         rows: filtered.map((item) {
           return DataRow(
-            onSelectChanged: (_) => _showSupplierLedger(item['id'], item['name']),
+            onSelectChanged: (_) =>
+                _showSupplierLedger(item['id'], item['name']),
             cells: [
-              DataCell(Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold))),
+              DataCell(
+                Text(
+                  item['name'],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
               DataCell(Text(item['billCount'].toString())),
               DataCell(Text(AppFormatters.currency(item['totalBilled']))),
               DataCell(Text(AppFormatters.currency(item['totalPaid']))),
               DataCell(
                 Text(
                   AppFormatters.currency(item['outstanding']),
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
                 ),
               ),
             ],
@@ -302,9 +339,17 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
   }
 
   Widget _buildGLTable(ThemeData theme) {
-    final filtered = _data.where((item) =>
-        item['description'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        item['reference'].toString().toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    final filtered = _data
+        .where(
+          (item) =>
+              item['description'].toString().toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ||
+              item['reference'].toString().toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ),
+        )
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -322,11 +367,35 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
           return DataRow(
             cells: [
               DataCell(Text(AppFormatters.date(item['date']))),
-              DataCell(Text(item['description'], style: isOpening ? const TextStyle(fontStyle: FontStyle.italic) : null)),
+              DataCell(
+                Text(
+                  item['description'],
+                  style: isOpening
+                      ? const TextStyle(fontStyle: FontStyle.italic)
+                      : null,
+                ),
+              ),
               DataCell(Text(item['reference'])),
-              DataCell(Text(item['debit'] > 0 ? AppFormatters.currency(item['debit']) : '—')),
-              DataCell(Text(item['credit'] > 0 ? AppFormatters.currency(item['credit']) : '—')),
-              DataCell(Text(AppFormatters.currency(item['balance']), style: const TextStyle(fontWeight: FontWeight.bold))),
+              DataCell(
+                Text(
+                  item['debit'] > 0
+                      ? AppFormatters.currency(item['debit'])
+                      : '—',
+                ),
+              ),
+              DataCell(
+                Text(
+                  item['credit'] > 0
+                      ? AppFormatters.currency(item['credit'])
+                      : '—',
+                ),
+              ),
+              DataCell(
+                Text(
+                  AppFormatters.currency(item['balance']),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
             ],
           );
         }).toList(),
@@ -358,8 +427,17 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(title, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold)),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -375,14 +453,35 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
                       DataColumn(label: Text('Balance'), numeric: true),
                     ],
                     rows: ledger.map((entry) {
-                      return DataRow(cells: [
-                        DataCell(Text(AppFormatters.date(entry['date']))),
-                        DataCell(Text(entry['type'])),
-                        DataCell(Text(entry['number'])),
-                        DataCell(Text(entry['debit'] > 0 ? AppFormatters.currency(entry['debit']) : '—')),
-                        DataCell(Text(entry['credit'] > 0 ? AppFormatters.currency(entry['credit']) : '—')),
-                        DataCell(Text(AppFormatters.currency(entry['balance']), style: const TextStyle(fontWeight: FontWeight.bold))),
-                      ]);
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(AppFormatters.date(entry['date']))),
+                          DataCell(Text(entry['type'])),
+                          DataCell(Text(entry['number'])),
+                          DataCell(
+                            Text(
+                              entry['debit'] > 0
+                                  ? AppFormatters.currency(entry['debit'])
+                                  : '—',
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              entry['credit'] > 0
+                                  ? AppFormatters.currency(entry['credit'])
+                                  : '—',
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              AppFormatters.currency(entry['balance']),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
                     }).toList(),
                   ),
                 ),
@@ -396,16 +495,19 @@ class _ReportDrillDownModalState extends State<ReportDrillDownModal> {
 
   Widget _buildFooter(ThemeData theme) {
     double total = 0;
-    if (widget.category == AccountCategory.accountsReceivable || widget.category == AccountCategory.accountsPayable) {
-       total = _data.fold(0.0, (sum, item) => sum + item['outstanding']);
+    if (widget.category == AccountCategory.accountsReceivable ||
+        widget.category == AccountCategory.accountsPayable) {
+      total = _data.fold(0.0, (sum, item) => sum + item['outstanding']);
     } else if (_data.isNotEmpty) {
-       total = _data.last['balance'];
+      total = _data.last['balance'];
     }
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant)),
+        border: Border(
+          top: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,

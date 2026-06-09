@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/suppliers/models/bill_model.dart';
@@ -6,12 +7,31 @@ import '../models/report_models.dart';
 
 class FinancialReportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final Set<String> _loggedErrors = {};
+
+  void _logMissingField(String reportName, String accountId, String fieldName) {
+    final key = '$reportName-$accountId-$fieldName';
+    if (!_loggedErrors.contains(key)) {
+      debugPrint('FinancialReport ERROR: Missing field "$fieldName" for account $accountId in $reportName');
+      _loggedErrors.add(key);
+    }
+  }
 
   // --- Main Reports ---
 
-  Future<TrialBalanceReport> getTrialBalance(String companyId, DateTime asOfDate) async {
+  Future<TrialBalanceReport> getTrialBalance(
+    String companyId,
+    DateTime asOfDate, {
+    bool showGroups = false,
+    String? jobId,
+  }) async {
     final accounts = await _fetchAccounts(companyId);
-    final balances = await _calculateBalances(companyId, accounts, asOfDate);
+    final balances = await _calculateBalances(
+      companyId,
+      accounts,
+      asOfDate,
+      jobId: jobId,
+    );
 
     // Initial account nodes
     Map<String, FinancialReportNode> accountNodes = {};
@@ -32,10 +52,12 @@ class FinancialReportService {
     }
 
     final rootNodes = _buildStandardHierarchy(
+      reportName: 'Trial Balance',
       accounts: accounts,
       accountNodes: accountNodes,
       types: AccountType.values,
       includeZeroBalances: false,
+      showGroups: showGroups,
     );
 
     double totalDebit = 0;
@@ -58,12 +80,32 @@ class FinancialReportService {
     );
   }
 
-  Future<BalanceSheetReport> getBalanceSheet(String companyId, DateTime asOfDate) async {
+  Future<BalanceSheetReport> getBalanceSheet(
+    String companyId,
+    DateTime asOfDate, {
+    bool showGroups = false,
+    String? jobId,
+  }) async {
     final accounts = await _fetchAccounts(companyId);
-    final balances = await _calculateBalances(companyId, accounts, asOfDate);
+    final balances = await _calculateBalances(
+      companyId,
+      accounts,
+      asOfDate,
+      jobId: jobId,
+    );
 
-    final bsTypes = [AccountType.asset, AccountType.liability, AccountType.equity];
-    final plTypes = [AccountType.income, AccountType.costOfSales, AccountType.expense, AccountType.otherIncome, AccountType.otherExpense];
+    final bsTypes = [
+      AccountType.asset,
+      AccountType.liability,
+      AccountType.equity,
+    ];
+    final plTypes = [
+      AccountType.income,
+      AccountType.costOfSales,
+      AccountType.expense,
+      AccountType.otherIncome,
+      AccountType.otherExpense,
+    ];
 
     double netIncome = 0;
     for (var acc in accounts) {
@@ -78,7 +120,7 @@ class FinancialReportService {
       if (!bsTypes.contains(acc.accountType)) {
         continue;
       }
-      
+
       double bal = balances[acc.id] ?? 0;
       double displayBal = bal;
       if (acc.normalBalance == BalanceType.credit) {
@@ -113,13 +155,17 @@ class FinancialReportService {
     }
 
     var rootNodes = _buildStandardHierarchy(
+      reportName: 'Balance Sheet',
       accounts: accounts,
       accountNodes: accountNodes,
       types: bsTypes,
+      showGroups: showGroups,
       extraNodes: {
         AccountType.equity: {
-          AccountCategory.retainedEarnings: [accountNodes['net_income_system']].whereType<FinancialReportNode>().toList(),
-        }
+          AccountCategory.retainedEarnings: [
+            accountNodes['net_income_system'],
+          ].whereType<FinancialReportNode>().toList(),
+        },
       },
     );
 
@@ -145,11 +191,33 @@ class FinancialReportService {
     );
   }
 
-  Future<ProfitLossReport> getProfitLoss(String companyId, DateTime startDate, DateTime endDate) async {
-    final accounts = await _fetchAccounts(companyId);
-    final movements = await _calculateMovements(companyId, accounts, startDate, endDate);
+  Future<ProfitLossReport> getProfitLoss(
+    String companyId,
+    DateTime? startDate,
+    DateTime? endDate, {
+    bool showGroups = false,
+    String? jobId,
+  }) async {
+    final now = DateTime.now();
+    final effectiveStartDate = startDate ?? DateTime(now.year, now.month, 1);
+    final effectiveEndDate = endDate ?? now;
 
-    final plTypes = [AccountType.income, AccountType.costOfSales, AccountType.expense, AccountType.otherIncome, AccountType.otherExpense];
+    final accounts = await _fetchAccounts(companyId);
+    final movements = await _calculateMovements(
+      companyId,
+      accounts,
+      effectiveStartDate,
+      effectiveEndDate,
+      jobId: jobId,
+    );
+
+    final plTypes = [
+      AccountType.income,
+      AccountType.costOfSales,
+      AccountType.expense,
+      AccountType.otherIncome,
+      AccountType.otherExpense,
+    ];
 
     Map<String, FinancialReportNode> accountNodes = {};
     for (var acc in accounts) {
@@ -157,7 +225,7 @@ class FinancialReportService {
         continue;
       }
 
-      double bal = movements[acc.id] ?? 0;
+      final bal = movements[acc.id] ?? 0.0;
       double displayBal = bal;
       if (acc.normalBalance == BalanceType.credit) {
         displayBal = -bal;
@@ -165,8 +233,8 @@ class FinancialReportService {
 
       accountNodes[acc.id] = FinancialReportNode(
         id: acc.id,
-        code: acc.accountCode,
-        name: acc.accountName,
+        code: acc.accountCode.isEmpty ? '' : acc.accountCode,
+        name: acc.accountName.isEmpty ? 'Unnamed Account' : acc.accountName,
         balance: displayBal,
         isGroup: acc.isGroup,
         level: acc.level,
@@ -176,9 +244,11 @@ class FinancialReportService {
     }
 
     final rootNodes = _buildStandardHierarchy(
+      reportName: 'Profit & Loss',
       accounts: accounts,
       accountNodes: accountNodes,
       types: plTypes,
+      showGroups: showGroups,
     );
 
     double totalRevenue = 0;
@@ -186,11 +256,13 @@ class FinancialReportService {
     double totalExpenses = 0;
 
     for (var node in rootNodes) {
-      if (node.id == AccountType.income.name || node.id == AccountType.otherIncome.name) {
+      if (node.id == AccountType.income.name ||
+          node.id == AccountType.otherIncome.name) {
         totalRevenue += node.balance;
       } else if (node.id == AccountType.costOfSales.name) {
         totalCostOfSales += node.balance;
-      } else if (node.id == AccountType.expense.name || node.id == AccountType.otherExpense.name) {
+      } else if (node.id == AccountType.expense.name ||
+          node.id == AccountType.otherExpense.name) {
         totalExpenses += node.balance;
       }
     }
@@ -204,10 +276,27 @@ class FinancialReportService {
     );
   }
 
-  Future<GeneralLedgerReport> getGeneralLedgerSummary(String companyId, DateTime startDate, DateTime endDate) async {
+  Future<GeneralLedgerReport> getGeneralLedgerSummary(
+    String companyId,
+    DateTime startDate,
+    DateTime endDate, {
+    bool showGroups = false,
+    String? jobId,
+  }) async {
     final accounts = await _fetchAccounts(companyId);
-    final openingBalances = await _calculateBalances(companyId, accounts, startDate.subtract(const Duration(seconds: 1)));
-    final movements = await _calculateDetailedMovements(companyId, accounts, startDate, endDate);
+    final openingBalances = await _calculateBalances(
+      companyId,
+      accounts,
+      startDate.subtract(const Duration(seconds: 1)),
+      jobId: jobId,
+    );
+    final movements = await _calculateDetailedMovements(
+      companyId,
+      accounts,
+      startDate,
+      endDate,
+      jobId: jobId,
+    );
 
     Map<String, FinancialReportNode> accountNodes = {};
     for (var acc in accounts) {
@@ -232,9 +321,11 @@ class FinancialReportService {
     }
 
     final rootNodes = _buildStandardHierarchy(
+      reportName: 'General Ledger Summary',
       accounts: accounts,
       accountNodes: accountNodes,
       types: AccountType.values,
+      showGroups: showGroups,
     );
 
     double grandOpening = 0;
@@ -262,23 +353,25 @@ class FinancialReportService {
     String companyId,
     String accountId,
     DateTime startDate,
-    DateTime endDate,
-  ) async {
+    DateTime endDate, {
+    String? jobId,
+  }) async {
     final doc = await _firestore
         .collection('companies')
         .doc(companyId)
         .collection('chartOfAccounts')
         .doc(accountId)
         .get();
-    
+
     if (!doc.exists) {
       return [];
     }
     final account = AccountModel.fromMap(doc.data()!, doc.id);
 
     // 1. Calculate Opening Balance
-    double openingBal = account.openingBalance;
-    if (account.openingBalanceType == BalanceType.credit) {
+    // If filtering by Job, we don't use the account's global opening balance
+    double openingBal = jobId == null ? account.openingBalance : 0.0;
+    if (jobId == null && account.openingBalanceType == BalanceType.credit) {
       openingBal = -openingBal;
     }
 
@@ -293,7 +386,7 @@ class FinancialReportService {
     for (var doc in journalsBeforeSnap.docs) {
       final lines = doc.data()['lines'] as List;
       for (var l in lines) {
-        if (l['accountId'] == accountId) {
+        if (l['accountId'] == accountId && (jobId == null || l['jobId'] == jobId)) {
           double dr = (l['debit'] as num).toDouble();
           double cr = (l['credit'] as num).toDouble();
           openingBal += (dr - cr);
@@ -302,7 +395,7 @@ class FinancialReportService {
     }
 
     List<Map<String, dynamic>> result = [];
-    
+
     // Add Opening Balance Row
     result.add({
       'date': startDate,
@@ -329,11 +422,11 @@ class FinancialReportService {
       final data = doc.data();
       final lines = data['lines'] as List;
       for (var l in lines) {
-        if (l['accountId'] == accountId) {
+        if (l['accountId'] == accountId && (jobId == null || l['jobId'] == jobId)) {
           double dr = (l['debit'] as num).toDouble();
           double cr = (l['credit'] as num).toDouble();
           runningBalance += (dr - cr);
-          
+
           result.add({
             'date': (data['date'] as Timestamp).toDate(),
             'description': data['description'] ?? '',
@@ -349,14 +442,16 @@ class FinancialReportService {
     return result;
   }
 
-  Future<List<Map<String, dynamic>>> getAccountsReceivableDetailed(String companyId) async {
+  Future<List<Map<String, dynamic>>> getAccountsReceivableDetailed(
+    String companyId,
+  ) async {
     // 1. Fetch all customers
     final customersSnap = await _firestore
         .collection('companies')
         .doc(companyId)
         .collection('customers')
         .get();
-    
+
     // 2. Fetch all posted invoices with balanceDue > 0
     final invoicesSnap = await _firestore
         .collection('companies')
@@ -377,14 +472,23 @@ class FinancialReportService {
       final customer = doc.data();
       final customerId = doc.id;
       final invoices = customerInvoices[customerId] ?? [];
-      
+
       if (invoices.isEmpty) {
         continue;
       }
 
-      double totalInvoiced = invoices.fold(0.0, (total, inv) => total + inv.totalAmount);
-      double totalPaid = invoices.fold(0.0, (total, inv) => total + inv.amountPaid);
-      double outstanding = invoices.fold(0.0, (total, inv) => total + inv.balanceDue);
+      double totalInvoiced = invoices.fold(
+        0.0,
+        (total, inv) => total + inv.totalAmount,
+      );
+      double totalPaid = invoices.fold(
+        0.0,
+        (total, inv) => total + inv.amountPaid,
+      );
+      double outstanding = invoices.fold(
+        0.0,
+        (total, inv) => total + inv.balanceDue,
+      );
 
       result.add({
         'id': customerId,
@@ -396,11 +500,16 @@ class FinancialReportService {
       });
     }
 
-    result.sort((a, b) => (b['outstanding'] as double).compareTo(a['outstanding'] as double));
+    result.sort(
+      (a, b) =>
+          (b['outstanding'] as double).compareTo(a['outstanding'] as double),
+    );
     return result;
   }
 
-  Future<List<Map<String, dynamic>>> getAccountsPayableDetailed(String companyId) async {
+  Future<List<Map<String, dynamic>>> getAccountsPayableDetailed(
+    String companyId,
+  ) async {
     final suppliersSnap = await _firestore
         .collection('companies')
         .doc(companyId)
@@ -426,7 +535,7 @@ class FinancialReportService {
       final supplier = doc.data();
       final supplierId = doc.id;
       final bills = supplierBills[supplierId] ?? [];
-      
+
       if (bills.isEmpty) {
         continue;
       }
@@ -445,7 +554,10 @@ class FinancialReportService {
       });
     }
 
-    result.sort((a, b) => (b['outstanding'] as double).compareTo(a['outstanding'] as double));
+    result.sort(
+      (a, b) =>
+          (b['outstanding'] as double).compareTo(a['outstanding'] as double),
+    );
     return result;
   }
 
@@ -497,11 +609,14 @@ class FinancialReportService {
       });
     }
 
-    ledger.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+    ledger.sort(
+      (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
+    );
 
     double runningBalance = 0;
     for (var entry in ledger) {
-      runningBalance += (entry['debit'] as double) - (entry['credit'] as double);
+      runningBalance +=
+          (entry['debit'] as double) - (entry['credit'] as double);
       entry['balance'] = runningBalance;
     }
 
@@ -556,13 +671,16 @@ class FinancialReportService {
       });
     }
 
-    ledger.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+    ledger.sort(
+      (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
+    );
 
     double runningBalance = 0;
     for (var entry in ledger) {
       // For suppliers, Credit is the liability increase, Debit is the liability decrease.
       // Net Liability = Credit - Debit
-      runningBalance += (entry['credit'] as double) - (entry['debit'] as double);
+      runningBalance +=
+          (entry['credit'] as double) - (entry['debit'] as double);
       entry['balance'] = runningBalance;
     }
 
@@ -572,38 +690,59 @@ class FinancialReportService {
   // --- Hierarchy Building Logic ---
 
   List<FinancialReportNode> _buildStandardHierarchy({
+    required String reportName,
     required List<AccountModel> accounts,
     required Map<String, FinancialReportNode> accountNodes,
     required List<AccountType> types,
-    Map<AccountType, Map<AccountCategory, List<FinancialReportNode>>>? extraNodes,
+    Map<AccountType, Map<AccountCategory, List<FinancialReportNode>>>?
+    extraNodes,
     bool includeZeroBalances = false,
+    bool showGroups = false,
   }) {
-    // 1. Build recursive account tree first
+    // 1. Build recursive account tree first (always needed for balance aggregation)
     Map<String, List<FinancialReportNode>> parentToChildren = {};
     for (var acc in accounts) {
       if (acc.parentAccountId != null) {
-        parentToChildren.putIfAbsent(acc.parentAccountId!, () => []).add(accountNodes[acc.id]!);
+        final node = accountNodes[acc.id];
+        if (node != null) {
+          parentToChildren
+              .putIfAbsent(acc.parentAccountId!, () => [])
+              .add(node);
+        }
       }
     }
 
     // 2. Resolve account tree and calculate group balances
     Map<String, FinancialReportNode> resolvedNodes = {};
-    
-    FinancialReportNode resolve(String id, int depth) {
+
+    FinancialReportNode? resolve(String id, int depth) {
       if (resolvedNodes.containsKey(id)) {
-        return resolvedNodes[id]!;
+        return resolvedNodes[id];
       }
-      
-      var node = accountNodes[id]!;
+
+      var node = accountNodes[id];
+      if (node == null) return null;
+
       var children = parentToChildren[id] ?? [];
-      
-      List<FinancialReportNode> resolvedChildren = children.map((c) => resolve(c.id, depth + 1)).toList();
-      
+
+      List<FinancialReportNode> resolvedChildren = children
+          .map((c) => resolve(c.id, depth + 1))
+          .whereType<FinancialReportNode>()
+          .toList();
+
       if (resolvedChildren.isNotEmpty) {
-        double sumOpening = resolvedChildren.fold(0.0, (total, c) => total + c.openingBalance) + node.openingBalance;
-        double sumDebit = resolvedChildren.fold(0.0, (total, c) => total + c.debit) + node.debit;
-        double sumCredit = resolvedChildren.fold(0.0, (total, c) => total + c.credit) + node.credit;
-        double sumBalance = resolvedChildren.fold(0.0, (total, c) => total + c.balance) + node.balance;
+        double sumOpening =
+            resolvedChildren.fold(0.0, (total, c) => total + c.openingBalance) +
+            node.openingBalance;
+        double sumDebit =
+            resolvedChildren.fold(0.0, (total, c) => total + c.debit) +
+            node.debit;
+        double sumCredit =
+            resolvedChildren.fold(0.0, (total, c) => total + c.credit) +
+            node.credit;
+        double sumBalance =
+            resolvedChildren.fold(0.0, (total, c) => total + c.balance) +
+            node.balance;
 
         node = node.copyWith(
           children: resolvedChildren,
@@ -617,7 +756,7 @@ class FinancialReportService {
       } else {
         node = node.copyWith(level: depth);
       }
-      
+
       resolvedNodes[id] = node;
       return node;
     }
@@ -627,26 +766,59 @@ class FinancialReportService {
     }
 
     // 3. Group by Type and Category
-    Map<AccountType, Map<AccountCategory, List<FinancialReportNode>>> hierarchy = {};
+    Map<AccountType, Map<AccountCategory, List<FinancialReportNode>>>
+    hierarchy = {};
 
-    for (var acc in accounts) {
-      if (!types.contains(acc.accountType)) {
-        continue;
-      }
-      if (acc.parentAccountId != null) {
-        continue; // Only top-level accounts/groups under Category
-      }
+    if (showGroups) {
+      // Standard hierarchical view
+      for (var acc in accounts) {
+        if (!types.contains(acc.accountType)) continue;
+        if (acc.parentAccountId != null) continue;
 
-      final node = resolvedNodes[acc.id]!;
-      
-      // Filter out zero balance nodes if requested
-      if (!includeZeroBalances && node.openingBalance == 0 && node.debit == 0 && node.credit == 0 && node.balance == 0 && !node.isGroup) {
-        continue;
-      }
+        final node = resolvedNodes[acc.id];
+        if (node == null) continue;
 
-      hierarchy.putIfAbsent(acc.accountType, () => {});
-      hierarchy[acc.accountType]!.putIfAbsent(acc.accountCategory, () => []);
-      hierarchy[acc.accountType]![acc.accountCategory]!.add(node);
+        if (!includeZeroBalances &&
+            node.openingBalance == 0 &&
+            node.debit == 0 &&
+            node.credit == 0 &&
+            node.balance == 0 &&
+            !node.isGroup) {
+          continue;
+        }
+
+        hierarchy.putIfAbsent(acc.accountType, () => {});
+        hierarchy[acc.accountType]!.putIfAbsent(acc.accountCategory, () => []);
+        hierarchy[acc.accountType]![acc.accountCategory]!.add(node);
+      }
+    } else {
+      // Simplified view: Main Category -> Sub Category -> Posting Accounts
+      for (var acc in accounts) {
+        if (!types.contains(acc.accountType)) continue;
+
+        // Condition for visibility in simplified view:
+        // 1. It's a posting account (allowPosting is true)
+        // 2. AND it has non-zero balance/movement OR includeZeroBalances is true
+        if (!acc.allowPosting) continue;
+
+        final node = accountNodes[acc.id];
+        if (node == null) continue;
+
+        if (!includeZeroBalances &&
+            node.openingBalance == 0 &&
+            node.debit == 0 &&
+            node.credit == 0 &&
+            node.balance == 0) {
+          continue;
+        }
+
+        // Adjust level to be directly under Category (level 2)
+        final flatNode = node.copyWith(level: 2, children: []);
+
+        hierarchy.putIfAbsent(acc.accountType, () => {});
+        hierarchy[acc.accountType]!.putIfAbsent(acc.accountCategory, () => []);
+        hierarchy[acc.accountType]![acc.accountCategory]!.add(flatNode);
+      }
     }
 
     // 4. Inject extra nodes (like Net Income)
@@ -677,35 +849,45 @@ class FinancialReportService {
         }
 
         final children = hierarchy[type]![cat]!;
-        
-        categoryNodes.add(FinancialReportNode(
-          id: cat.name,
-          code: '',
-          name: cat.label,
-          openingBalance: children.fold(0.0, (total, n) => total + n.openingBalance),
-          debit: children.fold(0.0, (total, n) => total + n.debit),
-          credit: children.fold(0.0, (total, n) => total + n.credit),
-          balance: children.fold(0.0, (total, n) => total + n.balance),
-          children: children,
-          isGroup: true,
-          level: 1,
-          type: 'category',
-        ));
+
+        categoryNodes.add(
+          FinancialReportNode(
+            id: cat.name,
+            code: '',
+            name: cat.label,
+            openingBalance: children.fold(
+              0.0,
+              (total, n) => total + n.openingBalance,
+            ),
+            debit: children.fold(0.0, (total, n) => total + n.debit),
+            credit: children.fold(0.0, (total, n) => total + n.credit),
+            balance: children.fold(0.0, (total, n) => total + n.balance),
+            children: children,
+            isGroup: true,
+            level: 1,
+            type: 'category',
+          ),
+        );
       }
 
-      rootNodes.add(FinancialReportNode(
-        id: type.name,
-        code: '',
-        name: type.label,
-        openingBalance: categoryNodes.fold(0.0, (total, n) => total + n.openingBalance),
-        debit: categoryNodes.fold(0.0, (total, n) => total + n.debit),
-        credit: categoryNodes.fold(0.0, (total, n) => total + n.credit),
-        balance: categoryNodes.fold(0.0, (total, n) => total + n.balance),
-        children: categoryNodes,
-        isGroup: true,
-        level: 0,
-        type: 'type',
-      ));
+      rootNodes.add(
+        FinancialReportNode(
+          id: type.name,
+          code: '',
+          name: type.label,
+          openingBalance: categoryNodes.fold(
+            0.0,
+            (total, n) => total + n.openingBalance,
+          ),
+          debit: categoryNodes.fold(0.0, (total, n) => total + n.debit),
+          credit: categoryNodes.fold(0.0, (total, n) => total + n.credit),
+          balance: categoryNodes.fold(0.0, (total, n) => total + n.balance),
+          children: categoryNodes,
+          isGroup: true,
+          level: 0,
+          type: 'type',
+        ),
+      );
     }
 
     return rootNodes;
@@ -726,11 +908,19 @@ class FinancialReportService {
         .toList();
   }
 
-  Future<Map<String, double>> _calculateBalances(String companyId, List<AccountModel> accounts, DateTime asOfDate) async {
+  Future<Map<String, double>> _calculateBalances(
+    String companyId,
+    List<AccountModel> accounts,
+    DateTime asOfDate, {
+    String? jobId,
+  }) async {
     Map<String, double> balances = {};
-    bool isCurrent = asOfDate.isAfter(DateTime.now().subtract(const Duration(minutes: 5)));
+    bool isCurrent = asOfDate.isAfter(
+      DateTime.now().subtract(const Duration(minutes: 5)),
+    );
 
-    if (isCurrent) {
+    // If filtering by Job, we MUST sum journal entries manually (no shortcut via account.currentBalance)
+    if (isCurrent && jobId == null) {
       for (var acc in accounts) {
         double bal = acc.currentBalance;
         if (acc.normalBalance == BalanceType.credit) {
@@ -740,8 +930,9 @@ class FinancialReportService {
       }
     } else {
       for (var acc in accounts) {
-        double bal = acc.openingBalance;
-        if (acc.openingBalanceType == BalanceType.credit) {
+        // Only include opening balance if not filtering by specific job
+        double bal = jobId == null ? acc.openingBalance : 0.0;
+        if (jobId == null && acc.openingBalanceType == BalanceType.credit) {
           bal = -bal;
         }
         balances[acc.id] = bal;
@@ -756,11 +947,19 @@ class FinancialReportService {
           .get();
 
       for (var doc in journalsSnap.docs) {
-        final lines = doc.data()['lines'] as List;
+        final lines = doc.data()['lines'] as List?;
+        if (lines == null) continue;
         for (var l in lines) {
-          String accId = l['accountId'];
-          double dr = (l['debit'] as num).toDouble();
-          double cr = (l['credit'] as num).toDouble();
+          if (l is! Map) continue;
+          String? accId = l['accountId'];
+          if (accId == null) {
+            _logMissingField('Balance Calculation', doc.id, 'accountId');
+            continue;
+          }
+          if (jobId != null && l['jobId'] != jobId) continue;
+
+          double dr = (l['debit'] as num?)?.toDouble() ?? 0.0;
+          double cr = (l['credit'] as num?)?.toDouble() ?? 0.0;
           balances[accId] = (balances[accId] ?? 0) + (dr - cr);
         }
       }
@@ -768,7 +967,13 @@ class FinancialReportService {
     return balances;
   }
 
-  Future<Map<String, double>> _calculateMovements(String companyId, List<AccountModel> accounts, DateTime startDate, DateTime endDate) async {
+  Future<Map<String, double>> _calculateMovements(
+    String companyId,
+    List<AccountModel> accounts,
+    DateTime startDate,
+    DateTime endDate, {
+    String? jobId,
+  }) async {
     Map<String, double> movement = {};
     final journalsSnap = await _firestore
         .collection('companies')
@@ -780,18 +985,32 @@ class FinancialReportService {
         .get();
 
     for (var doc in journalsSnap.docs) {
-      final lines = doc.data()['lines'] as List;
+      final lines = doc.data()['lines'] as List?;
+      if (lines == null) continue;
       for (var l in lines) {
-        String accId = l['accountId'];
-        double dr = (l['debit'] as num).toDouble();
-        double cr = (l['credit'] as num).toDouble();
+        if (l is! Map) continue;
+        String? accId = l['accountId'];
+        if (accId == null) {
+          _logMissingField('Movement Calculation', doc.id, 'accountId');
+          continue;
+        }
+        if (jobId != null && l['jobId'] != jobId) continue;
+
+        double dr = (l['debit'] as num?)?.toDouble() ?? 0.0;
+        double cr = (l['credit'] as num?)?.toDouble() ?? 0.0;
         movement[accId] = (movement[accId] ?? 0) + (dr - cr);
       }
     }
     return movement;
   }
 
-  Future<Map<String, Map<String, double>>> _calculateDetailedMovements(String companyId, List<AccountModel> accounts, DateTime startDate, DateTime endDate) async {
+  Future<Map<String, Map<String, double>>> _calculateDetailedMovements(
+    String companyId,
+    List<AccountModel> accounts,
+    DateTime startDate,
+    DateTime endDate, {
+    String? jobId,
+  }) async {
     Map<String, Map<String, double>> movements = {};
     final journalsSnap = await _firestore
         .collection('companies')
@@ -803,12 +1022,20 @@ class FinancialReportService {
         .get();
 
     for (var doc in journalsSnap.docs) {
-      final lines = doc.data()['lines'] as List;
+      final lines = doc.data()['lines'] as List?;
+      if (lines == null) continue;
       for (var l in lines) {
-        String accId = l['accountId'];
-        double dr = (l['debit'] as num).toDouble();
-        double cr = (l['credit'] as num).toDouble();
-        
+        if (l is! Map) continue;
+        String? accId = l['accountId'];
+        if (accId == null) {
+          _logMissingField('Detailed Movement Calculation', doc.id, 'accountId');
+          continue;
+        }
+        if (jobId != null && l['jobId'] != jobId) continue;
+
+        double dr = (l['debit'] as num?)?.toDouble() ?? 0.0;
+        double cr = (l['credit'] as num?)?.toDouble() ?? 0.0;
+
         movements.putIfAbsent(accId, () => {'debit': 0, 'credit': 0});
         movements[accId]!['debit'] = movements[accId]!['debit']! + dr;
         movements[accId]!['credit'] = movements[accId]!['credit']! + cr;

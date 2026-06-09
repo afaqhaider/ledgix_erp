@@ -1,8 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
-import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/approvals/services/approval_service.dart';
-import 'package:ledgixerp/features/approvals/models/approval_rule_model.dart';
 import '../../settings/services/financial_settings_service.dart';
 
 import 'package:ledgixerp/core/auth/app_user.dart';
@@ -12,7 +11,6 @@ import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting
 class InvoiceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _settingsService = FinancialSettingsService();
-  final _inventoryService = InventoryService();
   final _approvalService = ApprovalService();
   final _postingService = AccountingPostingService();
 
@@ -47,16 +45,21 @@ class InvoiceService {
     );
   }
 
-  Future<void> addInvoice(InvoiceModel invoice, AppUser user) async {
+  Future<void> addInvoice(
+    InvoiceModel invoice,
+    AppUser user, {
+    bool shouldPost = false,
+  }) async {
     // Check if period is locked
-    if (await _settingsService.isPeriodLocked(
-      invoice.companyId,
-      invoice.invoiceDate,
-    )) {
+    if (shouldPost &&
+        await _settingsService.isPeriodLocked(
+          invoice.companyId,
+          invoice.invoiceDate,
+        )) {
       throw Exception('Accounting period for this date is locked.');
     }
 
-    // Determine initial status based on role
+    // Determine initial status based on role and action
     final highRoles = [
       UserRole.owner,
       UserRole.superAdmin,
@@ -65,30 +68,39 @@ class InvoiceService {
       UserRole.generalManager,
     ];
 
-    bool shouldAutoPost = highRoles.contains(user.role);
-    
-    // Security Enforcement: Cleanse fields if not authorized to post
+    bool isAuthorizedToPost = highRoles.contains(user.role);
+    bool actualPost = shouldPost && isAuthorizedToPost;
+
+    // Security Enforcement: Cleanse fields if not authorized to post or not posting
     InvoiceModel invoiceToProcess = invoice;
-    if (!shouldAutoPost) {
+    if (!actualPost) {
       invoiceToProcess = invoice.copyWith(
         isPosted: false,
         postedAt: null,
         postedBy: null,
         journalEntryId: null,
-        amountPaid: 0.0, // Initial invoices shouldn't have payments yet in this flow
+        amountPaid: 0.0,
         balanceDue: invoice.totalAmount,
       );
     }
 
-    InvoiceStatus initialStatus =
-        shouldAutoPost ? InvoiceStatus.posted : InvoiceStatus.pendingApproval;
-    String? initialApprovalStatus = shouldAutoPost ? 'approved' : 'pending';
+    InvoiceStatus initialStatus = InvoiceStatus.draft;
+    String? initialApprovalStatus = 'pending';
+
+    if (actualPost) {
+      initialStatus = InvoiceStatus.posted;
+      initialApprovalStatus = 'approved';
+    } else if (shouldPost && !isAuthorizedToPost) {
+      initialStatus = InvoiceStatus.pendingApproval;
+      initialApprovalStatus = 'pending';
+    }
 
     String? invoiceId;
+    String? finalInvoiceNumber;
 
     await _firestore.runTransaction((transaction) async {
       // 1. Generate the actual document number and increment counter within transaction
-      final finalNumber = await _settingsService
+      finalInvoiceNumber = await _settingsService
           .getNextDocumentNumberAndIncrement(
             invoiceToProcess.companyId,
             'invoice',
@@ -100,7 +112,7 @@ class InvoiceService {
 
       final invoiceToSave = invoiceToProcess.copyWith(
         id: docRef.id,
-        invoiceNumber: finalNumber,
+        invoiceNumber: finalInvoiceNumber!,
         status: initialStatus,
         approvalStatus: initialApprovalStatus,
       );
@@ -109,27 +121,39 @@ class InvoiceService {
       transaction.set(docRef, invoiceToSave.toMap());
     });
 
-    if (shouldAutoPost && invoiceId != null) {
+    if (actualPost && invoiceId != null) {
       // Call posting service
       try {
-        final doc = await _getInvoicesRef(invoiceToProcess.companyId).doc(invoiceId).get();
-        final savedInvoice = InvoiceModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-        await _postingService.postSalesInvoice(invoiceToProcess.companyId, savedInvoice, user);
+        final doc = await _getInvoicesRef(
+          invoiceToProcess.companyId,
+        ).doc(invoiceId).get();
+        final savedInvoice = InvoiceModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
+        await _postingService.postSalesInvoice(
+          invoiceToProcess.companyId,
+          savedInvoice,
+          user,
+        );
+
+        // TODO: onTransactionPosted('sales_invoice', invoiceId!)
       } catch (e, stack) {
-        print('CRITICAL: Auto-posting failed for invoice $invoiceId: $e');
-        print(stack);
-        // We throw a more descriptive error for the UI
-        throw Exception('Invoice saved successfully as #${invoiceId}, but auto-posting failed. Error: $e');
+        debugPrint('CRITICAL: Auto-posting failed for invoice $invoiceId: $e');
+        debugPrint(stack.toString());
+        throw Exception(
+          'Invoice saved successfully as #$invoiceId, but auto-posting failed. Error: $e',
+        );
       }
-    } else if (invoiceId != null) {
-      // Submit for approval if not auto-posted
+    } else if (shouldPost && !isAuthorizedToPost && invoiceId != null) {
+      // Submit for approval if requested but not authorized to post
       await _approvalService.submitForApproval(
         user: user,
-        companyId: invoice.companyId,
+        companyId: invoiceToProcess.companyId,
         sourceType: 'sales_invoice',
         sourceId: invoiceId!,
-        sourceNumber: invoice.invoiceNumber, // This might be 'AUTO' here, should use finalNumber but we don't have it easily outside tx
-        amount: invoice.totalAmount,
+        sourceNumber: finalInvoiceNumber ?? 'AUTO',
+        amount: invoiceToProcess.totalAmount,
       );
     }
   }
@@ -148,7 +172,8 @@ class InvoiceService {
     InvoiceStatus status,
   ) async {
     final doc = await _getInvoicesRef(companyId).doc(invoiceId).get();
-    if (doc.exists && (doc.data() as Map<String, dynamic>)['isPosted'] == true) {
+    if (doc.exists &&
+        (doc.data() as Map<String, dynamic>)['isPosted'] == true) {
       throw Exception('Cannot update status of a posted invoice.');
     }
     await _getInvoicesRef(

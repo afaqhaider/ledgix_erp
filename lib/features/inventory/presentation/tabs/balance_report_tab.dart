@@ -26,8 +26,10 @@ class _BalanceReportTabState extends State<BalanceReportTab> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Text('Stock Balance Report',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Stock Balance Report',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const Spacer(),
               StreamBuilder<List<WarehouseModel>>(
                 stream: _inventoryService.getWarehouses(widget.user.companyId!),
@@ -36,16 +38,24 @@ class _BalanceReportTabState extends State<BalanceReportTab> {
                   return SizedBox(
                     width: 200,
                     child: DropdownButtonFormField<String>(
-                      value: _selectedWarehouse,
+                      initialValue: _selectedWarehouse,
                       items: [
                         const DropdownMenuItem(
-                            value: null, child: Text('All Warehouses')),
-                        ...whs.map((w) => DropdownMenuItem(
-                            value: w.id, child: Text(w.warehouseName))),
+                          value: null,
+                          child: Text('All Warehouses'),
+                        ),
+                        ...whs.map(
+                          (w) => DropdownMenuItem(
+                            value: w.id,
+                            child: Text(w.warehouseName),
+                          ),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _selectedWarehouse = v),
                       decoration: const InputDecoration(
-                          isDense: true, labelText: 'Filter Warehouse'),
+                        isDense: true,
+                        labelText: 'Filter Warehouse',
+                      ),
                     ),
                   );
                 },
@@ -83,10 +93,14 @@ class _BalanceReportTabState extends State<BalanceReportTab> {
                           DataColumn(label: Text('Item Name')),
                           DataColumn(label: Text('UOM')),
                           DataColumn(
-                              label: Text('Stock', textAlign: TextAlign.right)),
+                            label: Text('Stock', textAlign: TextAlign.right),
+                          ),
                           DataColumn(
-                              label: Text('Reorder Level',
-                                  textAlign: TextAlign.right)),
+                            label: Text(
+                              'Reorder Level',
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
                           DataColumn(label: Text('Status')),
                         ],
                         rows: items.map((item) {
@@ -94,50 +108,80 @@ class _BalanceReportTabState extends State<BalanceReportTab> {
                           if (_selectedWarehouse == null) {
                             totalStock = balances
                                 .where((b) => b.get('itemId') == item.id)
-                                .fold(0.0,
-                                    (sum, b) => sum + (b.get('quantity') ?? 0.0));
+                                .fold(
+                                  0.0,
+                                  (acc, b) => acc + (b.get('quantity') ?? 0.0),
+                                );
                           } else {
                             final b = balances
                                 .cast<QueryDocumentSnapshot?>()
                                 .firstWhere(
-                                    (b) =>
-                                        b!.get('itemId') == item.id &&
-                                        b.get('warehouseId') ==
-                                            _selectedWarehouse,
-                                    orElse: () => null);
+                                  (b) =>
+                                      b!.get('itemId') == item.id &&
+                                      b.get('warehouseId') ==
+                                          _selectedWarehouse,
+                                  orElse: () => null,
+                                );
                             totalStock = b?.get('quantity') ?? 0.0;
                           }
 
                           return DataRow(
                             cells: [
-                              DataCell(Text(item.itemCode,
-                                  style: const TextStyle(fontSize: 11))),
-                              DataCell(Text(item.itemName,
-                                  style: const TextStyle(fontSize: 11))),
-                              DataCell(Text(item.defaultUomId,
-                                  style: const TextStyle(fontSize: 11))),
-                              DataCell(Align(
+                              DataCell(
+                                Text(
+                                  item.itemCode,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  item.itemName,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  item.defaultUomId,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              DataCell(
+                                Align(
                                   alignment: Alignment.centerRight,
-                                  child: Text(totalStock.toString(),
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: totalStock < item.reorderLevel
-                                              ? Colors.red
-                                              : null)))),
-                              DataCell(Align(
+                                  child: Text(
+                                    totalStock.toString(),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: totalStock < item.reorderLevel
+                                          ? Colors.red
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Align(
                                   alignment: Alignment.centerRight,
-                                  child: Text(item.reorderLevel.toString(),
-                                      style: const TextStyle(fontSize: 11)))),
-                              DataCell(Text(
+                                  child: Text(
+                                    item.reorderLevel.toString(),
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
                                   totalStock < item.reorderLevel
                                       ? 'Reorder'
                                       : 'OK',
                                   style: TextStyle(
-                                      fontSize: 10,
-                                      color: totalStock < item.reorderLevel
-                                          ? Colors.red
-                                          : Colors.green))),
+                                    fontSize: 10,
+                                    color: totalStock < item.reorderLevel
+                                        ? Colors.red
+                                        : Colors.green,
+                                  ),
+                                ),
+                              ),
                             ],
                           );
                         }).toList(),

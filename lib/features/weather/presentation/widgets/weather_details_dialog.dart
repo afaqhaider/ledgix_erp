@@ -52,9 +52,9 @@ class _WeatherDetailsDialogState extends State<WeatherDetailsDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to refresh: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to refresh: $e')));
       }
     }
   }
@@ -100,9 +100,13 @@ class _WeatherDetailsDialogState extends State<WeatherDetailsDialog> {
                       ),
                     ),
                     Text(
-                      DateFormat('EEEE, MMM d, HH:mm').format(_weatherInfo.lastUpdated),
+                      DateFormat(
+                        'EEEE, MMM d, HH:mm',
+                      ).format(_weatherInfo.lastUpdated),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                   ],
@@ -132,7 +136,8 @@ class _WeatherDetailsDialogState extends State<WeatherDetailsDialog> {
                   _weatherInfo.iconUrl,
                   width: 64,
                   height: 64,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.wb_cloudy_rounded, size: 48),
+                  errorBuilder: (_, _, _) =>
+                      const Icon(Icons.wb_cloudy_rounded, size: 48),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -167,7 +172,10 @@ class _WeatherDetailsDialogState extends State<WeatherDetailsDialog> {
               spacing: 20,
               runSpacing: 16,
               children: [
-                _buildStat('Feels Like', '${_weatherInfo.feelsLike.round()}°$unitStr'),
+                _buildStat(
+                  'Feels Like',
+                  '${_weatherInfo.feelsLike.round()}°$unitStr',
+                ),
                 _buildStat('Humidity', '${_weatherInfo.humidity}%'),
                 _buildStat('Wind Speed', '${_weatherInfo.windSpeed} m/s'),
                 _buildStat('Pressure', '${_weatherInfo.pressure} hPa'),

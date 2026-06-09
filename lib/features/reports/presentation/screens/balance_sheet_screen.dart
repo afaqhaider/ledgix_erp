@@ -3,6 +3,9 @@ import 'package:ledgixerp/core/utils/app_formatters.dart';
 import '../../models/report_models.dart';
 import '../../services/financial_report_service.dart';
 import '../widgets/hierarchical_report_row.dart';
+import '../widgets/job_filter_selector.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
+import 'package:ledgixerp/features/settings/models/financial_settings_model.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -17,15 +20,29 @@ class BalanceSheetScreen extends StatefulWidget {
 
 class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
   final _reportService = FinancialReportService();
+  final _settingsService = FinancialSettingsService();
   DateTime _asOfDate = DateTime.now();
   BalanceSheetReport? _report;
   bool _isLoading = true;
   bool _isAllExpanded = false;
+  bool _showGroups = false;
+  String? _selectedJobId;
+  bool _jobEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    _initSettings();
     _loadReport();
+  }
+
+  Future<void> _initSettings() async {
+    final settings = await _settingsService.getSettings(widget.companyId);
+    if (mounted) {
+      setState(() {
+        _jobEnabled = settings.jobBasedAccountingEnabled;
+      });
+    }
   }
 
   String _searchQuery = '';
@@ -36,6 +53,8 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
       final report = await _reportService.getBalanceSheet(
         widget.companyId,
         _asOfDate,
+        showGroups: _showGroups,
+        jobId: _selectedJobId,
       );
       setState(() {
         _report = report;
@@ -44,9 +63,9 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading report: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading report: $e')));
       }
     }
   }
@@ -55,11 +74,15 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
     if (_report == null) return [];
     if (_searchQuery.isEmpty) return _report!.nodes;
 
-    return _report!.nodes.map((node) => _filterNode(node)).whereType<FinancialReportNode>().toList();
+    return _report!.nodes
+        .map((node) => _filterNode(node))
+        .whereType<FinancialReportNode>()
+        .toList();
   }
 
   FinancialReportNode? _filterNode(FinancialReportNode node) {
-    bool matches = node.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+    bool matches =
+        node.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
         node.code.toLowerCase().contains(_searchQuery.toLowerCase());
 
     List<FinancialReportNode> filteredChildren = node.children
@@ -85,7 +108,9 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
         if (_isLoading)
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else if (filteredNodes.isEmpty)
-          const Expanded(child: Center(child: Text('No matching records found')))
+          const Expanded(
+            child: Center(child: Text('No matching records found')),
+          )
         else
           Expanded(
             child: Column(
@@ -98,11 +123,15 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
                     itemCount: filteredNodes.length,
                     itemBuilder: (context, index) {
                       return HierarchicalReportRow(
-                        key: ValueKey('bs-${filteredNodes[index].id}-$_isAllExpanded-$_searchQuery'),
+                        key: ValueKey(
+                          'bs-${filteredNodes[index].id}-$_isAllExpanded-$_searchQuery',
+                        ),
                         companyId: widget.companyId,
                         node: filteredNodes[index],
                         displayMode: ReportDisplayMode.singleBalance,
-                        initiallyExpanded: _isAllExpanded || _searchQuery.isNotEmpty,
+                        initiallyExpanded:
+                            _isAllExpanded || _searchQuery.isNotEmpty,
+                        jobId: _selectedJobId,
                       );
                     },
                   ),
@@ -120,12 +149,30 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
         children: [
+          StreamBuilder<FinancialSettingsModel>(
+            stream: _settingsService.streamSettings(widget.companyId),
+            builder: (context, snapshot) {
+              final enabled = snapshot.data?.jobBasedAccountingEnabled ?? _jobEnabled;
+              if (!enabled) return const SizedBox.shrink();
+
+              return JobFilterSelector(
+                companyId: widget.companyId,
+                selectedJobId: _selectedJobId,
+                onJobSelected: (jobId) {
+                  setState(() => _selectedJobId = jobId);
+                  _loadReport();
+                },
+              );
+            },
+          ),
           Expanded(
             child: SearchBar(
               hintText: 'Search asset, liability or equity...',
               leading: const Icon(Icons.search, size: 20),
               elevation: WidgetStateProperty.all(0),
-              backgroundColor: WidgetStateProperty.all(theme.colorScheme.surfaceContainer),
+              backgroundColor: WidgetStateProperty.all(
+                theme.colorScheme.surfaceContainer,
+              ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -140,7 +187,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
     return Row(
       children: [
         _presetButton('Today', DateTime.now()),
-        _presetButton('Last Month', DateTime(DateTime.now().year, DateTime.now().month, 0)),
+        _presetButton(
+          'Last Month',
+          DateTime(DateTime.now().year, DateTime.now().month, 0),
+        ),
         _presetButton('Last Year', DateTime(DateTime.now().year, 1, 0)),
       ],
     );
@@ -189,6 +239,15 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
               ],
             ),
           ),
+          TextButton.icon(
+            onPressed: () {
+              setState(() => _showGroups = !_showGroups);
+              _loadReport();
+            },
+            icon: Icon(_showGroups ? Icons.visibility : Icons.visibility_off),
+            label: Text(_showGroups ? 'Hide Groups' : 'Show Groups'),
+          ),
+          const SizedBox(width: 8),
           TextButton.icon(
             onPressed: () => setState(() => _isAllExpanded = !_isAllExpanded),
             icon: Icon(_isAllExpanded ? Icons.unfold_less : Icons.unfold_more),
@@ -241,10 +300,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
         children: [
           Text(
             'As of: ${AppFormatters.date(_asOfDate)}',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
           ),
           if (_report != null)
             Row(
@@ -252,11 +308,16 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
                 if (!_report!.isBalanced)
                   Container(
                     margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                      border: Border.all(
+                        color: Colors.red.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: const Text(
                       'OUT OF BALANCE',
@@ -332,17 +393,26 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
       ),
       child: Column(
         children: [
-          _buildSummaryRow(theme, 'TOTAL ASSETS', _report?.totalAssets ?? 0, isBold: true),
+          _buildSummaryRow(
+            theme,
+            'TOTAL ASSETS',
+            _report?.totalAssets ?? 0,
+            isBold: true,
+          ),
           const SizedBox(height: 8),
-          _buildSummaryRow(theme, 'TOTAL LIABILITIES', _report?.totalLiabilities ?? 0),
+          _buildSummaryRow(
+            theme,
+            'TOTAL LIABILITIES',
+            _report?.totalLiabilities ?? 0,
+          ),
           _buildSummaryRow(theme, 'TOTAL EQUITY', _report?.totalEquity ?? 0),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Divider(),
           ),
           _buildSummaryRow(
-            theme, 
-            'TOTAL LIABILITIES & EQUITY', 
+            theme,
+            'TOTAL LIABILITIES & EQUITY',
             (_report?.totalLiabilities ?? 0) + (_report?.totalEquity ?? 0),
             isBold: true,
             isPrimary: true,
@@ -352,7 +422,13 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
     );
   }
 
-  Widget _buildSummaryRow(ThemeData theme, String label, double value, {bool isBold = false, bool isPrimary = false}) {
+  Widget _buildSummaryRow(
+    ThemeData theme,
+    String label,
+    double value, {
+    bool isBold = false,
+    bool isPrimary = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [

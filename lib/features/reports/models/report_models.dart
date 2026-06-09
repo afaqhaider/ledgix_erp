@@ -1,7 +1,7 @@
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 
 class ReportLine {
-// ... existing code ...
+  // ... existing code ...
 }
 
 class FinancialReportNode {

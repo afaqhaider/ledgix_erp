@@ -6,6 +6,11 @@ class JournalLineModel {
   final double credit;
   final String? memo;
 
+  // Job Link
+  final String? jobId;
+  final String? jobNumber;
+  final String? jobName;
+
   JournalLineModel({
     required this.accountId,
     required this.accountName,
@@ -13,6 +18,9 @@ class JournalLineModel {
     required this.debit,
     required this.credit,
     this.memo,
+    this.jobId,
+    this.jobNumber,
+    this.jobName,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +31,9 @@ class JournalLineModel {
       'debit': debit,
       'credit': credit,
       'memo': memo,
+      'jobId': jobId,
+      'jobNumber': jobNumber,
+      'jobName': jobName,
     };
   }
 
@@ -34,6 +45,9 @@ class JournalLineModel {
       debit: (map['debit'] as num?)?.toDouble() ?? 0.0,
       credit: (map['credit'] as num?)?.toDouble() ?? 0.0,
       memo: map['memo'],
+      jobId: map['jobId'],
+      jobNumber: map['jobNumber'],
+      jobName: map['jobName'],
     );
   }
 }

@@ -18,11 +18,11 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _userService = UserService();
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
-  
+
   bool _isLoading = false;
   String? _photoUrl;
   dynamic _newPhotoFile;
@@ -73,7 +73,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         updatedPhotoUrl = await _userService.uploadProfilePhoto(
           widget.uid,
           _newPhotoFile,
-          fileName: _newPhotoFile is File ? (_newPhotoFile as File).path.split('/').last : 'profile.png',
+          fileName: _newPhotoFile is File
+              ? (_newPhotoFile as File).path.split('/').last
+              : 'profile.png',
         );
       }
 
@@ -93,7 +95,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -139,14 +144,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         backgroundImage: _newPhotoFile != null
-                            ? (kIsWeb 
-                                ? MemoryImage(_newPhotoFile as Uint8List) as ImageProvider
-                                : FileImage(_newPhotoFile as File) as ImageProvider)
-                            : (_photoUrl != null ? NetworkImage(_photoUrl!) : null),
+                            ? (kIsWeb
+                                  ? MemoryImage(_newPhotoFile as Uint8List)
+                                        as ImageProvider
+                                  : FileImage(_newPhotoFile as File)
+                                        as ImageProvider)
+                            : (_photoUrl != null
+                                  ? NetworkImage(_photoUrl!)
+                                  : null),
                         child: _newPhotoFile == null && _photoUrl == null
-                            ? Icon(Icons.person, size: 50, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5))
+                            ? Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.5),
+                              )
                             : null,
                       ),
                       Positioned(
@@ -154,9 +171,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         right: 0,
                         child: CircleAvatar(
                           radius: 18,
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                           child: IconButton(
-                            icon: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                            icon: const Icon(
+                              Icons.camera_alt,
+                              size: 16,
+                              color: Colors.white,
+                            ),
                             onPressed: _pickImage,
                           ),
                         ),
@@ -179,7 +202,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 TextFormField(
                   controller: _emailController,
                   enabled: false,
-                  style: ErpFormStyle.inputStyle(context).copyWith(color: Colors.grey),
+                  style: ErpFormStyle.inputStyle(
+                    context,
+                  ).copyWith(color: Colors.grey),
                   decoration: ErpFormStyle.inputDecoration(
                     context,
                     'Email Address',
@@ -202,7 +227,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Your profile information is visible within your company workspace.',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                   textAlign: TextAlign.center,
                 ),

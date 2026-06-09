@@ -44,12 +44,22 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
     _codeController = TextEditingController(text: widget.item?.itemCode);
     _nameController = TextEditingController(text: widget.item?.itemName);
     _descController = TextEditingController(text: widget.item?.itemDescription);
-    _salesPriceController = TextEditingController(text: widget.item?.salesPrice.toString() ?? '0.00');
-    _purchasePriceController = TextEditingController(text: widget.item?.purchasePrice.toString() ?? '0.00');
-    _reorderController = TextEditingController(text: widget.item?.reorderLevel.toString() ?? '0.00');
-    _minStockController = TextEditingController(text: widget.item?.minimumStock.toString() ?? '0.00');
-    _maxStockController = TextEditingController(text: widget.item?.maximumStock.toString() ?? '0.00');
-    
+    _salesPriceController = TextEditingController(
+      text: widget.item?.salesPrice.toString() ?? '0.00',
+    );
+    _purchasePriceController = TextEditingController(
+      text: widget.item?.purchasePrice.toString() ?? '0.00',
+    );
+    _reorderController = TextEditingController(
+      text: widget.item?.reorderLevel.toString() ?? '0.00',
+    );
+    _minStockController = TextEditingController(
+      text: widget.item?.minimumStock.toString() ?? '0.00',
+    );
+    _maxStockController = TextEditingController(
+      text: widget.item?.maximumStock.toString() ?? '0.00',
+    );
+
     _itemType = widget.item?.itemType ?? InventoryItemType.stock;
     _categoryId = widget.item?.itemCategoryId;
     _uomId = widget.item?.defaultUomId;
@@ -87,7 +97,11 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
       await _inventoryService.addItem(item);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Error adding item')));
+      }
     }
   }
 
@@ -98,13 +112,23 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
       child: SingleChildScrollView(
         child: Column(
           children: [
-            TextFormField(controller: _codeController, decoration: const InputDecoration(labelText: 'Item Code*'), validator: (v) => v!.isEmpty ? 'Required' : null),
+            TextFormField(
+              controller: _codeController,
+              decoration: const InputDecoration(labelText: 'Item Code*'),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
             const SizedBox(height: 12),
-            TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Item Name*'), validator: (v) => v!.isEmpty ? 'Required' : null),
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Item Name*'),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
             const SizedBox(height: 12),
             DropdownButtonFormField<InventoryItemType>(
               initialValue: _itemType,
-              items: InventoryItemType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.label))).toList(),
+              items: InventoryItemType.values
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
+                  .toList(),
               onChanged: (v) => setState(() => _itemType = v!),
               decoration: const InputDecoration(labelText: 'Item Type'),
             ),
@@ -115,7 +139,12 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
                 final cats = snapshot.data ?? [];
                 return DropdownButtonFormField<String>(
                   initialValue: _categoryId,
-                  items: cats.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                  items: cats
+                      .map(
+                        (c) =>
+                            DropdownMenuItem(value: c.id, child: Text(c.name)),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _categoryId = v),
                   decoration: const InputDecoration(labelText: 'Category'),
                 );
@@ -128,7 +157,14 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
                 final uoms = snapshot.data ?? [];
                 return DropdownButtonFormField<String>(
                   initialValue: _uomId,
-                  items: uoms.map((u) => DropdownMenuItem(value: u.id, child: Text(u.uomName))).toList(),
+                  items: uoms
+                      .map(
+                        (u) => DropdownMenuItem(
+                          value: u.id,
+                          child: Text(u.uomName),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _uomId = v),
                   decoration: const InputDecoration(labelText: 'Default UOM*'),
                   validator: (v) => v == null ? 'Required' : null,
@@ -136,13 +172,30 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
               },
             ),
             const SizedBox(height: 24),
-            const Text('Pricing & Accounts', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Pricing & Accounts',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const Divider(),
             Row(
               children: [
-                Expanded(child: TextFormField(controller: _salesPriceController, decoration: const InputDecoration(labelText: 'Sales Price'), keyboardType: TextInputType.number)),
+                Expanded(
+                  child: TextFormField(
+                    controller: _salesPriceController,
+                    decoration: const InputDecoration(labelText: 'Sales Price'),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _purchasePriceController, decoration: const InputDecoration(labelText: 'Purchase Price'), keyboardType: TextInputType.number)),
+                Expanded(
+                  child: TextFormField(
+                    controller: _purchasePriceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Purchase Price',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -154,38 +207,95 @@ class _InventoryItemPaneState extends State<InventoryItemPane> {
                   children: [
                     DropdownButtonFormField<String>(
                       initialValue: _inventoryAccountId,
-                      items: accounts.where((a) => a.accountType == AccountType.asset).map((a) => DropdownMenuItem(value: a.id, child: Text(a.accountName))).toList(),
+                      items: accounts
+                          .where((a) => a.accountType == AccountType.asset)
+                          .map(
+                            (a) => DropdownMenuItem(
+                              value: a.id,
+                              child: Text(a.accountName),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (v) => setState(() => _inventoryAccountId = v),
-                      decoration: const InputDecoration(labelText: 'Inventory Account'),
+                      decoration: const InputDecoration(
+                        labelText: 'Inventory Account',
+                      ),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: _incomeAccountId,
-                      items: accounts.where((a) => a.accountType == AccountType.income).map((a) => DropdownMenuItem(value: a.id, child: Text(a.accountName))).toList(),
+                      items: accounts
+                          .where((a) => a.accountType == AccountType.income)
+                          .map(
+                            (a) => DropdownMenuItem(
+                              value: a.id,
+                              child: Text(a.accountName),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (v) => setState(() => _incomeAccountId = v),
-                      decoration: const InputDecoration(labelText: 'Income Account'),
+                      decoration: const InputDecoration(
+                        labelText: 'Income Account',
+                      ),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: _expenseAccountId,
-                      items: accounts.where((a) => a.accountType == AccountType.expense || a.accountType == AccountType.costOfSales).map((a) => DropdownMenuItem(value: a.id, child: Text(a.accountName))).toList(),
+                      items: accounts
+                          .where(
+                            (a) =>
+                                a.accountType == AccountType.expense ||
+                                a.accountType == AccountType.costOfSales,
+                          )
+                          .map(
+                            (a) => DropdownMenuItem(
+                              value: a.id,
+                              child: Text(a.accountName),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (v) => setState(() => _expenseAccountId = v),
-                      decoration: const InputDecoration(labelText: 'Expense/COGS Account'),
+                      decoration: const InputDecoration(
+                        labelText: 'Expense/COGS Account',
+                      ),
                     ),
                   ],
                 );
               },
             ),
             const SizedBox(height: 24),
-            const Text('Stock Limits', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Stock Limits',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const Divider(),
             Row(
               children: [
-                Expanded(child: TextFormField(controller: _minStockController, decoration: const InputDecoration(labelText: 'Min Stock'), keyboardType: TextInputType.number)),
+                Expanded(
+                  child: TextFormField(
+                    controller: _minStockController,
+                    decoration: const InputDecoration(labelText: 'Min Stock'),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _reorderController, decoration: const InputDecoration(labelText: 'Reorder Level'), keyboardType: TextInputType.number)),
+                Expanded(
+                  child: TextFormField(
+                    controller: _reorderController,
+                    decoration: const InputDecoration(
+                      labelText: 'Reorder Level',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _maxStockController, decoration: const InputDecoration(labelText: 'Max Stock'), keyboardType: TextInputType.number)),
+                Expanded(
+                  child: TextFormField(
+                    controller: _maxStockController,
+                    decoration: const InputDecoration(labelText: 'Max Stock'),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),

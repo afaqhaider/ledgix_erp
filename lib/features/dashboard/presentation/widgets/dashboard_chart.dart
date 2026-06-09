@@ -46,7 +46,10 @@ class DashboardChart extends StatelessWidget {
           border: Border.all(color: borderColor),
         ),
         child: Center(
-          child: Text(emptyMessage ?? 'No data available yet', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          child: Text(
+            emptyMessage ?? 'No data available yet',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
         ),
       );
     }
@@ -110,7 +113,11 @@ class DashboardChart extends StatelessWidget {
   Widget _legendItem(String label, Color color) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 4),
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
@@ -130,8 +137,12 @@ class DashboardChart extends StatelessWidget {
         ),
         titlesData: FlTitlesData(
           show: true,
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -211,8 +222,12 @@ class DashboardChart extends StatelessWidget {
         gridData: const FlGridData(show: false),
         titlesData: FlTitlesData(
           show: true,
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,

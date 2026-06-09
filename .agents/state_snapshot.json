@@ -1,0 +1,32 @@
+{
+    "overall_goal": "Finalize the Job-Based Accounting infrastructure, focusing on UI visibility and navigation based on user settings.",
+    "key_knowledge": [
+        "Dynamic Visibility: The 'Jobs' module and 'Job Reports' are now dynamically shown/hidden based on the jobBasedAccountingEnabled flag.",
+        "Real-time Sync: All relevant screens (Sidebar, Dashboard, Reports, Jobs) now use streamSettings for immediate UI updates when the toggle is changed.",
+        "Restricted Access: Job creation and job-specific filtering in reports are automatically hidden or disabled when the feature is off."
+    ],
+    "file_system_state": {
+        "MODIFIED": [
+            "lib/features/reports/presentation/screens/general_ledger_screen.dart",
+            "lib/features/reports/presentation/screens/trial_balance_screen.dart",
+            "lib/features/reports/presentation/screens/balance_sheet_screen.dart",
+            "lib/features/reports/presentation/screens/profit_loss_screen.dart",
+            "lib/features/operations/jobs/presentation/screens/jobs_screen.dart",
+            "lib/features/reports/presentation/screens/job_report_screen.dart",
+            "lib/features/reports/presentation/screens/reports_dashboard_screen.dart"
+        ]
+    },
+    "recent_actions": [
+        "Updated General Ledger, Trial Balance, Balance Sheet, and Profit & Loss screens to hide Job filters when disabled.",
+        "Updated Jobs Screen and Job Report Screen to show 'Feature Disabled' fallback UI when disabled.",
+        "Converted Reports Dashboard to use a StreamBuilder for real-time visibility of the Job Profitability card.",
+        "Verified that transaction screens (Invoices, Bills, Expenses) already respect the job-based accounting toggle."
+    ],
+    "current_plan": [
+        "1. [DONE] Confirm Job-Based Accounting toggle exists in settings.",
+        "2. [DONE] Make sidebar navigation reactive to the Job-Based Accounting setting.",
+        "3. [DONE] Integrate 'Job Profitability' into the Reports Dashboard (with visibility toggle).",
+        "4. [DONE] Ensure 'Add Job' and 'Job Ledger' features are accessible only when enabled.",
+        "5. [TODO] Perform end-to-end test of turning the feature ON and observing UI updates."
+    ]
+}

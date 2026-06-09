@@ -28,7 +28,11 @@ class ErpErrorDialog extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.redAccent, size: 28),
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.redAccent,
+                  size: 28,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -217,10 +221,7 @@ Future<void> showErpSuccess({
 }) {
   return showDialog(
     context: context,
-    builder: (context) => ErpSuccessDialog(
-      title: title,
-      message: message,
-    ),
+    builder: (context) => ErpSuccessDialog(title: title, message: message),
   );
 }
 
@@ -231,6 +232,7 @@ class ErpSidePane extends StatelessWidget {
   final VoidCallback onSave;
   final bool isLoading;
   final String saveLabel;
+  final List<Widget>? extraActions;
 
   const ErpSidePane({
     super.key,
@@ -240,6 +242,7 @@ class ErpSidePane extends StatelessWidget {
     required this.onSave,
     this.isLoading = false,
     this.saveLabel = 'Save',
+    this.extraActions,
   });
 
   @override
@@ -320,6 +323,10 @@ class ErpSidePane extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    if (extraActions != null) ...[
+                      ...extraActions!,
+                      const SizedBox(width: 12),
+                    ],
                     TextButton(
                       onPressed: onCancel,
                       style: TextButton.styleFrom(
@@ -589,12 +596,10 @@ Future<T?> showErpSidePane<T>({
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1, 0),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-        ),
+        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
         child: child,
       );
     },

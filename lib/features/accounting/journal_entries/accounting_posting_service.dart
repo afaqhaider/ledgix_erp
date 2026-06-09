@@ -8,6 +8,7 @@ import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/crm/customer_payments/models/customer_payment_model.dart';
 import 'package:ledgixerp/features/supplier_payments/models/supplier_payment_model.dart';
 import 'package:ledgixerp/features/suppliers/models/bill_model.dart';
+import 'package:ledgixerp/features/expenses/models/expense_voucher_model.dart';
 import 'package:ledgixerp/core/audit/audit_service.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
@@ -30,8 +31,9 @@ class AccountingPostingService {
       debugPrint(
         'AccountingPostingService: Starting postSalesInvoice for ${invoice.invoiceNumber}',
       );
-      if (invoice.isPosted)
+      if (invoice.isPosted) {
         throw Exception('Invoice ${invoice.invoiceNumber} is already posted');
+      }
 
       if (await _settingsService.isPeriodLocked(
         companyId,
@@ -40,6 +42,21 @@ class AccountingPostingService {
         throw Exception(
           'Accounting period for ${invoice.invoiceDate.toString().substring(0, 10)} is locked. Cannot post.',
         );
+      }
+
+      final settings = await _settingsService.getSettings(companyId);
+
+      // Validation
+      if (invoice.totalAmount <= 0) {
+        throw Exception('Invoice total amount must be greater than zero.');
+      }
+      for (var item in invoice.items) {
+        if (item.lineTotal <= 0) {
+          throw Exception('Item "${item.description}" has zero or negative total.');
+        }
+        if (settings.jobBasedAccountingEnabled && (item.jobId == null || item.jobId!.isEmpty) && (invoice.jobId == null || invoice.jobId!.isEmpty)) {
+          throw Exception('Job is required for item "${item.description}" when Job-Based Accounting is enabled.');
+        }
       }
 
       // 1. Pre-fetch required system accounts
@@ -115,12 +132,14 @@ class AccountingPostingService {
             .collection('salesInvoices')
             .doc(invoice.id);
         final invSnap = await transaction.get(invoiceRef);
-        if (!invSnap.exists)
+        if (!invSnap.exists) {
           throw Exception('Invoice document not found in database.');
+        }
 
         final invData = invSnap.data();
-        if (invData?['isPosted'] == true)
+        if (invData?['isPosted'] == true) {
           throw Exception('Invoice was already posted by another process.');
+        }
 
         final arAccTx = await _getAccountInTx(
           transaction,
@@ -233,6 +252,9 @@ class AccountingPostingService {
             invoice.totalAmount,
             0,
             'Sales Invoice ${invoice.invoiceNumber}',
+            jobId: invoice.jobId,
+            jobNumber: invoice.jobNumber,
+            jobName: invoice.jobName,
           ),
         );
         _updateAccountBalanceTx(
@@ -253,6 +275,9 @@ class AccountingPostingService {
               0,
               entry.value,
               'Sales Invoice ${invoice.invoiceNumber}: ${sAccTx.accountName}',
+              jobId: invoice.jobId,
+              jobNumber: invoice.jobNumber,
+              jobName: invoice.jobName,
             ),
           );
           _updateAccountBalanceTx(transaction, sAccTx, 0, entry.value, user);
@@ -266,6 +291,9 @@ class AccountingPostingService {
               0,
               invoice.vatAmount,
               'VAT Output on ${invoice.invoiceNumber}',
+              jobId: invoice.jobId,
+              jobNumber: invoice.jobNumber,
+              jobName: invoice.jobName,
             ),
           );
           _updateAccountBalanceTx(
@@ -285,6 +313,9 @@ class AccountingPostingService {
               totalCogs,
               0,
               'COGS for Invoice ${invoice.invoiceNumber}',
+              jobId: invoice.jobId,
+              jobNumber: invoice.jobNumber,
+              jobName: invoice.jobName,
             ),
           );
           _updateAccountBalanceTx(transaction, cogsAccTx, totalCogs, 0, user);
@@ -295,6 +326,9 @@ class AccountingPostingService {
               0,
               totalCogs,
               'Inventory reduction for ${invoice.invoiceNumber}',
+              jobId: invoice.jobId,
+              jobNumber: invoice.jobNumber,
+              jobName: invoice.jobName,
             ),
           );
           _updateAccountBalanceTx(transaction, invAccTx, 0, totalCogs, user);
@@ -330,6 +364,9 @@ class AccountingPostingService {
           sourceType: 'sales_invoice',
           sourceId: invoice.id,
           sourceNumber: invoice.invoiceNumber,
+          jobId: invoice.jobId,
+          jobNumber: invoice.jobNumber,
+          jobName: invoice.jobName,
         );
 
         transaction.set(jeRef, journalEntry.toMap());
@@ -372,8 +409,9 @@ class AccountingPostingService {
       debugPrint(
         'AccountingPostingService: Starting postCustomerPayment for ${payment.paymentNumber}',
       );
-      if (payment.isPosted)
+      if (payment.isPosted) {
         throw Exception('Payment ${payment.paymentNumber} is already posted');
+      }
 
       if (await _settingsService.isPeriodLocked(
         companyId,
@@ -382,6 +420,10 @@ class AccountingPostingService {
         throw Exception(
           'Accounting period for ${payment.paymentDate.toString().substring(0, 10)} is locked. Cannot post.',
         );
+      }
+
+      if (payment.amount <= 0) {
+        throw Exception('Payment amount must be greater than zero.');
       }
 
       // 1. Pre-fetch required accounts
@@ -401,12 +443,14 @@ class AccountingPostingService {
             .collection('customerPayments')
             .doc(payment.id);
         final paySnap = await transaction.get(paymentRef);
-        if (!paySnap.exists)
+        if (!paySnap.exists) {
           throw Exception('Payment document not found in database.');
+        }
 
         final payData = paySnap.data();
-        if (payData?['isPosted'] == true)
+        if (payData?['isPosted'] == true) {
           throw Exception('Payment was already posted by another process.');
+        }
 
         AccountModel bankChartAccount;
         DocumentReference? bankAccountRef;
@@ -418,8 +462,9 @@ class AccountingPostingService {
               .collection('bankAccounts')
               .doc(payment.bankAccountId!);
           final bankSnap = await transaction.get(bankAccountRef);
-          if (!bankSnap.exists)
+          if (!bankSnap.exists) {
             throw Exception('Linked Bank Account not found');
+          }
 
           final bankData = bankSnap.data() as Map<String, dynamic>;
           final String? linkedId = bankData['linkedChartAccountId'];
@@ -488,6 +533,9 @@ class AccountingPostingService {
             payment.amount,
             0,
             'Receipt ${payment.paymentNumber}',
+            jobId: payment.jobId,
+            jobNumber: payment.jobNumber,
+            jobName: payment.jobName,
           ),
         );
         if (bankAccountRef != null) {
@@ -514,6 +562,9 @@ class AccountingPostingService {
             0,
             payment.amount,
             'Receipt ${payment.paymentNumber}',
+            jobId: payment.jobId,
+            jobNumber: payment.jobNumber,
+            jobName: payment.jobName,
           ),
         );
         _updateAccountBalanceTx(transaction, arAccTx, 0, payment.amount, user);
@@ -558,6 +609,9 @@ class AccountingPostingService {
           sourceType: 'receipt',
           sourceId: payment.id,
           sourceNumber: payment.paymentNumber,
+          jobId: payment.jobId,
+          jobNumber: payment.jobNumber,
+          jobName: payment.jobName,
         );
 
         transaction.set(jeRef, journalEntry.toMap());
@@ -606,6 +660,21 @@ class AccountingPostingService {
         throw Exception(
           'Accounting period for ${bill.billDate.toString().substring(0, 10)} is locked. Cannot post.',
         );
+      }
+
+      final settings = await _settingsService.getSettings(companyId);
+
+      // Validation
+      if (bill.totalAmount <= 0) {
+        throw Exception('Bill total amount must be greater than zero.');
+      }
+      for (var item in bill.items) {
+        if (item.lineTotal <= 0) {
+          throw Exception('Item "${item.description}" has zero or negative total.');
+        }
+        if (settings.jobBasedAccountingEnabled && (item.jobId == null || item.jobId!.isEmpty) && (bill.jobId == null || bill.jobId!.isEmpty)) {
+          throw Exception('Job is required for item "${item.description}" when Job-Based Accounting is enabled.');
+        }
       }
 
       // 1. Pre-fetch required system accounts
@@ -676,12 +745,14 @@ class AccountingPostingService {
             .collection('supplierBills')
             .doc(bill.id);
         final billSnap = await transaction.get(billRef);
-        if (!billSnap.exists)
+        if (!billSnap.exists) {
           throw Exception('Bill document not found in database.');
+        }
 
         final billData = billSnap.data();
-        if (billData?['isPosted'] == true)
+        if (billData?['isPosted'] == true) {
           throw Exception('Bill was already posted by another process.');
+        }
 
         final apAccTx = await _getAccountInTx(
           transaction,
@@ -784,6 +855,9 @@ class AccountingPostingService {
             0,
             bill.totalAmount,
             'Vendor Bill ${bill.billNumber}',
+            jobId: bill.jobId,
+            jobNumber: bill.jobNumber,
+            jobName: bill.jobName,
           ),
         );
         _updateAccountBalanceTx(
@@ -804,6 +878,9 @@ class AccountingPostingService {
               entry.value,
               0,
               'Bill ${bill.billNumber}: ${accTx.accountName}',
+              jobId: bill.jobId,
+              jobNumber: bill.jobNumber,
+              jobName: bill.jobName,
             ),
           );
           _updateAccountBalanceTx(transaction, accTx, entry.value, 0, user);
@@ -817,6 +894,9 @@ class AccountingPostingService {
               bill.vatAmount,
               0,
               'VAT Input on ${bill.billNumber}',
+              jobId: bill.jobId,
+              jobNumber: bill.jobNumber,
+              jobName: bill.jobName,
             ),
           );
           _updateAccountBalanceTx(
@@ -857,6 +937,9 @@ class AccountingPostingService {
           sourceType: 'supplier_bill',
           sourceId: bill.id,
           sourceNumber: bill.billNumber,
+          jobId: bill.jobId,
+          jobNumber: bill.jobNumber,
+          jobName: bill.jobName,
         );
 
         debugPrint(
@@ -905,8 +988,9 @@ class AccountingPostingService {
       debugPrint(
         'AccountingPostingService: Starting postSupplierPayment for ${payment.paymentNumber}',
       );
-      if (payment.isPosted)
+      if (payment.isPosted) {
         throw Exception('Payment ${payment.paymentNumber} is already posted');
+      }
 
       if (await _settingsService.isPeriodLocked(
         companyId,
@@ -915,6 +999,10 @@ class AccountingPostingService {
         throw Exception(
           'Accounting period for ${payment.paymentDate.toString().substring(0, 10)} is locked. Cannot post.',
         );
+      }
+
+      if (payment.amount <= 0) {
+        throw Exception('Payment amount must be greater than zero.');
       }
 
       // 1. Pre-fetch required accounts
@@ -932,12 +1020,14 @@ class AccountingPostingService {
             .collection('supplierPayments')
             .doc(payment.id);
         final paySnap = await transaction.get(paymentRef);
-        if (!paySnap.exists)
+        if (!paySnap.exists) {
           throw Exception('Payment document not found in database.');
+        }
 
         final payData = paySnap.data();
-        if (payData?['isPosted'] == true)
+        if (payData?['isPosted'] == true) {
           throw Exception('Payment was already posted by another process.');
+        }
 
         AccountModel bankChartAccount;
         DocumentReference? bankAccountRef;
@@ -949,8 +1039,9 @@ class AccountingPostingService {
               .collection('bankAccounts')
               .doc(payment.bankAccountId!);
           final bankSnap = await transaction.get(bankAccountRef);
-          if (!bankSnap.exists)
+          if (!bankSnap.exists) {
             throw Exception('Linked Bank Account not found');
+          }
 
           final bankData = bankSnap.data() as Map<String, dynamic>;
           final String? linkedId = bankData['linkedChartAccountId'];
@@ -1029,6 +1120,9 @@ class AccountingPostingService {
             payment.amount,
             0,
             'Supplier Payment ${payment.paymentNumber}',
+            jobId: payment.jobId,
+            jobNumber: payment.jobNumber,
+            jobName: payment.jobName,
           ),
         );
         _updateAccountBalanceTx(transaction, apAccTx, payment.amount, 0, user);
@@ -1040,6 +1134,9 @@ class AccountingPostingService {
             0,
             payment.amount,
             'Supplier Payment ${payment.paymentNumber}',
+            jobId: payment.jobId,
+            jobNumber: payment.jobNumber,
+            jobName: payment.jobName,
           ),
         );
         _updateAccountBalanceTx(
@@ -1090,6 +1187,9 @@ class AccountingPostingService {
           sourceType: 'supplier_payment',
           sourceId: payment.id,
           sourceNumber: payment.paymentNumber,
+          jobId: payment.jobId,
+          jobNumber: payment.jobNumber,
+          jobName: payment.jobName,
         );
 
         transaction.set(jeRef, journalEntry.toMap());
@@ -1126,8 +1226,9 @@ class AccountingPostingService {
   ) async {
     final List<String> resolvedAccounts = [];
     try {
-      if (entry.status == JournalStatus.posted)
+      if (entry.status == JournalStatus.posted) {
         throw Exception('Entry is already posted');
+      }
       if (await _settingsService.isPeriodLocked(companyId, entry.date)) {
         throw Exception('Accounting period for this date is locked.');
       }
@@ -1140,8 +1241,9 @@ class AccountingPostingService {
             .doc(entry.id);
         final jeSnap = await transaction.get(jeRef);
         final jeData = jeSnap.data();
-        if (jeSnap.exists && jeData?['status'] == 'posted')
+        if (jeSnap.exists && jeData?['status'] == 'posted') {
           throw Exception('Entry is already posted');
+        }
 
         _validateBalancing(entry.lines);
 
@@ -1155,10 +1257,11 @@ class AccountingPostingService {
               .collection('chartOfAccounts')
               .doc(line.accountId);
           final accSnap = await transaction.get(accRef);
-          if (!accSnap.exists)
+          if (!accSnap.exists) {
             throw Exception(
               'Account ${line.accountName} (ID: ${line.accountId}) not found.',
             );
+          }
 
           final accData = accSnap.data();
           final account = AccountModel.fromMap(accData!, accSnap.id);
@@ -1212,6 +1315,180 @@ class AccountingPostingService {
     }
   }
 
+  // --- EXPENSE VOUCHER POSTING ---
+  Future<void> postExpenseVoucher(
+    String companyId,
+    ExpenseVoucherModel voucher,
+    AppUser user,
+  ) async {
+    final List<String> resolvedAccounts = [];
+    try {
+      debugPrint(
+        'AccountingPostingService: Starting postExpenseVoucher for ${voucher.voucherNumber}',
+      );
+      if (voucher.status == ExpenseVoucherStatus.posted) {
+        throw Exception('Voucher ${voucher.voucherNumber} is already posted');
+      }
+
+      if (await _settingsService.isPeriodLocked(companyId, voucher.date)) {
+        throw Exception(
+          'Accounting period for ${voucher.date.toString().substring(0, 10)} is locked. Cannot post.',
+        );
+      }
+
+      final settings = await _settingsService.getSettings(companyId);
+
+      // Validation: Zero amount lines and Jobs
+      for (var line in voucher.lines) {
+        if (line.total <= 0) {
+          throw Exception('Expense line for "${line.description}" has zero or negative amount.');
+        }
+        if (settings.jobBasedAccountingEnabled && (line.jobId == null || line.jobId!.isEmpty) && (voucher.jobId == null || voucher.jobId!.isEmpty)) {
+          throw Exception('Job is required for expense line "${line.description}" when Job-Based Accounting is enabled.');
+        }
+      }
+
+      // 1. Resolve 'From' Account (Bank/Cash)
+      final fromAccount = await _getAccountInTxNoTx(companyId, voucher.fromAccountId);
+      _validatePostable(fromAccount, fromAccount.accountName);
+      resolvedAccounts.add('From: ${fromAccount.accountName} (${fromAccount.id})');
+
+      // Resolve VAT Input Account if needed
+      AccountModel? vatInputAccount;
+      if (voucher.totalVat > 0) {
+        vatInputAccount = await _findAccountByCategory(companyId, AccountCategory.vatInput);
+        resolvedAccounts.add('VAT: ${vatInputAccount.accountName}');
+      }
+
+      await _firestore.runTransaction((transaction) async {
+        final voucherRef = _firestore
+            .collection('companies')
+            .doc(companyId)
+            .collection('expenseVouchers')
+            .doc(voucher.id);
+            
+        final vSnap = await transaction.get(voucherRef);
+        if (!vSnap.exists) throw Exception('Voucher document not found.');
+        if (vSnap.data()?['status'] == 'posted') throw Exception('Voucher already posted.');
+
+        final fromAccTx = await _getAccountInTx(transaction, companyId, fromAccount.id);
+        
+        final List<JournalLineModel> lines = [];
+
+        // Cr Bank/Cash
+        lines.add(_createLine(
+          fromAccTx,
+          0,
+          voucher.totalAmount,
+          'Expense Voucher ${voucher.voucherNumber}',
+          jobId: voucher.jobId,
+          jobNumber: voucher.jobNumber,
+          jobName: voucher.jobName,
+        ));
+        _updateAccountBalanceTx(transaction, fromAccTx, 0, voucher.totalAmount, user);
+
+        // Check if fromAccount is linked to a BankAccount doc
+        final bankAccs = await _firestore
+            .collection('companies')
+            .doc(companyId)
+            .collection('bankAccounts')
+            .where('linkedChartAccountId', isEqualTo: fromAccount.id)
+            .get();
+        if (bankAccs.docs.isNotEmpty) {
+          await _updateBankBalanceTx(transaction, bankAccs.docs.first.reference, 0, voucher.totalAmount, user);
+        }
+
+        // Dr Expense Accounts
+        for (var line in voucher.lines) {
+          final expAccTx = await _getAccountInTx(transaction, companyId, line.accountId);
+          _validatePostable(expAccTx, expAccTx.accountName);
+          
+          lines.add(_createLine(
+            expAccTx,
+            line.amount,
+            0,
+            line.description,
+            jobId: line.jobId ?? voucher.jobId,
+            jobNumber: line.jobNumber ?? voucher.jobNumber,
+            jobName: line.jobName ?? voucher.jobName,
+          ));
+          _updateAccountBalanceTx(transaction, expAccTx, line.amount, 0, user);
+        }
+
+        // Dr VAT Input
+        if (vatInputAccount != null && voucher.totalVat > 0) {
+          final vatAccTx = await _getAccountInTx(transaction, companyId, vatInputAccount.id);
+          lines.add(_createLine(
+            vatAccTx,
+            voucher.totalVat,
+            0,
+            'VAT Input on ${voucher.voucherNumber}',
+            jobId: voucher.jobId,
+            jobNumber: voucher.jobNumber,
+            jobName: voucher.jobName,
+          ));
+          _updateAccountBalanceTx(transaction, vatAccTx, voucher.totalVat, 0, user);
+        }
+
+        _validateBalancing(lines);
+
+        final jeRef = _firestore.collection('companies').doc(companyId).collection('journalEntries').doc();
+        final journalEntry = JournalEntryModel(
+          id: jeRef.id,
+          companyId: companyId,
+          date: voucher.date,
+          reference: voucher.voucherNumber,
+          description: voucher.description,
+          lines: lines,
+          status: JournalStatus.posted,
+          createdBy: user.uid,
+          createdAt: DateTime.now(),
+          sourceType: 'expense_voucher',
+          sourceId: voucher.id,
+          sourceNumber: voucher.voucherNumber,
+          jobId: voucher.jobId,
+          jobNumber: voucher.jobNumber,
+          jobName: voucher.jobName,
+        );
+
+        transaction.set(jeRef, journalEntry.toMap());
+        transaction.update(voucherRef, {
+          'status': 'posted',
+          'isPosted': true,
+          'journalEntryId': jeRef.id,
+          'postedAt': FieldValue.serverTimestamp(),
+          'postedByUserId': user.uid,
+        });
+      });
+
+      await _auditService.log(
+        companyId: companyId,
+        userId: user.uid,
+        userName: user.fullName,
+        actionType: 'post',
+        module: 'expenses',
+        documentId: voucher.id,
+        documentNumber: voucher.voucherNumber,
+        description: 'Posted Expense Voucher ${voucher.voucherNumber}',
+      );
+    } catch (e, stack) {
+      throw _handleError(e, stack, 'Expense Voucher', resolvedAccounts);
+    }
+  }
+
+  Future<AccountModel> _getAccountInTxNoTx(String companyId, String accountId) async {
+    final doc = await _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('chartOfAccounts')
+        .doc(accountId)
+        .get();
+    if (!doc.exists) throw Exception('Account with ID $accountId not found.');
+    final data = doc.data()!;
+    if (data['companyId'] == null) data['companyId'] = companyId;
+    return AccountModel.fromMap(data, doc.id);
+  }
+
   // --- REVERSAL LOGIC ---
   Future<void> reversePosting(
     String companyId,
@@ -1227,12 +1504,14 @@ class AccountingPostingService {
             .doc(journalEntryId);
         final jeSnap = await transaction.get(jeRef);
         final jeData = jeSnap.data();
-        if (!jeSnap.exists || jeData == null)
+        if (!jeSnap.exists || jeData == null) {
           throw Exception('Journal Entry not found');
+        }
 
         final entry = JournalEntryModel.fromMap(jeData, jeSnap.id);
-        if (entry.status == JournalStatus.reversed)
+        if (entry.status == JournalStatus.reversed) {
           throw Exception('Entry is already reversed');
+        }
 
         // 1. Reverse GL balances (Aggregated)
         final Map<String, double> movements = {};
@@ -1482,29 +1761,29 @@ class AccountingPostingService {
     debugPrint('AccountingPostingService ERROR ($context)');
     debugPrint('  runtimeType: ${e.runtimeType}');
     debugPrint('  toString: ${e.toString()}');
-    
+
     String? boxedInfo = _extractBoxedInfo(e);
     if (boxedInfo != null) {
       debugPrint('  Extracted Boxed Info: $boxedInfo');
     }
-    
+
     debugPrint('  stackTrace: $stack');
     debugPrint('Resolved Accounts: $resolvedAccounts');
 
     String title = 'Posting Failed';
     String message = 'An error occurred while posting $context to accounting.';
-    
+
     String details = 'Context: $context\n';
     if (boxedInfo != null) {
       details += 'Error: $boxedInfo\n';
     } else {
       details += 'Error: $e\n';
     }
-    
+
     if (resolvedAccounts.isNotEmpty) {
       details += '\nResolved Accounts:\n${resolvedAccounts.join('\n')}';
     }
-    
+
     details += '\n\nStack Trace:\n$stack';
 
     if (e is FirebaseException) {
@@ -1759,8 +2038,11 @@ class AccountingPostingService {
     AccountModel account,
     double debit,
     double credit,
-    String memo,
-  ) {
+    String memo, {
+    String? jobId,
+    String? jobNumber,
+    String? jobName,
+  }) {
     return JournalLineModel(
       accountId: account.id,
       accountName: account.accountName,
@@ -1768,6 +2050,9 @@ class AccountingPostingService {
       debit: debit,
       credit: credit,
       memo: memo,
+      jobId: jobId,
+      jobNumber: jobNumber,
+      jobName: jobName,
     );
   }
 
@@ -1826,10 +2111,11 @@ class AccountingPostingService {
     AppUser user,
   ) async {
     final bankSnap = await tx.get(bankRef);
-    if (!bankSnap.exists)
+    if (!bankSnap.exists) {
       throw Exception(
         'Bank account ${bankRef.id} not found during transaction.',
       );
+    }
     final bankData = bankSnap.data() as Map<String, dynamic>;
     final currentBalance =
         (bankData['currentBalance'] as num?)?.toDouble() ?? 0.0;
@@ -1859,13 +2145,16 @@ class AccountingPostingService {
   }
 
   void _validatePostable(AccountModel account, String displayName) {
-    if (account.isGroup)
+    if (account.isGroup) {
       throw Exception(
         'Account "$displayName" is a Group account and cannot be used for posting.',
       );
-    if (!account.allowPosting)
+    }
+    if (!account.allowPosting) {
       throw Exception('Account "$displayName" does not allow direct posting.');
-    if (!account.isActive)
+    }
+    if (!account.isActive) {
       throw Exception('Account "$displayName" is currently inactive.');
+    }
   }
 }

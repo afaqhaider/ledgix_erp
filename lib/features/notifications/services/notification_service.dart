@@ -13,7 +13,10 @@ class NotificationService {
         .collection('notifications');
   }
 
-  Stream<List<NotificationModel>> getNotifications(String companyId, String userId) {
+  Stream<List<NotificationModel>> getNotifications(
+    String companyId,
+    String userId,
+  ) {
     return _getNotificationsRef(companyId, userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -36,7 +39,11 @@ class NotificationService {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  Future<void> markAsRead(String companyId, String userId, String notificationId) async {
+  Future<void> markAsRead(
+    String companyId,
+    String userId,
+    String notificationId,
+  ) async {
     await _getNotificationsRef(
       companyId,
       userId,

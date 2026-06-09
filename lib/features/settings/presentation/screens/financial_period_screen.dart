@@ -77,15 +77,58 @@ class _FinancialPeriodScreenState extends State<FinancialPeriodScreen> {
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
                       ),
                       child: SwitchListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        title: const Text('Lock Past Periods', style: TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: const Text('Transactions cannot be posted to closed months'),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: const Text(
+                          'Lock Past Periods',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: const Text(
+                          'Transactions cannot be posted to closed months',
+                        ),
                         value: _settings.lockPastPeriods,
                         onChanged: (val) => setState(
-                          () => _settings = _settings.copyWith(lockPastPeriods: val),
+                          () => _settings = _settings.copyWith(
+                            lockPastPeriods: val,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: SwitchListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: const Text(
+                          'Enable Job-Based Accounting',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: const Text(
+                          'Track revenue and expenses by job or project',
+                        ),
+                        value: _settings.jobBasedAccountingEnabled,
+                        onChanged: (val) => setState(
+                          () => _settings = _settings.copyWith(
+                            jobBasedAccountingEnabled: val,
+                          ),
                         ),
                       ),
                     ),

@@ -35,7 +35,9 @@ class _AuthGateState extends State<AuthGate> {
       final doc = await docRef.get().timeout(const Duration(seconds: 10));
 
       if (!doc.exists) {
-        debugPrint('AuthGate: Global user profile missing, creating for ${user.uid}');
+        debugPrint(
+          'AuthGate: Global user profile missing, creating for ${user.uid}',
+        );
         await docRef.set({
           'uid': user.uid,
           'email': user.email ?? '',
@@ -84,23 +86,30 @@ class _AuthGateState extends State<AuthGate> {
           builder: (context, userSnapshot) {
             if (userSnapshot.hasError) {
               return _ErrorScaffold(
-                message: 'Firestore Error (Global Profile): ${userSnapshot.error}',
+                message:
+                    'Firestore Error (Global Profile): ${userSnapshot.error}',
                 onRetry: () => setState(() {}),
               );
             }
 
             if (userSnapshot.connectionState == ConnectionState.waiting ||
                 _isCreatingProfile) {
-              return const _LoadingScaffold(message: 'Loading Global Profile...');
+              return const _LoadingScaffold(
+                message: 'Loading Global Profile...',
+              );
             }
 
             if (userSnapshot.hasData && userSnapshot.data!.exists) {
-              final globalData = userSnapshot.data!.data() as Map<String, dynamic>;
+              final globalData =
+                  userSnapshot.data!.data() as Map<String, dynamic>;
               final globalProfile = AppUserModel.fromMap(globalData, user.uid);
 
-              if (globalProfile.defaultCompanyId == null || globalProfile.defaultCompanyId!.isEmpty) {
+              if (globalProfile.defaultCompanyId == null ||
+                  globalProfile.defaultCompanyId!.isEmpty) {
                 // Return a temporary AppUser for CompanySetupScreen
-                final tempUser = AppUser.fromModels(globalProfile: globalProfile);
+                final tempUser = AppUser.fromModels(
+                  globalProfile: globalProfile,
+                );
                 return CompanySetupScreen(user: tempUser);
               }
 
@@ -129,19 +138,30 @@ class _AuthGateState extends State<AuthGate> {
                     );
                   }
 
-                  if (memberSnapshot.connectionState == ConnectionState.waiting) {
-                    return const _LoadingScaffold(message: 'Verifying Membership...');
+                  if (memberSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const _LoadingScaffold(
+                      message: 'Verifying Membership...',
+                    );
                   }
 
                   if (!memberSnapshot.hasData || !memberSnapshot.data!.exists) {
-                    debugPrint('AuthGate: Membership missing for company ${globalProfile.defaultCompanyId}');
+                    debugPrint(
+                      'AuthGate: Membership missing for company ${globalProfile.defaultCompanyId}',
+                    );
                     // Fallback to setup if membership doesn't exist for some reason
-                    final tempUser = AppUser.fromModels(globalProfile: globalProfile);
+                    final tempUser = AppUser.fromModels(
+                      globalProfile: globalProfile,
+                    );
                     return CompanySetupScreen(user: tempUser);
                   }
 
-                  final memberData = memberSnapshot.data!.data() as Map<String, dynamic>;
-                  final membership = CompanyMemberModel.fromMap(memberData, user.uid);
+                  final memberData =
+                      memberSnapshot.data!.data() as Map<String, dynamic>;
+                  final membership = CompanyMemberModel.fromMap(
+                    memberData,
+                    user.uid,
+                  );
 
                   if (membership.status != UserStatus.active) {
                     return _InactiveMemberScaffold(status: membership.status);
@@ -154,21 +174,28 @@ class _AuthGateState extends State<AuthGate> {
                         .snapshots(),
                     builder: (context, companySnapshot) {
                       if (companySnapshot.hasError) {
-                         final error = companySnapshot.error.toString();
-                         debugPrint('AuthGate: Company Stream Error: $error');
-                         // If we can't read the company doc, but we ARE a member, something is wrong with rules
-                         return _ErrorScaffold(
-                           message: 'Company Access Error: $error',
-                           onRetry: () => setState(() {}),
-                         );
+                        final error = companySnapshot.error.toString();
+                        debugPrint('AuthGate: Company Stream Error: $error');
+                        // If we can't read the company doc, but we ARE a member, something is wrong with rules
+                        return _ErrorScaffold(
+                          message: 'Company Access Error: $error',
+                          onRetry: () => setState(() {}),
+                        );
                       }
 
-                      if (companySnapshot.connectionState == ConnectionState.waiting) {
-                        return const _LoadingScaffold(message: 'Loading Company...');
+                      if (companySnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const _LoadingScaffold(
+                          message: 'Loading Company...',
+                        );
                       }
 
-                      final companyName = companySnapshot.hasData && companySnapshot.data!.exists
-                          ? (companySnapshot.data!.data() as Map<String, dynamic>)['tradeName'] ?? ''
+                      final companyName =
+                          companySnapshot.hasData &&
+                              companySnapshot.data!.exists
+                          ? (companySnapshot.data!.data()
+                                    as Map<String, dynamic>)['tradeName'] ??
+                                ''
                           : 'Unknown Company';
 
                       final appUser = AppUser.fromModels(
@@ -285,7 +312,11 @@ class _AccessDeniedScaffold extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.lock_person_outlined, color: Colors.orange, size: 80),
+              const Icon(
+                Icons.lock_person_outlined,
+                color: Colors.orange,
+                size: 80,
+              ),
               const SizedBox(height: 24),
               const Text(
                 'Access Restricted',
@@ -306,9 +337,10 @@ class _AccessDeniedScaffold extends StatelessWidget {
               OutlinedButton(
                 onPressed: () {
                   // Clear default company and go back to setup
-                  FirebaseFirestore.instance.collection('users').doc(uid).update({
-                    'defaultCompanyId': null,
-                  });
+                  FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .update({'defaultCompanyId': null});
                 },
                 child: const Text('Start New Company Setup'),
               ),
@@ -343,7 +375,9 @@ class _InactiveMemberScaffold extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              status == UserStatus.invited ? 'Invitation Pending' : 'Account Disabled',
+              status == UserStatus.invited
+                  ? 'Invitation Pending'
+                  : 'Account Disabled',
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -367,4 +401,3 @@ class _InactiveMemberScaffold extends StatelessWidget {
     );
   }
 }
-

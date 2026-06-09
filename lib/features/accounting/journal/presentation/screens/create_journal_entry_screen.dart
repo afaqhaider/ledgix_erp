@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/core/auth/user_role.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/features/accounting/journal/models/journal_entry_model.dart';
@@ -8,6 +9,8 @@ import 'package:ledgixerp/features/accounting/journal/models/journal_line_model.
 import 'package:ledgixerp/features/accounting/journal/services/journal_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/add_account_dialog.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:ledgixerp/widgets/posting_error_modal.dart';
 
 class CreateJournalEntryScreen extends StatefulWidget {
   final AppUser user;
@@ -44,7 +47,9 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
       if (mounted) {
         setState(() {
           // Only allow posting to non-group accounts that allow posting
-          _accounts = accounts.where((a) => !a.isGroup && a.allowPosting).toList();
+          _accounts = accounts
+              .where((a) => !a.isGroup && a.allowPosting)
+              .toList();
         });
       }
     });
@@ -73,32 +78,44 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
     });
   }
 
-  Future<void> _save() async {
+  bool get _canPost {
+    const highRoles = [
+      UserRole.owner,
+      UserRole.superAdmin,
+      UserRole.admin,
+      UserRole.accountant,
+      UserRole.generalManager,
+    ];
+    return highRoles.contains(widget.user.role);
+  }
+
+  Future<void> _save({bool shouldPost = false}) async {
     if (!_formKey.currentState!.validate()) return;
 
-    double totalDebit = _lines.fold(0.0, (sum, item) => sum + item.debit);
-    double totalCredit = _lines.fold(0.0, (sum, item) => sum + item.credit);
+    if (shouldPost) {
+      double totalDebit = _lines.fold(0.0, (sum, item) => sum + item.debit);
+      double totalCredit = _lines.fold(0.0, (sum, item) => sum + item.credit);
 
-    if ((totalDebit - totalCredit).abs() > 0.001) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Entry is not balanced!'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
+      if ((totalDebit - totalCredit).abs() > 0.001) {
+        showErpError(
+          context: context,
+          title: 'Unbalanced Entry',
+          message:
+              'Total Debit: $totalDebit must equal Total Credit: $totalCredit',
+        );
+        return;
+      }
 
-    if (_lines.any(
-      (l) => l.accountId.isEmpty && (l.debit > 0 || l.credit > 0),
-    )) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('All lines with amounts must have an account selected'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
+      if (_lines.any(
+        (l) => l.accountId.isEmpty && (l.debit > 0 || l.credit > 0),
+      )) {
+        showErpError(
+          context: context,
+          title: 'Account Required',
+          message: 'All lines with amounts must have an account selected.',
+        );
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -112,18 +129,33 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
         lines: _lines.where((l) => l.accountId.isNotEmpty).toList(),
         createdBy: widget.user.uid,
         createdAt: DateTime.now(),
+        status: shouldPost && _canPost
+            ? JournalStatus.posted
+            : JournalStatus.draft,
+        approvalStatus: shouldPost ? (_canPost ? 'approved' : 'pending') : null,
       );
 
-      await _journalService.addJournalEntry(entry);
+      await _journalService.addJournalEntry(
+        entry,
+        widget.user,
+        shouldPost: shouldPost,
+      );
       if (mounted) Navigator.pop(context);
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Error saving journal: $e');
+      debugPrint(stack.toString());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        if (shouldPost) {
+          PostingErrorModal.show(
+            context: context,
+            title: 'Posting Failed',
+            message:
+                'An error occurred while trying to post the journal entry.',
+            error: e,
+          );
+        } else {
+          showErpError(context: context, error: e);
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -145,13 +177,21 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
       appBar: AppBar(
         title: const Text('New Journal Entry'),
         actions: [
+          OutlinedButton(
+            onPressed: _isLoading ? null : () => _save(shouldPost: false),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: theme.colorScheme.primary),
+            ),
+            child: const Text('Save Draft'),
+          ),
+          const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: _isLoading ? null : _save,
+            onPressed: _isLoading ? null : () => _save(shouldPost: true),
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Post Entry'),
+            child: Text(_canPost ? 'Save & Post' : 'Submit for Approval'),
           ),
           const SizedBox(width: 16),
         ],

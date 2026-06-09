@@ -120,7 +120,8 @@ class StockMovementService {
     double currentBalance = 0.0;
 
     if (balanceDoc.exists) {
-      currentBalance = (balanceDoc.data() as Map<String, dynamic>)['quantity'] ?? 0.0;
+      currentBalance =
+          (balanceDoc.data() as Map<String, dynamic>)['quantity'] ?? 0.0;
     }
 
     double newBalance = currentBalance + quantityChange;
@@ -147,14 +148,30 @@ class StockMovementService {
     batch.set(ledgerRef, ledgerEntry.toMap());
   }
 
-  Stream<List<StockLedgerModel>> getStockLedger(String companyId, {String? itemId, String? warehouseId}) {
-    Query query = _getRef(companyId, 'inventoryTransactions').orderBy('date', descending: true);
-    if (itemId != null) query = query.where('itemId', isEqualTo: itemId);
-    if (warehouseId != null) query = query.where('warehouseId', isEqualTo: warehouseId);
-    
+  Stream<List<StockLedgerModel>> getStockLedger(
+    String companyId, {
+    String? itemId,
+    String? warehouseId,
+  }) {
+    Query query = _getRef(
+      companyId,
+      'inventoryTransactions',
+    ).orderBy('date', descending: true);
+    if (itemId != null) {
+      query = query.where('itemId', isEqualTo: itemId);
+    }
+    if (warehouseId != null) {
+      query = query.where('warehouseId', isEqualTo: warehouseId);
+    }
+
     return query.snapshots().map(
       (snapshot) => snapshot.docs
-          .map((doc) => StockLedgerModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => StockLedgerModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .toList(),
     );
   }

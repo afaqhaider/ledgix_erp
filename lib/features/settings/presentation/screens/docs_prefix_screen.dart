@@ -75,12 +75,18 @@ class _DocsPrefixScreenState extends State<DocsPrefixScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildPrefixField('Invoice Prefix', _invoicePrefixController),
+                    _buildPrefixField(
+                      'Invoice Prefix',
+                      _invoicePrefixController,
+                    ),
                     _buildPrefixField(
                       'Quotation Prefix',
                       _quotationPrefixController,
                     ),
-                    _buildPrefixField('Purchase Order Prefix', _poPrefixController),
+                    _buildPrefixField(
+                      'Purchase Order Prefix',
+                      _poPrefixController,
+                    ),
                     _buildPrefixField('Bill Prefix', _billPrefixController),
                     const SizedBox(height: 32),
                     ElevatedButton.icon(
@@ -137,9 +143,7 @@ class _DocsPrefixScreenState extends State<DocsPrefixScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-        ),
+        decoration: InputDecoration(labelText: label),
       ),
     );
   }

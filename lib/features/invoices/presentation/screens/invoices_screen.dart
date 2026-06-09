@@ -343,10 +343,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         }
       } catch (e) {
         if (mounted) {
-          showErpError(
-            context: context,
-            error: e,
-          );
+          showErpError(context: context, error: e);
         }
       }
     }

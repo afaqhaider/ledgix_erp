@@ -115,7 +115,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                       supplier.email,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                        color: theme.colorScheme.onSurface
+                                            .withValues(alpha: 0.5),
                                       ),
                                     ),
                                   ],
@@ -130,7 +131,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                               DataCell(
                                 Text(
                                   '${NumberFormat('#,##0.00').format(supplier.openingBalance)} ${supplier.openingBalanceType.label.substring(0, 2)}',
-                                  style: GoogleFonts.jetBrainsMono(fontSize: 13),
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                               DataCell(
@@ -140,14 +143,19 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: (supplier.isActive ? Colors.green : Colors.red)
-                                        .withValues(alpha: 0.1),
+                                    color:
+                                        (supplier.isActive
+                                                ? Colors.green
+                                                : Colors.red)
+                                            .withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     supplier.isActive ? 'ACTIVE' : 'INACTIVE',
                                     style: TextStyle(
-                                      color: supplier.isActive ? Colors.green : Colors.red,
+                                      color: supplier.isActive
+                                          ? Colors.green
+                                          : Colors.red,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -159,14 +167,22 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.edit_outlined, size: 18),
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 18,
+                                      ),
                                       onPressed: canManage ? () {} : null,
                                       visualDensity: VisualDensity.compact,
                                     ),
                                     if (canManage)
                                       IconButton(
-                                        icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                                        onPressed: () => _confirmDelete(supplier),
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: Colors.redAccent,
+                                        ),
+                                        onPressed: () =>
+                                            _confirmDelete(supplier),
                                         visualDensity: VisualDensity.compact,
                                       ),
                                   ],

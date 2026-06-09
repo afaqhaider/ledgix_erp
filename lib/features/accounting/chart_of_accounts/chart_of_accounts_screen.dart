@@ -91,14 +91,14 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outlineVariant,
-                ),
+                borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.5,
+                  ),
                 ),
               ),
             ),
@@ -171,10 +171,10 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                           return DataRow(
                             color: account.isGroup
                                 ? WidgetStateProperty.all(
-                                  isDark
-                                      ? Colors.white.withValues(alpha: 0.02)
-                                      : Colors.grey.withValues(alpha: 0.03),
-                                )
+                                    isDark
+                                        ? Colors.white.withValues(alpha: 0.02)
+                                        : Colors.grey.withValues(alpha: 0.03),
+                                  )
                                 : null,
                             cells: [
                               DataCell(
@@ -187,9 +187,8 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                                         : FontWeight.w400,
                                     color: account.isGroup
                                         ? theme.colorScheme.onSurface
-                                        : theme.colorScheme.onSurface.withValues(
-                                          alpha: 0.7,
-                                        ),
+                                        : theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.7),
                                   ),
                                 ),
                               ),
@@ -206,25 +205,29 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                                           width: 24,
                                           child: hasChildren
                                               ? InkWell(
-                                                onTap:
-                                                    () => _toggleExpanded(
-                                                      account.id,
-                                                    ),
-                                                child: Icon(
-                                                  isExpanded
-                                                      ? Icons.keyboard_arrow_down_rounded
-                                                      : Icons.keyboard_arrow_right_rounded,
-                                                  size: 20,
-                                                  color:
-                                                      theme.colorScheme.primary,
-                                                ),
-                                              )
+                                                  onTap: () => _toggleExpanded(
+                                                    account.id,
+                                                  ),
+                                                  child: Icon(
+                                                    isExpanded
+                                                        ? Icons
+                                                              .keyboard_arrow_down_rounded
+                                                        : Icons
+                                                              .keyboard_arrow_right_rounded,
+                                                    size: 20,
+                                                    color: theme
+                                                        .colorScheme
+                                                        .primary,
+                                                  ),
+                                                )
                                               : Icon(
-                                                Icons.folder_open_outlined,
-                                                size: 16,
-                                                color: theme.colorScheme.primary
-                                                    .withValues(alpha: 0.5),
-                                              ),
+                                                  Icons.folder_open_outlined,
+                                                  size: 16,
+                                                  color: theme
+                                                      .colorScheme
+                                                      .primary
+                                                      .withValues(alpha: 0.5),
+                                                ),
                                         )
                                       else
                                         const SizedBox(
@@ -248,7 +251,7 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                                           color: account.isGroup
                                               ? theme.colorScheme.onSurface
                                               : theme.colorScheme.onSurface
-                                                  .withValues(alpha: 0.85),
+                                                    .withValues(alpha: 0.85),
                                         ),
                                       ),
                                     ],
@@ -269,24 +272,26 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                               DataCell(
                                 account.allowPosting
                                     ? Icon(
-                                      Icons.check_circle_outline_rounded,
-                                      size: 18,
-                                      color: Colors.blue.withValues(alpha: 0.7),
-                                    )
+                                        Icons.check_circle_outline_rounded,
+                                        size: 18,
+                                        color: Colors.blue.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                      )
                                     : const Icon(
-                                      Icons.remove_circle_outline_rounded,
-                                      size: 18,
-                                      color: Colors.grey,
-                                    ),
+                                        Icons.remove_circle_outline_rounded,
+                                        size: 18,
+                                        color: Colors.grey,
+                                      ),
                               ),
                               DataCell(
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     Text(
-                                      NumberFormat('#,##0.00').format(
-                                        account.openingBalance,
-                                      ),
+                                      NumberFormat(
+                                        '#,##0.00',
+                                      ).format(account.openingBalance),
                                       style: GoogleFonts.jetBrainsMono(
                                         fontSize: 13,
                                         fontWeight: account.isGroup
@@ -300,7 +305,8 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: account.openingBalanceType ==
+                                        color:
+                                            account.openingBalanceType ==
                                                 BalanceType.debit
                                             ? Colors.blue
                                             : Colors.orange,
@@ -314,19 +320,38 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.visibility_outlined, size: 18),
-                                      onPressed: () => _showAddAccountDialog(context, account: account, isReadOnly: true),
+                                      icon: const Icon(
+                                        Icons.visibility_outlined,
+                                        size: 18,
+                                      ),
+                                      onPressed: () => _showAddAccountDialog(
+                                        context,
+                                        account: account,
+                                        isReadOnly: true,
+                                      ),
                                       tooltip: 'View',
                                     ),
-                                    if (canManage && !account.isSystemAccount) ...[
+                                    if (canManage &&
+                                        !account.isSystemAccount) ...[
                                       IconButton(
-                                        icon: const Icon(Icons.edit_outlined, size: 18),
-                                        onPressed: () => _showAddAccountDialog(context, account: account),
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 18,
+                                        ),
+                                        onPressed: () => _showAddAccountDialog(
+                                          context,
+                                          account: account,
+                                        ),
                                         tooltip: 'Edit',
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
-                                        onPressed: () => _confirmDelete(account),
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 18,
+                                          color: Colors.redAccent,
+                                        ),
+                                        onPressed: () =>
+                                            _confirmDelete(account),
                                         tooltip: 'Delete',
                                       ),
                                     ],
@@ -512,6 +537,8 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
         return Colors.teal;
       case AccountType.otherExpense:
         return Colors.brown;
+      case AccountType.unknown:
+        return Colors.grey;
     }
   }
 
@@ -581,7 +608,11 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
     }
   }
 
-  void _showAddAccountDialog(BuildContext context, {AccountModel? account, bool isReadOnly = false}) {
+  void _showAddAccountDialog(
+    BuildContext context, {
+    AccountModel? account,
+    bool isReadOnly = false,
+  }) {
     showDialog(
       context: context,
       builder: (context) => AddAccountDialog(
@@ -597,7 +628,9 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Account'),
-        content: Text('Are you sure you want to delete ${account.accountName}? This action cannot be undone.'),
+        content: Text(
+          'Are you sure you want to delete ${account.accountName}? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

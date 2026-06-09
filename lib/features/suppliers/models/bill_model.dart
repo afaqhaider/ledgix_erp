@@ -33,6 +33,11 @@ class BillModel {
   final List<AttachmentModel> attachments;
   final DateTime createdAt;
 
+  // Job Link (Header)
+  final String? jobId;
+  final String? jobNumber;
+  final String? jobName;
+
   BillModel({
     required this.id,
     required this.companyId,
@@ -54,6 +59,9 @@ class BillModel {
     this.journalEntryId,
     this.attachments = const [],
     required this.createdAt,
+    this.jobId,
+    this.jobNumber,
+    this.jobName,
   });
 
   Map<String, dynamic> toMap() {
@@ -77,6 +85,9 @@ class BillModel {
       'journalEntryId': journalEntryId,
       'attachments': attachments.map((x) => x.toMap()).toList(),
       'createdAt': Timestamp.fromDate(createdAt),
+      'jobId': jobId,
+      'jobNumber': jobNumber,
+      'jobName': jobName,
     };
   }
 
@@ -113,6 +124,9 @@ class BillModel {
               .toList() ??
           [],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      jobId: map['jobId'],
+      jobNumber: map['jobNumber'],
+      jobName: map['jobName'],
     );
   }
 
@@ -137,6 +151,9 @@ class BillModel {
     String? journalEntryId,
     List<AttachmentModel>? attachments,
     DateTime? createdAt,
+    String? jobId,
+    String? jobNumber,
+    String? jobName,
   }) {
     return BillModel(
       id: id ?? this.id,
@@ -159,6 +176,9 @@ class BillModel {
       journalEntryId: journalEntryId ?? this.journalEntryId,
       attachments: attachments ?? this.attachments,
       createdAt: createdAt ?? this.createdAt,
+      jobId: jobId ?? this.jobId,
+      jobNumber: jobNumber ?? this.jobNumber,
+      jobName: jobName ?? this.jobName,
     );
   }
 }
@@ -176,6 +196,11 @@ class BillLineItemModel {
   final double lineVat;
   final double lineTotal;
 
+  // Job Link
+  final String? jobId;
+  final String? jobNumber;
+  final String? jobName;
+
   BillLineItemModel({
     this.productId,
     required this.accountId,
@@ -188,6 +213,9 @@ class BillLineItemModel {
     required this.lineSubtotal,
     required this.lineVat,
     required this.lineTotal,
+    this.jobId,
+    this.jobNumber,
+    this.jobName,
   });
 
   Map<String, dynamic> toMap() {
@@ -203,6 +231,9 @@ class BillLineItemModel {
       'lineSubtotal': lineSubtotal,
       'lineVat': lineVat,
       'lineTotal': lineTotal,
+      'jobId': jobId,
+      'jobNumber': jobNumber,
+      'jobName': jobName,
     };
   }
 
@@ -219,6 +250,9 @@ class BillLineItemModel {
       lineSubtotal: (map['lineSubtotal'] as num?)?.toDouble() ?? 0.0,
       lineVat: (map['lineVat'] as num?)?.toDouble() ?? 0.0,
       lineTotal: (map['lineTotal'] as num?)?.toDouble() ?? 0.0,
+      jobId: map['jobId'],
+      jobNumber: map['jobNumber'],
+      jobName: map['jobName'],
     );
   }
 }

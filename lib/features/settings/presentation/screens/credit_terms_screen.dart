@@ -65,7 +65,7 @@ class _CreditTermsScreenState extends State<CreditTermsScreen> {
                 } else {
                   await _service.updateCreditTerm(newTerm);
                 }
-                if (mounted) Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context);
               },
               child: const Text('Save'),
             ),
@@ -98,9 +98,16 @@ class _CreditTermsScreenState extends State<CreditTermsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.credit_card_off_rounded, size: 64, color: Colors.grey[400]),
+                      Icon(
+                        Icons.credit_card_off_rounded,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
                       const SizedBox(height: 16),
-                      const Text('No credit terms defined', style: TextStyle(color: Colors.grey)),
+                      const Text(
+                        'No credit terms defined',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ],
                   ),
                 );
@@ -125,25 +132,39 @@ class _CreditTermsScreenState extends State<CreditTermsScreen> {
                           ),
                         ),
                       ),
-                      title: Text(term.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      title: Text(
+                        term.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       subtitle: Text('${term.days} days'),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (term.isDefault)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.primary,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text(
                                 'DEFAULT',
-                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           const SizedBox(width: 8),
-                          const Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: Colors.grey,
+                          ),
                         ],
                       ),
                       onTap: () => _showAddDialog(term),

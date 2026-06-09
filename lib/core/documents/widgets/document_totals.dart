@@ -26,12 +26,15 @@ class DocumentTotals extends StatelessWidget {
       children: [
         _buildRow('Subtotal', currencyFormat.format(subtotal)),
         if (discountTotal > 0)
-          _buildRow('Discount', '- ${currencyFormat.format(discountTotal)}', 
-              color: Colors.red),
+          _buildRow(
+            'Discount',
+            '- ${currencyFormat.format(discountTotal)}',
+            color: Colors.red,
+          ),
         _buildRow('Tax (VAT)', currencyFormat.format(taxTotal)),
         const Divider(height: 24),
         _buildRow(
-          'Total Amount', 
+          'Total Amount',
           currencyFormat.format(totalAmount),
           isBold: true,
           fontSize: 18,
@@ -41,8 +44,10 @@ class DocumentTotals extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(String label, String value, {
-    bool isBold = false, 
+  Widget _buildRow(
+    String label,
+    String value, {
+    bool isBold = false,
     double fontSize = 14,
     Color? color,
   }) {

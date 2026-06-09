@@ -5,10 +5,7 @@ import '../../../../widgets/erp_ui_components.dart';
 class WeatherSettingsDialog extends StatefulWidget {
   final WeatherSettings initialSettings;
 
-  const WeatherSettingsDialog({
-    super.key,
-    required this.initialSettings,
-  });
+  const WeatherSettingsDialog({super.key, required this.initialSettings});
 
   @override
   State<WeatherSettingsDialog> createState() => _WeatherSettingsDialogState();
@@ -23,7 +20,9 @@ class _WeatherSettingsDialogState extends State<WeatherSettingsDialog> {
   void initState() {
     super.initState();
     _unit = widget.initialSettings.unit;
-    _cityController = TextEditingController(text: widget.initialSettings.manualCity);
+    _cityController = TextEditingController(
+      text: widget.initialSettings.manualCity,
+    );
     _isEnabled = widget.initialSettings.isEnabled;
   }
 
@@ -41,7 +40,9 @@ class _WeatherSettingsDialogState extends State<WeatherSettingsDialog> {
       onSave: () {
         final newSettings = WeatherSettings(
           unit: _unit,
-          manualCity: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
+          manualCity: _cityController.text.trim().isEmpty
+              ? null
+              : _cityController.text.trim(),
           isEnabled: _isEnabled,
         );
         Navigator.pop(context, newSettings);
@@ -88,16 +89,16 @@ class _WeatherSettingsDialogState extends State<WeatherSettingsDialog> {
               context,
               'Enter city name (e.g. London, UK)',
               icon: Icons.location_city_rounded,
-            ).copyWith(
-              hintText: 'Leave empty to use company location',
-            ),
+            ).copyWith(hintText: 'Leave empty to use company location'),
           ),
           const SizedBox(height: 16),
           Text(
             'By default, LedGix uses your company\'s city from settings.',
             style: TextStyle(
               fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],

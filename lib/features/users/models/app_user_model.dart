@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ledgixerp/core/auth/user_role.dart';
 
 enum UserStatus { invited, active, disabled }
+
 enum UserType { internal, customerPortal, supplierPortal }
 
 /// Global User Profile (stored in /users/{uid})

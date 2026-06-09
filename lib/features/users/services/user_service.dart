@@ -56,20 +56,27 @@ class UserService {
       if (companyDoc.exists) {
         companies.add({
           'id': companyDoc.id,
-          'name': companyDoc.data()?['tradeName'] ?? companyDoc.data()?['companyLegalName'] ?? 'Unknown Company',
+          'name':
+              companyDoc.data()?['tradeName'] ??
+              companyDoc.data()?['companyLegalName'] ??
+              'Unknown Company',
         });
       }
     }
     return companies;
   }
 
-  Future<String> uploadProfilePhoto(String uid, dynamic file, {String? fileName}) async {
+  Future<String> uploadProfilePhoto(
+    String uid,
+    dynamic file, {
+    String? fileName,
+  }) async {
     try {
       String extension = 'png';
       if (fileName != null && fileName.contains('.')) {
         extension = fileName.split('.').last.toLowerCase();
       }
-      
+
       // Normalize common extensions to standard MIME types
       String contentType = 'image/jpeg';
       if (extension == 'png') {
@@ -81,20 +88,34 @@ class UserService {
       }
 
       final storageRef = _storage.ref().child('users/$uid/profile/avatar.jpg');
-      
+
       late final UploadTask uploadTask;
       if (kIsWeb) {
-        if (file is! Uint8List) throw ArgumentError('Invalid file data for web');
-        uploadTask = storageRef.putData(file, SettableMetadata(
-          contentType: contentType,
-          customMetadata: {'uid': uid, 'uploadedAt': DateTime.now().toIso8601String()},
-        ));
+        if (file is! Uint8List) {
+          throw ArgumentError('Invalid file data for web');
+        }
+        uploadTask = storageRef.putData(
+          file,
+          SettableMetadata(
+            contentType: contentType,
+            customMetadata: {
+              'uid': uid,
+              'uploadedAt': DateTime.now().toIso8601String(),
+            },
+          ),
+        );
       } else {
         if (file is! File) throw ArgumentError('Invalid file for mobile');
-        uploadTask = storageRef.putFile(file, SettableMetadata(
-          contentType: contentType,
-          customMetadata: {'uid': uid, 'uploadedAt': DateTime.now().toIso8601String()},
-        ));
+        uploadTask = storageRef.putFile(
+          file,
+          SettableMetadata(
+            contentType: contentType,
+            customMetadata: {
+              'uid': uid,
+              'uploadedAt': DateTime.now().toIso8601String(),
+            },
+          ),
+        );
       }
 
       final snapshot = await uploadTask;
@@ -102,7 +123,9 @@ class UserService {
     } catch (e) {
       debugPrint('UserService.uploadProfilePhoto error: $e');
       if (e.toString().contains('permission-denied')) {
-        throw Exception('Permission Denied: You do not have permission to upload to this location.');
+        throw Exception(
+          'Permission Denied: You do not have permission to upload to this location.',
+        );
       }
       throw Exception('Failed to upload profile photo: ${e.toString()}');
     }
@@ -119,34 +142,39 @@ class CompanyUserService {
         .collection('members')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => CompanyMemberModel.fromMap(doc.data(), doc.id))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => CompanyMemberModel.fromMap(doc.data(), doc.id))
+              .toList();
+        });
   }
 
-  Future<void> updateMemberRole(String companyId, String uid, UserRole role) async {
+  Future<void> updateMemberRole(
+    String companyId,
+    String uid,
+    UserRole role,
+  ) async {
+    await _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('members')
+        .doc(uid)
+        .update({'role': role.name, 'updatedAt': FieldValue.serverTimestamp()});
+  }
+
+  Future<void> updateMemberStatus(
+    String companyId,
+    String uid,
+    UserStatus status,
+  ) async {
     await _firestore
         .collection('companies')
         .doc(companyId)
         .collection('members')
         .doc(uid)
         .update({
-      'role': role.name,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> updateMemberStatus(String companyId, String uid, UserStatus status) async {
-    await _firestore
-        .collection('companies')
-        .doc(companyId)
-        .collection('members')
-        .doc(uid)
-        .update({
-      'status': status.name,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+          'status': status.name,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
   }
 
   Future<void> inviteUser({
@@ -170,8 +198,12 @@ class CompanyUserService {
 
     // In a real app, this might trigger a Cloud Function to send an email
     // For now, we'll just create the member record with 'invited' status
-    final docRef = _firestore.collection('companies').doc(companyId).collection('members').doc();
-    
+    final docRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('members')
+        .doc();
+
     final newMember = CompanyMemberModel(
       uid: docRef.id,
       email: email,

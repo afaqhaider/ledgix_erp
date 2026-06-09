@@ -89,7 +89,9 @@ class GrnModel {
       poReference: map['poReference'],
       warehouseId: map['warehouseId'] ?? '',
       date: (map['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      items: (map['items'] as List? ?? []).map((i) => StockItemModel.fromMap(i)).toList(),
+      items: (map['items'] as List? ?? [])
+          .map((i) => StockItemModel.fromMap(i))
+          .toList(),
       notes: map['notes'],
       createdBy: map['createdBy'] ?? '',
     );
@@ -141,7 +143,9 @@ class DeliveryNoteModel {
       customerId: map['customerId'] ?? '',
       warehouseId: map['warehouseId'] ?? '',
       date: (map['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      items: (map['items'] as List? ?? []).map((i) => StockItemModel.fromMap(i)).toList(),
+      items: (map['items'] as List? ?? [])
+          .map((i) => StockItemModel.fromMap(i))
+          .toList(),
       notes: map['notes'],
       createdBy: map['createdBy'] ?? '',
     );
@@ -193,7 +197,9 @@ class InventoryTransferModel {
       sourceWarehouseId: map['sourceWarehouseId'] ?? '',
       destinationWarehouseId: map['destinationWarehouseId'] ?? '',
       date: (map['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      items: (map['items'] as List? ?? []).map((i) => StockItemModel.fromMap(i)).toList(),
+      items: (map['items'] as List? ?? [])
+          .map((i) => StockItemModel.fromMap(i))
+          .toList(),
       notes: map['notes'],
       createdBy: map['createdBy'] ?? '',
     );
@@ -234,14 +240,19 @@ class PhysicalVerificationModel {
     };
   }
 
-  factory PhysicalVerificationModel.fromMap(Map<String, dynamic> map, String id) {
+  factory PhysicalVerificationModel.fromMap(
+    Map<String, dynamic> map,
+    String id,
+  ) {
     return PhysicalVerificationModel(
       id: id,
       companyId: map['companyId'] ?? '',
       countNumber: map['countNumber'] ?? '',
       warehouseId: map['warehouseId'] ?? '',
       date: (map['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      items: (map['items'] as List? ?? []).map((i) => VerificationItemModel.fromMap(i)).toList(),
+      items: (map['items'] as List? ?? [])
+          .map((i) => VerificationItemModel.fromMap(i))
+          .toList(),
       status: map['status'] ?? 'draft',
       createdBy: map['createdBy'] ?? '',
     );

@@ -3,15 +3,19 @@ import 'package:ledgixerp/core/documents/document_status.dart';
 
 abstract class DocumentService {
   Future<String> getNextDocumentNumber(String companyId, DocumentType type);
-  
+
   Future<void> createDocument(DocumentHeader header);
-  
+
   Future<void> updateDocument(DocumentHeader header);
-  
-  Future<void> updateStatus(String documentId, DocumentStatus status, String userId);
-  
+
+  Future<void> updateStatus(
+    String documentId,
+    DocumentStatus status,
+    String userId,
+  );
+
   Future<DocumentHeader?> getDocument(String documentId);
-  
+
   Future<List<DocumentHeader>> getDocuments({
     required String companyId,
     DocumentType? type,
