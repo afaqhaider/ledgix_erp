@@ -28,6 +28,10 @@ class CustomerService {
     await _getCustomersRef(customer.companyId).doc().set(customer.toMap());
   }
 
+  Future<void> updateCustomer(CustomerModel customer) async {
+    await _getCustomersRef(customer.companyId).doc(customer.id).update(customer.toMap());
+  }
+
   Future<void> deleteCustomer(String companyId, String customerId) async {
     // Check for transactions
     final invoiceSnapshot = await _firestore

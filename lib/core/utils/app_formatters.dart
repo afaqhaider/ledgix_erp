@@ -1,42 +1,34 @@
 import 'package:intl/intl.dart';
-import 'package:ledgixerp/core/services/amount_formatter.dart';
-import 'package:ledgixerp/core/services/date_formatter.dart';
 
 class AppFormatters {
-  /// Formats a number as currency (e.g., AED 52,500.00)
+  static final _currencyFormatter = NumberFormat('#,##0.00', 'en_US');
+  static final _dateFormatter = DateFormat('dd/MM/yyyy');
+  static final _dateTimeFormatter = DateFormat('dd/MM/yyyy HH:mm');
+
+  /// Formats amount to 1,000.00 style
+  static String formatCurrency(double amount) {
+    return _currencyFormatter.format(amount);
+  }
+
+  /// Formats date to dd/MM/yyyy
+  static String formatDate(DateTime date) {
+    return _dateFormatter.format(date);
+  }
+
+  /// Formats date and time to dd/MM/yyyy HH:mm
+  static String formatDateTime(DateTime date) {
+    return _dateTimeFormatter.format(date);
+  }
+
+  /// Alias for formatCurrency to match user request terminology
   static String currency(double amount, {String? symbol}) {
-    // Standard ERP format: SYMBOL AMOUNT
-    final s = symbol != null ? '$symbol ' : '';
-    return AmountFormatter.format(amount, currencySymbol: s);
+    // We ignore symbol for now as per "1,000.00" law,
+    // but keep parameter for future compliance.
+    return formatCurrency(amount);
   }
 
-  /// Formats a date (e.g., 25-Jun-2026)
-  static String date(DateTime date, {String pattern = 'dd-MMM-yyyy'}) {
-    return DateFormatter.format(date, pattern: pattern);
-  }
-
-  /// Formats a date and time (e.g., 25-OCT-2023 10:30 AM)
-  static String dateTime(DateTime date) {
-    return DateFormatter.format(date, pattern: 'dd-MMM-yyyy hh:mm a');
-  }
-
-  /// Formats a percentage (e.g., 15.00%)
-  static String percentage(double value, {int decimalDigits = 2}) {
-    return '${value.toStringAsFixed(decimalDigits)}%';
-  }
-
-  /// Formats a quantity (e.g., 1,250.00)
-  static String quantity(double value, {int decimalDigits = 2}) {
-    return NumberFormat.decimalPattern().format(value);
-  }
-
-  /// Formats a weight (e.g., 50.00 kg)
-  static String weight(double value, {String unit = 'kg'}) {
-    return '${NumberFormat.decimalPattern().format(value)} $unit';
-  }
-
-  /// Formats a document number (e.g., INV-00001)
-  static String documentNumber(String prefix, int number) {
-    return '$prefix-${number.toString().padLeft(5, '0')}';
+  /// Alias for formatDate to match user request terminology
+  static String date(DateTime date) {
+    return formatDate(date);
   }
 }

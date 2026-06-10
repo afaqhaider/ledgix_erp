@@ -12,15 +12,19 @@ import '../../../operations/jobs/services/job_service.dart';
 import '../../../settings/services/financial_settings_service.dart';
 import '../../models/expense_voucher_model.dart';
 import '../../services/expense_voucher_service.dart';
+import '../../../accounting/journal_entries/accounting_posting_service.dart';
+import '../../../accounting/chart_of_accounts/account_pane.dart';
 
 class AddExpenseVoucherScreen extends StatefulWidget {
   final AppUser user;
   final bool isPane;
+  final ExpenseVoucherModel? initialVoucher;
 
   const AddExpenseVoucherScreen({
     super.key,
     required this.user,
     this.isPane = false,
+    this.initialVoucher,
   });
 
   @override
@@ -33,6 +37,7 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
   final _accountService = AccountService();
   final _jobService = JobService();
   final _settingsService = FinancialSettingsService();
+  final _postingService = AccountingPostingService();
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -79,6 +84,15 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
             a.allowPosting && 
             (a.accountType == AccountType.expense || a.accountType == AccountType.otherExpense || a.accountType == AccountType.costOfSales)
           ).toList();
+
+          if (widget.initialVoucher != null) {
+            final v = widget.initialVoucher!;
+            _selectedDate = v.date;
+            _descriptionController.text = v.description;
+            _selectedFromAccount = _bankAccounts.where((a) => a.id == v.fromAccountId).firstOrNull;
+            _lines.clear();
+            _lines.addAll(v.lines);
+          }
           
           _isLoading = false;
         });
@@ -89,6 +103,9 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
         if (mounted) {
           setState(() {
             _activeJobs = jobs;
+            if (widget.initialVoucher?.jobId != null) {
+              _selectedJob = _activeJobs.where((j) => j.id == widget.initialVoucher!.jobId).firstOrNull;
+            }
           });
         }
       }
@@ -119,7 +136,7 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
     setState(() {
       _lines[index] = ExpenseVoucherLine(
         accountId: accId ?? line.accountId,
-        accountName: accName ?? line.accountName,
+        accountName: accName ?? (accId == null ? line.accountName : ''),
         description: desc ?? line.description,
         amount: newAmount,
         hasVat: newHasVat,
@@ -138,18 +155,24 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
 
   Future<void> _saveVoucher() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_lines.isEmpty || _lines.any((l) => l.accountId.isEmpty)) {
-      showErpError(context: context, title: 'Incomplete Voucher', message: 'Please add at least one line with an account.');
+    if (_lines.isEmpty) {
+      showErpError(context: context, title: 'Incomplete Voucher', message: 'Please add at least one line.');
+      return;
+    }
+    
+    if (_lines.any((l) => l.accountId.isEmpty)) {
+      showErpError(context: context, title: 'Incomplete Voucher', message: 'Please ensure all lines have an account selected.');
       return;
     }
 
     setState(() => _isSaving = true);
     
     try {
-      final voucherNumber = await _service.generateVoucherNumber(widget.user.companyId!);
+      final String id = widget.initialVoucher?.id ?? const Uuid().v4();
+      final String voucherNumber = widget.initialVoucher?.voucherNumber ?? await _service.generateVoucherNumber(widget.user.companyId!);
       
       final voucher = ExpenseVoucherModel(
-        id: const Uuid().v4(),
+        id: id,
         companyId: widget.user.companyId!,
         voucherNumber: voucherNumber,
         date: _selectedDate,
@@ -157,18 +180,24 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
         fromAccountName: _selectedFromAccount!.accountName,
         description: _descriptionController.text,
         lines: _lines,
-        totalAmount: _totalSubtotal,
+        totalAmount: _totalAmount,
         totalVat: _totalVat,
         status: ExpenseVoucherStatus.draft,
         createdByUserId: widget.user.uid,
-        createdAt: DateTime.now(),
+        createdAt: widget.initialVoucher?.createdAt ?? DateTime.now(),
         jobId: _selectedJob?.id,
         jobNumber: _selectedJob?.jobNumber,
         jobName: _selectedJob?.jobName,
       );
 
-      await _service.createVoucher(voucher);
-      await _service.postVoucher(widget.user.companyId!, voucher.id, widget.user.uid);
+      if (widget.initialVoucher != null) {
+        await _service.updateVoucher(voucher);
+      } else {
+        await _service.createVoucher(voucher);
+      }
+      
+      // Use AccountingPostingService instead of the buggy service-level postVoucher
+      await _postingService.postExpenseVoucher(widget.user.companyId!, voucher, widget.user);
 
       if (mounted) {
         Navigator.pop(context);
@@ -183,11 +212,29 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
     }
   }
 
+  void _addExpenseAccount() {
+    showErpSidePane(
+      context: context,
+      builder: AccountPane(
+        companyId: widget.user.companyId!,
+        initialAccountType: AccountType.expense,
+        onSuccess: (newAccount) {
+          setState(() {
+            _expenseAccounts.add(newAccount);
+            _expenseAccounts.sort((a, b) => a.accountName.compareTo(b.accountName));
+          });
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     final theme = Theme.of(context);
+    final isEditing = widget.initialVoucher != null;
+
     final formContent = SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: FormLayout(
@@ -269,9 +316,11 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
       ),
     );
 
+    final titleText = isEditing ? 'Edit Expense Voucher: ${widget.initialVoucher!.voucherNumber}' : 'New Expense Voucher';
+
     if (widget.isPane) {
       return ErpSidePane(
-        title: 'New Expense Voucher',
+        title: titleText,
         onCancel: () => Navigator.pop(context),
         onSave: _saveVoucher,
         isLoading: _isSaving,
@@ -282,7 +331,7 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Expense Voucher'),
+        title: Text(titleText),
         actions: [
           ElevatedButton(
             onPressed: _isSaving ? null : _saveVoucher,
@@ -345,6 +394,7 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
 
           return Container(
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            key: ValueKey(index), // Use a key to maintain state correctly
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -354,8 +404,13 @@ class _AddExpenseVoucherScreenState extends State<AddExpenseVoucherScreen> {
                     labelText: '',
                     items: _expenseAccounts,
                     itemLabelBuilder: (a) => '${a.accountCode} - ${a.accountName}',
+                    addLabel: 'Add Expense Account',
+                    onAdd: _addExpenseAccount,
                     onSelected: (val) => _updateLine(index, accId: val?.id, accName: val?.accountName),
-                    initialValue: line.accountId.isEmpty ? null : _expenseAccounts.firstWhere((a) => a.id == line.accountId),
+                    initialValue: line.accountId.isEmpty 
+                      ? null 
+                      : _expenseAccounts.where((a) => a.id == line.accountId).firstOrNull,
+                    validator: (v) => line.accountId.isEmpty ? 'Required' : null,
                   ),
                 ),
                 const SizedBox(width: 8),

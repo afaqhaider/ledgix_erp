@@ -8,14 +8,13 @@ import 'package:ledgixerp/features/quotations/services/quotation_service.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
-import 'package:ledgixerp/features/crm/customers/presentation/widgets/add_customer_dialog.dart';
+import 'package:ledgixerp/features/crm/customers/presentation/widgets/customer_pane.dart';
 import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/settings/models/payment_term_model.dart';
 import 'package:ledgixerp/features/settings/services/terms_service.dart';
 import 'package:ledgixerp/features/settings/presentation/widgets/add_payment_term_dialog.dart';
-import 'package:ledgixerp/core/widgets/side_panel.dart';
-import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_item_pane.dart';
+import 'package:ledgixerp/features/inventory/presentation/widgets/inventory_item_pane.dart';
 import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
@@ -237,10 +236,9 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   }
 
   void _showAddCustomerDialog() {
-    showDialog(
+    showErpSidePane(
       context: context,
-      builder: (context) =>
-          AddCustomerDialog(companyId: widget.user.companyId!),
+      builder: CustomerPane(companyId: widget.user.companyId!),
     );
   }
 
@@ -253,10 +251,9 @@ class _AddQuotationScreenState extends State<AddQuotationScreen> {
   }
 
   void _showAddProductDialog() {
-    SidePanel.show(
+    showErpSidePane(
       context: context,
-      title: 'New Inventory Item',
-      child: AddInventoryItemPane(user: widget.user),
+      builder: InventoryItemPane(user: widget.user),
     );
   }
 

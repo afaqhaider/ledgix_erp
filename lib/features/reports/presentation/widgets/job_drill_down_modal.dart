@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/reports/services/job_report_service.dart';
+import 'package:ledgixerp/core/services/export_service.dart';
 
 class JobDrillDownModal extends StatefulWidget {
   final String companyId;
@@ -44,6 +45,7 @@ class JobDrillDownModal extends StatefulWidget {
 
 class _JobDrillDownModalState extends State<JobDrillDownModal> {
   final _service = JobReportService();
+  final _exportService = ExportService();
   bool _isLoading = true;
   List<Map<String, dynamic>> _data = [];
   String _searchQuery = '';
@@ -70,6 +72,57 @@ class _JobDrillDownModalState extends State<JobDrillDownModal> {
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
+  }
+
+  void _exportExcel() {
+    if (_data.isEmpty) return;
+    
+    final headers = ['Date', 'Description', 'Reference', 'Account', 'Debit', 'Credit', 'Profit Impact', 'Running P/L'];
+    final rows = _data.map((item) => [
+      AppFormatters.date(item['date']),
+      item['description'] ?? '',
+      item['reference'] ?? '',
+      item['accountName'] ?? '',
+      item['debit'],
+      item['credit'],
+      item['impact'],
+      item['runningBalance'],
+    ]).toList();
+
+    _exportService.exportToExcel(
+      fileName: 'Job_Ledger_${widget.jobNumber}',
+      sheetName: 'Ledger',
+      headers: headers,
+      data: rows,
+    );
+  }
+
+  void _exportPdf() {
+    if (_data.isEmpty) return;
+
+    final headers = ['Date', 'Description', 'Ref', 'Account', 'Dr', 'Cr', 'Impact', 'Balance'];
+    final rows = _data.map((item) => [
+      AppFormatters.date(item['date']),
+      item['description']?.toString() ?? '',
+      item['reference']?.toString() ?? '',
+      item['accountName']?.toString() ?? '',
+      AppFormatters.currency(item['debit']),
+      AppFormatters.currency(item['credit']),
+      AppFormatters.currency(item['impact']),
+      AppFormatters.currency(item['runningBalance']),
+    ]).toList();
+
+    final totalProfit = _data.last['runningBalance'] as double;
+
+    _exportService.exportReportToPdf(
+      title: 'Job Detail Ledger',
+      subTitle: 'Job: ${widget.jobName} (${widget.jobNumber})',
+      headers: headers,
+      data: rows,
+      summary: {
+        'Total Job Profit / Loss': AppFormatters.currency(totalProfit),
+      },
+    );
   }
 
   @override
@@ -179,10 +232,35 @@ class _JobDrillDownModalState extends State<JobDrillDownModal> {
             ),
           ),
           const SizedBox(width: 16),
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.download_outlined),
-            tooltip: 'Export',
-            onPressed: () {},
+            tooltip: 'Export Ledger',
+            onSelected: (value) {
+              if (value == 'excel') _exportExcel();
+              if (value == 'pdf') _exportPdf();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('Export as PDF'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('Export as Excel'),
+                  ],
+                ),
+              ),
+            ],
           ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchData),
         ],

@@ -138,6 +138,48 @@ class BillService {
     }
   }
 
+  Future<void> updateBill(BillModel bill, AppUser user, {bool shouldPost = false}) async {
+    if (bill.isPosted) throw Exception('Cannot update a posted bill.');
+    
+    if (shouldPost && await _settingsService.isPeriodLocked(bill.companyId, bill.billDate)) {
+      throw Exception('Accounting period for this date is locked.');
+    }
+
+    final highRoles = [UserRole.owner, UserRole.superAdmin, UserRole.admin, UserRole.accountant, UserRole.generalManager];
+    bool isAuthorizedToPost = highRoles.contains(user.role);
+    bool actualPost = shouldPost && isAuthorizedToPost;
+
+    BillStatus status = bill.status;
+    if (actualPost) {
+      status = BillStatus.posted;
+    } else if (shouldPost && !isAuthorizedToPost) {
+      status = BillStatus.pendingApproval;
+    }
+
+    final updatedBill = bill.copyWith(status: status);
+    await _getBillsRef(bill.companyId).doc(bill.id).update(updatedBill.toMap());
+
+    if (actualPost) {
+      await _postingService.postSupplierBill(bill.companyId, updatedBill, user);
+    } else if (shouldPost && !isAuthorizedToPost) {
+      await _approvalService.submitForApproval(
+        user: user,
+        companyId: bill.companyId,
+        sourceType: 'supplier_bill',
+        sourceId: bill.id,
+        sourceNumber: bill.billNumber,
+        amount: bill.totalAmount,
+      );
+    }
+  }
+
+  Future<void> postBill(String companyId, BillModel bill, AppUser user) async {
+    if (await _settingsService.isPeriodLocked(companyId, bill.billDate)) {
+      throw Exception('Accounting period for this date is locked.');
+    }
+    await _postingService.postSupplierBill(companyId, bill, user);
+  }
+
   Future<void> updateBillStatus(
     String companyId,
     String billId,

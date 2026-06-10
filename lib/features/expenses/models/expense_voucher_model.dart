@@ -84,6 +84,7 @@ class ExpenseVoucherModel {
   final String? postedByUserId;
   final DateTime createdAt;
   final DateTime? postedAt;
+  final String? approvalStatus; // pending, approved, rejected
 
   // Job Link (Header)
   final String? jobId;
@@ -106,6 +107,7 @@ class ExpenseVoucherModel {
     this.postedByUserId,
     required this.createdAt,
     this.postedAt,
+    this.approvalStatus,
     this.jobId,
     this.jobNumber,
     this.jobName,
@@ -128,6 +130,7 @@ class ExpenseVoucherModel {
       'postedByUserId': postedByUserId,
       'createdAt': Timestamp.fromDate(createdAt),
       'postedAt': postedAt != null ? Timestamp.fromDate(postedAt!) : null,
+      'approvalStatus': approvalStatus,
       'jobId': jobId,
       'jobNumber': jobNumber,
       'jobName': jobName,
@@ -156,9 +159,54 @@ class ExpenseVoucherModel {
       postedByUserId: map['postedByUserId'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       postedAt: (map['postedAt'] as Timestamp?)?.toDate(),
+      approvalStatus: map['approvalStatus'],
       jobId: map['jobId'],
       jobNumber: map['jobNumber'],
       jobName: map['jobName'],
+    );
+  }
+
+  ExpenseVoucherModel copyWith({
+    String? id,
+    String? companyId,
+    String? voucherNumber,
+    DateTime? date,
+    String? fromAccountId,
+    String? fromAccountName,
+    String? description,
+    List<ExpenseVoucherLine>? lines,
+    double? totalAmount,
+    double? totalVat,
+    ExpenseVoucherStatus? status,
+    String? createdByUserId,
+    String? postedByUserId,
+    DateTime? createdAt,
+    DateTime? postedAt,
+    String? approvalStatus,
+    String? jobId,
+    String? jobNumber,
+    String? jobName,
+  }) {
+    return ExpenseVoucherModel(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      voucherNumber: voucherNumber ?? this.voucherNumber,
+      date: date ?? this.date,
+      fromAccountId: fromAccountId ?? this.fromAccountId,
+      fromAccountName: fromAccountName ?? this.fromAccountName,
+      description: description ?? this.description,
+      lines: lines ?? this.lines,
+      totalAmount: totalAmount ?? this.totalAmount,
+      totalVat: totalVat ?? this.totalVat,
+      status: status ?? this.status,
+      createdByUserId: createdByUserId ?? this.createdByUserId,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      createdAt: createdAt ?? this.createdAt,
+      postedAt: postedAt ?? this.postedAt,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+      jobId: jobId ?? this.jobId,
+      jobNumber: jobNumber ?? this.jobNumber,
+      jobName: jobName ?? this.jobName,
     );
   }
 }

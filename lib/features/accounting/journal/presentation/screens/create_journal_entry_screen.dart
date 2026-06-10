@@ -8,7 +8,7 @@ import 'package:ledgixerp/features/accounting/journal/models/journal_entry_model
 import 'package:ledgixerp/features/accounting/journal/models/journal_line_model.dart';
 import 'package:ledgixerp/features/accounting/journal/services/journal_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
-import 'package:ledgixerp/features/accounting/chart_of_accounts/add_account_dialog.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/account_pane.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/widgets/posting_error_modal.dart';
 
@@ -163,9 +163,9 @@ class _CreateJournalEntryScreenState extends State<CreateJournalEntryScreen> {
   }
 
   void _showAddAccountDialog() {
-    showDialog(
+    showErpSidePane(
       context: context,
-      builder: (context) => AddAccountDialog(companyId: widget.user.companyId!),
+      builder: AccountPane(companyId: widget.user.companyId!),
     );
   }
 

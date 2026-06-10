@@ -3,6 +3,7 @@ import 'package:ledgixerp/core/auth/app_user.dart';
 import 'trial_balance_screen.dart';
 import 'profit_loss_screen.dart';
 import 'balance_sheet_screen.dart';
+import 'statement_of_changes_in_equity_screen.dart';
 import 'general_ledger_screen.dart';
 import 'account_statement_screen.dart';
 
@@ -59,6 +60,21 @@ class ReportsScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => BalanceSheetScreen(companyId: companyId),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildReportCard(
+                context,
+                'Statement of Changes in Equity',
+                'Track changes in your equity accounts over time.',
+                Icons.stacked_line_chart,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StatementOfChangesInEquityScreen(
+                      companyId: companyId,
+                    ),
                   ),
                 ),
               ),

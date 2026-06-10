@@ -140,7 +140,7 @@
         },
         {
           "fieldPath": "accountCode",
-          "order": "DESCENDING"
+          "order": "ASCENDING"
         },
         {
           "fieldPath": "__name__",
@@ -158,7 +158,7 @@
         },
         {
           "fieldPath": "accountCode",
-          "order": "DESCENDING"
+          "order": "ASCENDING"
         },
         {
           "fieldPath": "__name__",

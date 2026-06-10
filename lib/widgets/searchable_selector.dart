@@ -49,6 +49,19 @@ class _SearchableSelectorState<T> extends State<SearchableSelector<T>> {
       if (_focusNode.hasFocus) {
         _openOverlay();
       } else {
+        // When losing focus, try to find an exact match if nothing is selected
+        final currentText = _controller.text;
+        final match = widget.items.where((item) =>
+          widget.itemLabelBuilder(item).toLowerCase() == currentText.toLowerCase()
+        ).firstOrNull;
+        
+        if (match != null) {
+          _controller.text = widget.itemLabelBuilder(match);
+          widget.onSelected(match);
+        } else if (currentText.isEmpty) {
+          widget.onSelected(null);
+        }
+
         // Add a small delay to allow onTap to fire before closing the overlay
         Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted && !_focusNode.hasFocus) {

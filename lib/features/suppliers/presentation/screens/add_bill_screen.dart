@@ -8,14 +8,13 @@ import 'package:ledgixerp/features/suppliers/services/supplier_service.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
-import 'package:ledgixerp/features/suppliers/presentation/widgets/add_supplier_dialog.dart';
+import 'package:ledgixerp/features/suppliers/presentation/widgets/supplier_pane.dart';
 import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/settings/models/credit_term_model.dart';
 import 'package:ledgixerp/features/settings/services/terms_service.dart';
 import 'package:ledgixerp/features/settings/presentation/widgets/add_credit_term_dialog.dart';
-import 'package:ledgixerp/core/widgets/side_panel.dart';
-import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_item_pane.dart';
+import 'package:ledgixerp/features/inventory/presentation/widgets/inventory_item_pane.dart';
 import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
@@ -29,7 +28,14 @@ import 'package:ledgixerp/features/settings/services/financial_settings_service.
 class AddBillScreen extends StatefulWidget {
   final AppUser user;
   final bool isPane;
-  const AddBillScreen({super.key, required this.user, this.isPane = false});
+  final BillModel? initialBill;
+
+  const AddBillScreen({
+    super.key,
+    required this.user,
+    this.isPane = false,
+    this.initialBill,
+  });
 
   @override
   State<AddBillScreen> createState() => _AddBillScreenState();
@@ -68,8 +74,41 @@ class _AddBillScreenState extends State<AddBillScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialBill != null) {
+      final bill = widget.initialBill!;
+      _billDate = bill.billDate;
+      _dueDate = bill.dueDate;
+      _attachments = List.from(bill.attachments);
+      _items.addAll(bill.items);
+      _selectedSupplier = SupplierModel(
+        id: bill.supplierId,
+        companyId: bill.companyId,
+        supplierName: bill.supplierName,
+        supplierCode: '',
+        openingBalanceType: BalanceType.credit,
+        email: '',
+        phone: '',
+        trnVatNumber: '',
+        address: '',
+        createdAt: DateTime.now(),
+      );
+      _previewNumber = bill.billNumber;
+      _notesController.text = bill.notes ?? '';
+      _referenceController.text = bill.reference ?? '';
+      _selectedJob = bill.jobId != null ? JobModel(
+        id: bill.jobId!,
+        companyId: bill.companyId,
+        jobNumber: bill.jobNumber ?? '',
+        jobName: bill.jobName ?? '',
+        startDate: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        createdBy: '',
+      ) : null;
+    } else {
+      _addItem();
+    }
     _loadInitialData();
-    _addItem();
     _listenToMasterData();
   }
 
@@ -243,9 +282,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
     setState(() => _isLoading = true);
     try {
       final bill = BillModel(
-        id: '',
+        id: widget.initialBill?.id ?? '',
         companyId: widget.user.companyId!,
-        billNumber: 'AUTO',
+        billNumber: widget.initialBill?.billNumber ?? 'AUTO',
         supplierId: _selectedSupplier?.id ?? '',
         supplierName: _selectedSupplier?.supplierName ?? 'Draft Supplier',
         billDate: _billDate,
@@ -257,17 +296,22 @@ class _AddBillScreenState extends State<AddBillScreen> {
         balanceDue: _totalAmount,
         notes: _notesController.text,
         reference: _referenceController.text,
-        createdAt: DateTime.now(),
+        createdAt: widget.initialBill?.createdAt ?? DateTime.now(),
         attachments: _attachments,
         status: shouldPost
             ? (_canPost ? BillStatus.posted : BillStatus.pendingApproval)
-            : BillStatus.draft,
+            : (widget.initialBill?.status ?? BillStatus.draft),
         jobId: _selectedJob?.id,
         jobNumber: _selectedJob?.jobNumber,
         jobName: _selectedJob?.jobName,
+        isPosted: widget.initialBill?.isPosted ?? false,
       );
 
-      await _billService.addBill(bill, widget.user, shouldPost: shouldPost);
+      if (widget.initialBill == null) {
+        await _billService.addBill(bill, widget.user, shouldPost: shouldPost);
+      } else {
+        await _billService.updateBill(bill, widget.user, shouldPost: shouldPost);
+      }
       if (mounted) {
         if (widget.isPane) {
           Navigator.pop(context, true);
@@ -297,10 +341,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
   }
 
   void _showAddSupplierDialog() {
-    showDialog(
+    showErpSidePane(
       context: context,
-      builder: (context) =>
-          AddSupplierDialog(companyId: widget.user.companyId!),
+      builder: SupplierPane(companyId: widget.user.companyId!),
     );
   }
 
@@ -313,10 +356,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
   }
 
   void _showAddProductDialog() {
-    SidePanel.show(
+    showErpSidePane(
       context: context,
-      title: 'New Inventory Item',
-      child: AddInventoryItemPane(user: widget.user),
+      builder: InventoryItemPane(user: widget.user),
     );
   }
 

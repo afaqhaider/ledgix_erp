@@ -10,7 +10,7 @@ import 'package:ledgixerp/features/banking/services/bank_account_service.dart';
 import 'package:ledgixerp/features/crm/customer_payments/models/customer_payment_model.dart';
 import 'package:ledgixerp/features/crm/customer_payments/services/customer_payment_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
-import 'package:ledgixerp/features/crm/customers/presentation/widgets/add_customer_dialog.dart';
+import 'package:ledgixerp/features/crm/customers/presentation/widgets/customer_pane.dart';
 import 'package:ledgixerp/features/banking/presentation/widgets/add_bank_account_dialog.dart';
 import 'package:ledgixerp/features/accounting/journal/models/journal_entry_model.dart';
 import 'package:ledgixerp/features/accounting/journal/services/journal_service.dart';
@@ -19,8 +19,8 @@ import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/core/theme/app_spacing.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
-import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/posting_error_modal.dart';
 import 'package:ledgixerp/core/auth/user_role.dart';
 
@@ -236,10 +236,9 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
               _selectedRef = null;
             }),
             addLabel: 'Add New Customer',
-            onAdd: () => SidePanel.show(
+            onAdd: () => showErpSidePane(
               context: context,
-              title: 'Add Customer',
-              child: AddCustomerDialog(companyId: widget.user.companyId!),
+              builder: CustomerPane(companyId: widget.user.companyId!),
             ),
             initialValue: _selectedCustomer,
           ),

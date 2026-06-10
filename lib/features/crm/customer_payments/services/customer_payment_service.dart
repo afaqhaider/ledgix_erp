@@ -97,7 +97,7 @@ class CustomerPaymentService {
       final paymentToSave = paymentToProcess.copyWith(
         id: payRef.id,
         paymentNumber: finalPaymentNumber!,
-        isPosted: actualPost,
+        isPosted: false, // Ensure false initially; PostingService will set it to true
         approvalStatus: initialApprovalStatus,
       );
 

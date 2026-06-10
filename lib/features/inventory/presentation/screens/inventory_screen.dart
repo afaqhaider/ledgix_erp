@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/core/widgets/erp_layout.dart';
 import 'package:ledgixerp/features/inventory/presentation/tabs/items_tab.dart';
 import 'package:ledgixerp/features/inventory/presentation/tabs/categories_tab.dart';
 import 'package:ledgixerp/features/inventory/presentation/tabs/warehouses_tab.dart';
@@ -37,7 +38,13 @@ class _InventoryScreenState extends State<InventoryScreen>
 
     return Column(
       children: [
-        _buildHeader(theme),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          child: ERPPageHeader(
+            title: 'Inventory Management',
+            subtitle: 'Track stock, manage warehouses, and handle movements',
+          ),
+        ),
         _buildTabBar(theme),
         Expanded(
           child: TabBarView(
@@ -57,31 +64,6 @@ class _InventoryScreenState extends State<InventoryScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeader(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Inventory Management',
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-          Text(
-            'Track stock, manage warehouses, and handle movements',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

@@ -6,7 +6,6 @@ import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
-import 'package:ledgixerp/widgets/form_layout.dart';
 
 class AddBankAccountDialog extends StatefulWidget {
   final String companyId;
@@ -47,150 +46,147 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return ErpGlassModal(
+    return ErpSidePane(
       title: 'Add Bank/Cash Account',
       isLoading: _isLoading,
       onCancel: () => Navigator.pop(context),
       onSave: _save,
       saveLabel: 'Add Account',
-      child: FormLayout(
-        maxWidth: 640,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                style: ErpFormStyle.inputStyle(context),
-                decoration: ErpFormStyle.inputDecoration(
-                  context,
-                  'Account Display Name',
-                  icon: Icons.account_balance_wallet_outlined,
-                ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              style: ErpFormStyle.inputStyle(context),
+              decoration: ErpFormStyle.inputDecoration(
+                context,
+                'Account Display Name',
+                icon: Icons.account_balance_wallet_outlined,
               ),
-              const SizedBox(height: 20),
+              validator: (v) => v!.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 16),
 
-              DropdownButtonFormField<BankAccountType>(
-                initialValue: _type,
-                dropdownColor: Theme.of(context).colorScheme.surface,
-                style: ErpFormStyle.inputStyle(context),
-                decoration: ErpFormStyle.inputDecoration(
-                  context,
-                  'Account Type',
-                  icon: Icons.category_outlined,
-                ),
-                items: BankAccountType.values
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(
-                          e.name.toUpperCase(),
-                          style: ErpFormStyle.inputStyle(context),
-                        ),
+            DropdownButtonFormField<BankAccountType>(
+              initialValue: _type,
+              dropdownColor: Theme.of(context).colorScheme.surface,
+              style: ErpFormStyle.inputStyle(context),
+              decoration: ErpFormStyle.inputDecoration(
+                context,
+                'Account Type',
+                icon: Icons.category_outlined,
+              ),
+              items: BankAccountType.values
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(
+                        e.name.toUpperCase(),
+                        style: ErpFormStyle.inputStyle(context),
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _type = v!),
-              ),
-              const SizedBox(height: 20),
-
-              StreamBuilder<List<AccountModel>>(
-                stream: _chartService.getAccounts(widget.companyId),
-                builder: (context, snapshot) {
-                  final assetAccounts = (snapshot.data ?? [])
-                      .where((a) => a.accountType == AccountType.asset)
-                      .toList();
-                  return DropdownButtonFormField<String>(
-                    initialValue: _selectedChartAccountId,
-                    dropdownColor: Theme.of(context).colorScheme.surface,
-                    style: ErpFormStyle.inputStyle(context),
-                    decoration: ErpFormStyle.inputDecoration(
-                      context,
-                      'Linked Chart of Account',
-                      icon: Icons.link,
                     ),
-                    items: assetAccounts
-                        .map(
-                          (a) => DropdownMenuItem(
-                            value: a.id,
-                            child: Text(
-                              '${a.accountCode} - ${a.accountName}',
-                              style: ErpFormStyle.inputStyle(context),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) =>
-                        setState(() => _selectedChartAccountId = v),
-                    validator: (v) => v == null ? 'Required' : null,
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => _type = v!),
+            ),
+            const SizedBox(height: 16),
 
-              if (_type != BankAccountType.cash) ...[
-                TextFormField(
-                  controller: _bankNameController,
+            StreamBuilder<List<AccountModel>>(
+              stream: _chartService.getAccounts(widget.companyId),
+              builder: (context, snapshot) {
+                final assetAccounts = (snapshot.data ?? [])
+                    .where((a) => a.accountType == AccountType.asset)
+                    .toList();
+                return DropdownButtonFormField<String>(
+                  initialValue: _selectedChartAccountId,
+                  dropdownColor: Theme.of(context).colorScheme.surface,
                   style: ErpFormStyle.inputStyle(context),
                   decoration: ErpFormStyle.inputDecoration(
                     context,
-                    'Bank Name',
-                    icon: Icons.account_balance_outlined,
+                    'Linked Chart of Account',
+                    icon: Icons.link,
                   ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _numberController,
-                        style: ErpFormStyle.inputStyle(context),
-                        decoration: ErpFormStyle.inputDecoration(
-                          context,
-                          'Account Number',
-                          icon: Icons.numbers_outlined,
+                  items: assetAccounts
+                      .map(
+                        (a) => DropdownMenuItem(
+                          value: a.id,
+                          child: Text(
+                            '${a.accountCode} - ${a.accountName}',
+                            style: ErpFormStyle.inputStyle(context),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _ibanController,
-                        style: ErpFormStyle.inputStyle(context),
-                        decoration: ErpFormStyle.inputDecoration(
-                          context,
-                          'IBAN',
-                          icon: Icons.public_outlined,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-              ],
+                      )
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => _selectedChartAccountId = v),
+                  validator: (v) => v == null ? 'Required' : null,
+                );
+              },
+            ),
+            const SizedBox(height: 16),
 
+            if (_type != BankAccountType.cash) ...[
               TextFormField(
-                controller: _openingBalanceController,
+                controller: _bankNameController,
                 style: ErpFormStyle.inputStyle(context),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
                 decoration: ErpFormStyle.inputDecoration(
                   context,
-                  'Opening Balance',
-                  icon: Icons.money_outlined,
-                  prefixText: '${_company?.baseCurrency ?? 'AED'} ',
+                  'Bank Name',
+                  icon: Icons.account_balance_outlined,
                 ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Required';
-                  if (double.tryParse(v) == null) return 'Invalid number';
-                  return null;
-                },
               ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _numberController,
+                      style: ErpFormStyle.inputStyle(context),
+                      decoration: ErpFormStyle.inputDecoration(
+                        context,
+                        'Account Number',
+                        icon: Icons.numbers_outlined,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _ibanController,
+                      style: ErpFormStyle.inputStyle(context),
+                      decoration: ErpFormStyle.inputDecoration(
+                        context,
+                        'IBAN',
+                        icon: Icons.public_outlined,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
             ],
-          ),
+
+            TextFormField(
+              controller: _openingBalanceController,
+              style: ErpFormStyle.inputStyle(context),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: ErpFormStyle.inputDecoration(
+                context,
+                'Opening Balance',
+                icon: Icons.money_outlined,
+                prefixText: '${_company?.baseCurrency ?? 'AED'} ',
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Required';
+                if (double.tryParse(v) == null) return 'Invalid number';
+                return null;
+              },
+            ),
+          ],
         ),
       ),
     );

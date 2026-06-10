@@ -8,7 +8,7 @@ import 'package:ledgixerp/features/invoices/services/invoice_service.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
-import 'package:ledgixerp/features/crm/customers/presentation/widgets/add_customer_dialog.dart';
+import 'package:ledgixerp/features/crm/customers/presentation/widgets/customer_pane.dart';
 import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
 import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/settings/models/credit_term_model.dart';
@@ -17,8 +17,7 @@ import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 
 import 'package:ledgixerp/features/settings/presentation/widgets/add_credit_term_dialog.dart';
-import 'package:ledgixerp/core/widgets/side_panel.dart';
-import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_item_pane.dart';
+import 'package:ledgixerp/features/inventory/presentation/widgets/inventory_item_pane.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
 import 'package:ledgixerp/widgets/posting_error_modal.dart';
@@ -30,7 +29,14 @@ import 'package:ledgixerp/features/settings/services/financial_settings_service.
 class AddInvoiceScreen extends StatefulWidget {
   final AppUser user;
   final bool isPane;
-  const AddInvoiceScreen({super.key, required this.user, this.isPane = false});
+  final InvoiceModel? initialInvoice;
+
+  const AddInvoiceScreen({
+    super.key,
+    required this.user,
+    this.isPane = false,
+    this.initialInvoice,
+  });
 
   @override
   State<AddInvoiceScreen> createState() => _AddInvoiceScreenState();
@@ -67,8 +73,34 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialInvoice != null) {
+      final inv = widget.initialInvoice!;
+      _invoiceDate = inv.invoiceDate;
+      _dueDate = inv.dueDate;
+      _attachments = List.from(inv.attachments);
+      _items.addAll(inv.items);
+      _selectedCustomer = CustomerModel(
+        id: inv.customerId,
+        companyId: inv.companyId,
+        name: inv.customerName,
+        email: '',
+        createdAt: DateTime.now(),
+      ); // Basic placeholder until full customer list loads
+      _previewNumber = inv.invoiceNumber;
+      _selectedJob = inv.jobId != null ? JobModel(
+        id: inv.jobId!,
+        companyId: inv.companyId,
+        jobNumber: inv.jobNumber ?? '',
+        jobName: inv.jobName ?? '',
+        startDate: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        createdBy: '',
+      ) : null;
+    } else {
+      _addItem();
+    }
     _loadInitialData();
-    _addItem();
     _listenToMasterData();
   }
 
@@ -242,9 +274,9 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
     setState(() => _isLoading = true);
     try {
       final invoice = InvoiceModel(
-        id: '',
+        id: widget.initialInvoice?.id ?? '',
         companyId: widget.user.companyId!,
-        invoiceNumber: 'AUTO',
+        invoiceNumber: widget.initialInvoice?.invoiceNumber ?? 'AUTO',
         customerId: _selectedCustomer?.id ?? '',
         customerName: _selectedCustomer?.name ?? 'Draft Customer',
         invoiceDate: _invoiceDate,
@@ -254,21 +286,30 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
         vatAmount: _totalVat,
         totalAmount: _totalAmount,
         balanceDue: _totalAmount,
-        createdAt: DateTime.now(),
+        createdAt: widget.initialInvoice?.createdAt ?? DateTime.now(),
         attachments: _attachments,
         status: shouldPost
             ? (_canPost ? InvoiceStatus.posted : InvoiceStatus.pendingApproval)
-            : InvoiceStatus.draft,
+            : (widget.initialInvoice?.status ?? InvoiceStatus.draft),
         jobId: _selectedJob?.id,
         jobNumber: _selectedJob?.jobNumber,
         jobName: _selectedJob?.jobName,
+        isPosted: widget.initialInvoice?.isPosted ?? false,
       );
 
-      await _invoiceService.addInvoice(
-        invoice,
-        widget.user,
-        shouldPost: shouldPost,
-      );
+      if (widget.initialInvoice == null) {
+        await _invoiceService.addInvoice(
+          invoice,
+          widget.user,
+          shouldPost: shouldPost,
+        );
+      } else {
+        await _invoiceService.updateInvoice(
+          invoice,
+          widget.user,
+          shouldPost: shouldPost,
+        );
+      }
       if (mounted) {
         if (widget.isPane) {
           Navigator.pop(context, true);
@@ -298,10 +339,9 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   }
 
   void _showAddCustomerDialog() {
-    showDialog(
+    showErpSidePane(
       context: context,
-      builder: (context) =>
-          AddCustomerDialog(companyId: widget.user.companyId!),
+      builder: CustomerPane(companyId: widget.user.companyId!),
     );
   }
 
@@ -314,10 +354,9 @@ class _AddInvoiceScreenState extends State<AddInvoiceScreen> {
   }
 
   void _showAddProductDialog() {
-    SidePanel.show(
+    showErpSidePane(
       context: context,
-      title: 'New Inventory Item',
-      child: AddInventoryItemPane(user: widget.user),
+      builder: InventoryItemPane(user: widget.user),
     );
   }
 

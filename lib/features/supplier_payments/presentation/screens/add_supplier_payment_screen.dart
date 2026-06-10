@@ -11,15 +11,15 @@ import 'package:ledgixerp/features/banking/services/bank_account_service.dart';
 import 'package:ledgixerp/features/supplier_payments/models/supplier_payment_model.dart';
 import 'package:ledgixerp/features/supplier_payments/services/supplier_payment_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
-import 'package:ledgixerp/features/suppliers/presentation/widgets/add_supplier_dialog.dart';
+import 'package:ledgixerp/features/suppliers/presentation/widgets/supplier_pane.dart';
 import 'package:ledgixerp/features/banking/presentation/widgets/add_bank_account_dialog.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/core/theme/app_spacing.dart';
-import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
+import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/posting_error_modal.dart';
 
 class AddSupplierPaymentScreen extends StatefulWidget {
@@ -209,10 +209,9 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
               _selectedPO = null;
             }),
             addLabel: 'Add New Supplier',
-            onAdd: () => SidePanel.show(
+            onAdd: () => showErpSidePane(
               context: context,
-              title: 'Add Supplier',
-              child: AddSupplierDialog(companyId: widget.user.companyId!),
+              builder: SupplierPane(companyId: widget.user.companyId!),
             ),
             initialValue: _selectedSupplier,
           ),

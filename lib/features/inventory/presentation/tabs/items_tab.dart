@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
-import 'package:ledgixerp/core/widgets/side_panel.dart';
+import 'package:ledgixerp/core/widgets/erp_dialogs.dart';
+import 'package:ledgixerp/core/widgets/erp_layout.dart';
+import 'package:ledgixerp/core/widgets/erp_data_table.dart';
+import 'package:ledgixerp/core/widgets/erp_status_badge.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import '../../models/inventory_models.dart';
 import '../../services/inventory_service.dart';
 import '../widgets/inventory_item_pane.dart';
@@ -14,132 +18,150 @@ class ItemsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final inventoryService = InventoryService();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              const Text(
-                'Inventory Items',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ERPActionToolbar(
+            searchField: SizedBox(
+              height: 40,
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search items...',
+                  prefixIcon: const Icon(Icons.search, size: 18),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
-              const Spacer(),
+            ),
+            actions: [
               ElevatedButton.icon(
-                onPressed: () => SidePanel.show(
+                onPressed: () => showErpSidePane(
                   context: context,
-                  title: 'Add New Item',
-                  child: InventoryItemPane(user: user),
+                  builder: InventoryItemPane(user: user),
                 ),
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add New'),
               ),
             ],
           ),
-        ),
-        Expanded(
-          child: StreamBuilder<List<InventoryItemModel>>(
-            stream: inventoryService.getInventoryItems(user.companyId!),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final items = snapshot.data ?? [];
+          Expanded(
+            child: StreamBuilder<List<InventoryItemModel>>(
+              stream: inventoryService.getInventoryItems(user.companyId!),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final items = snapshot.data ?? [];
 
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SingleChildScrollView(
-                  child: DataTable(
-                    headingRowHeight: 40,
-                    dataRowMinHeight: 30,
-                    dataRowMaxHeight: 40,
-                    columns: const [
-                      DataColumn(label: Text('Code')),
-                      DataColumn(label: Text('Name')),
-                      DataColumn(label: Text('Type')),
-                      DataColumn(label: Text('Category')),
-                      DataColumn(
-                        label: Text('Sales Price', textAlign: TextAlign.right),
+                if (items.isEmpty) {
+                  return ERPEmptyState(
+                    title: 'No items found',
+                    message: 'Get started by adding your first inventory item',
+                    icon: Icons.inventory_2_outlined,
+                    action: ElevatedButton.icon(
+                      onPressed: () => showErpSidePane(
+                        context: context,
+                        builder: InventoryItemPane(user: user),
                       ),
-                      DataColumn(
-                        label: Text('Stock', textAlign: TextAlign.right),
-                      ),
-                      DataColumn(label: Text('Status')),
-                    ],
-                    rows: items
-                        .map(
-                          (item) => DataRow(
-                            cells: [
-                              DataCell(
-                                Text(
-                                  item.itemCode,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  item.itemName,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  item.itemType.label,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  item.itemCategoryId ?? '-',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                              DataCell(
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
-                                    AppFormatters.currency(item.salesPrice),
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
-                                    '0.00',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                              ), // Stock balance placeholder
-                              DataCell(
-                                Text(
-                                  item.isActive ? 'Active' : 'Inactive',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: item.isActive
-                                        ? Colors.green
-                                        : Colors.red,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onSelectChanged: (_) => SidePanel.show(
-                              context: context,
-                              title: 'Edit Item',
-                              child: InventoryItemPane(user: user, item: item),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Your First Item'),
+                    ),
+                  );
+                }
+
+                return ERPDataTable<InventoryItemModel>(
+                  columns: const [
+                    'CODE',
+                    'NAME',
+                    'TYPE',
+                    'CATEGORY',
+                    'SALES PRICE',
+                    'STATUS',
+                    '',
+                  ],
+                  items: items,
+                  rowBuilder: (item, index) {
+                    return DataRow(
+                      cells: [
+                        DataCell(
+                          Text(
+                            item.itemCode,
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            item.itemName,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataCell(Text(item.itemType.label, style: const TextStyle(fontSize: 12))),
+                        DataCell(Text(item.itemCategoryId ?? '-', style: const TextStyle(fontSize: 12))),
+                        DataCell(
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              AppFormatters.currency(item.salesPrice),
+                              style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w600),
                             ),
                           ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              );
-            },
+                        ),
+                        DataCell(
+                          ERPStatusBadge.fromStatus(
+                            item.isActive ? 'Active' : 'Inactive',
+                          ),
+                        ),
+                        DataCell(
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                onPressed: () => showErpSidePane(
+                                  context: context,
+                                  builder: InventoryItemPane(user: user, item: item),
+                                ),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                                onPressed: () => _confirmDelete(context, inventoryService, item),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, InventoryService service, InventoryItemModel item) {
+    showDialog(
+      context: context,
+      builder: (_) => ERPConfirmDeleteDialog(
+        title: 'Delete Item',
+        message: 'Are you sure you want to delete item ${item.itemName}? This action cannot be undone.',
+        onConfirm: () async {
+          try {
+            await service.deleteItem(user.companyId!, item.id);
+          } catch (e) {
+            if (context.mounted) showErpError(context: context, error: e);
+          }
+        },
+      ),
     );
   }
 }

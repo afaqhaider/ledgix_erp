@@ -1360,6 +1360,19 @@ class AccountingPostingService {
         resolvedAccounts.add('VAT: ${vatInputAccount.accountName}');
       }
 
+      // Check if fromAccount is linked to a BankAccount doc (Pre-fetch outside transaction)
+      DocumentReference? linkedBankRef;
+      final bankAccs = await _firestore
+          .collection('companies')
+          .doc(companyId)
+          .collection('bankAccounts')
+          .where('linkedChartAccountId', isEqualTo: fromAccount.id)
+          .limit(1)
+          .get();
+      if (bankAccs.docs.isNotEmpty) {
+        linkedBankRef = bankAccs.docs.first.reference;
+      }
+
       await _firestore.runTransaction((transaction) async {
         final voucherRef = _firestore
             .collection('companies')
@@ -1371,11 +1384,54 @@ class AccountingPostingService {
         if (!vSnap.exists) throw Exception('Voucher document not found.');
         if (vSnap.data()?['status'] == 'posted') throw Exception('Voucher already posted.');
 
+        // --- ALL READS FIRST ---
+
+        // Read From Account
         final fromAccTx = await _getAccountInTx(transaction, companyId, fromAccount.id);
         
-        final List<JournalLineModel> lines = [];
+        // Read Bank Account if linked
+        DocumentSnapshot? bankAccSnap;
+        if (linkedBankRef != null) {
+          bankAccSnap = await transaction.get(linkedBankRef);
+        }
 
-        // Cr Bank/Cash
+        // Read all Expense Accounts (Aggregated to minimize reads)
+        final Set<String> expenseAccountIds = voucher.lines.map((l) => l.accountId).toSet();
+        final Map<String, AccountModel> expAccountsTx = {};
+        for (var accId in expenseAccountIds) {
+          // Skip if it's the same as fromAccount (already read)
+          if (accId == fromAccount.id) {
+            expAccountsTx[accId] = fromAccTx;
+            continue;
+          }
+          final acc = await _getAccountInTx(transaction, companyId, accId);
+          _validatePostable(acc, acc.accountName);
+          expAccountsTx[accId] = acc;
+        }
+
+        // Read VAT Account if needed
+        AccountModel? vatAccTx;
+        if (vatInputAccount != null && voucher.totalVat > 0) {
+          if (vatInputAccount.id == fromAccount.id) {
+            vatAccTx = fromAccTx;
+          } else if (expAccountsTx.containsKey(vatInputAccount.id)) {
+            vatAccTx = expAccountsTx[vatInputAccount.id];
+          } else {
+            vatAccTx = await _getAccountInTx(transaction, companyId, vatInputAccount.id);
+          }
+        }
+
+        // --- ALL WRITES AFTER READS ---
+
+        final List<JournalLineModel> lines = [];
+        final Map<String, (double, double)> drCrTotals = {}; // accountId -> (debit, credit)
+
+        void addImpact(String id, double dr, double cr) {
+          final current = drCrTotals[id] ?? (0.0, 0.0);
+          drCrTotals[id] = (current.$1 + dr, current.$2 + cr);
+        }
+
+        // 1. Cr Bank/Cash
         lines.add(_createLine(
           fromAccTx,
           0,
@@ -1385,26 +1441,20 @@ class AccountingPostingService {
           jobNumber: voucher.jobNumber,
           jobName: voucher.jobName,
         ));
-        _updateAccountBalanceTx(transaction, fromAccTx, 0, voucher.totalAmount, user);
+        addImpact(fromAccount.id, 0, voucher.totalAmount);
 
-        // Check if fromAccount is linked to a BankAccount doc
-        final bankAccs = await _firestore
-            .collection('companies')
-            .doc(companyId)
-            .collection('bankAccounts')
-            .where('linkedChartAccountId', isEqualTo: fromAccount.id)
-            .get();
-        if (bankAccs.docs.isNotEmpty) {
-          await _updateBankBalanceTx(transaction, bankAccs.docs.first.reference, 0, voucher.totalAmount, user);
+        // 2. Update Bank Account balance if linked
+        if (linkedBankRef != null && bankAccSnap != null && bankAccSnap.exists) {
+          final bankData = bankAccSnap.data() as Map<String, dynamic>;
+          final currentBalance = (bankData['currentBalance'] as num?)?.toDouble() ?? 0.0;
+          transaction.update(linkedBankRef, {'currentBalance': currentBalance - voucher.totalAmount});
         }
 
-        // Dr Expense Accounts
+        // 3. Dr Expense Accounts
         for (var line in voucher.lines) {
-          final expAccTx = await _getAccountInTx(transaction, companyId, line.accountId);
-          _validatePostable(expAccTx, expAccTx.accountName);
-          
+          final acc = expAccountsTx[line.accountId]!;
           lines.add(_createLine(
-            expAccTx,
+            acc,
             line.amount,
             0,
             line.description,
@@ -1412,12 +1462,11 @@ class AccountingPostingService {
             jobNumber: line.jobNumber ?? voucher.jobNumber,
             jobName: line.jobName ?? voucher.jobName,
           ));
-          _updateAccountBalanceTx(transaction, expAccTx, line.amount, 0, user);
+          addImpact(line.accountId, line.amount, 0);
         }
 
-        // Dr VAT Input
-        if (vatInputAccount != null && voucher.totalVat > 0) {
-          final vatAccTx = await _getAccountInTx(transaction, companyId, vatInputAccount.id);
+        // 4. Dr VAT Input
+        if (vatAccTx != null) {
           lines.add(_createLine(
             vatAccTx,
             voucher.totalVat,
@@ -1427,10 +1476,30 @@ class AccountingPostingService {
             jobNumber: voucher.jobNumber,
             jobName: voucher.jobName,
           ));
-          _updateAccountBalanceTx(transaction, vatAccTx, voucher.totalVat, 0, user);
+          addImpact(vatAccTx.id, voucher.totalVat, 0);
         }
 
         _validateBalancing(lines);
+
+        // Perform aggregated balance updates for all accounts
+        for (var entry in drCrTotals.entries) {
+          final accId = entry.key;
+          final dr = entry.value.$1;
+          final cr = entry.value.$2;
+          
+          AccountModel? acc;
+          if (accId == fromAccount.id) {
+            acc = fromAccTx;
+          } else if (expAccountsTx.containsKey(accId)) {
+            acc = expAccountsTx[accId];
+          } else if (vatAccTx != null && accId == vatAccTx.id) {
+            acc = vatAccTx;
+          }
+
+          if (acc != null) {
+            _updateAccountBalanceTx(transaction, acc, dr, cr, user);
+          }
+        }
 
         final jeRef = _firestore.collection('companies').doc(companyId).collection('journalEntries').doc();
         final journalEntry = JournalEntryModel(

@@ -127,6 +127,42 @@ class BalanceSheetReport {
       (totalAssets - (totalLiabilities + totalEquity)).abs() < 0.01;
 }
 
+class StatementOfChangesInEquityReport {
+  final List<EquityChangeNode> nodes;
+  final double totalOpeningBalance;
+  final double totalNetIncome;
+  final double totalOtherChanges;
+  final double totalClosingBalance;
+
+  StatementOfChangesInEquityReport({
+    required this.nodes,
+    required this.totalOpeningBalance,
+    required this.totalNetIncome,
+    required this.totalOtherChanges,
+    required this.totalClosingBalance,
+  });
+}
+
+class EquityChangeNode {
+  final String accountId;
+  final String accountName;
+  final double openingBalance;
+  final double netIncomeAllocated;
+  final double drawings;
+  final double otherChanges;
+  final double closingBalance;
+
+  EquityChangeNode({
+    required this.accountId,
+    required this.accountName,
+    required this.openingBalance,
+    required this.netIncomeAllocated,
+    required this.drawings,
+    required this.otherChanges,
+    required this.closingBalance,
+  });
+}
+
 class ReportSection {
   final String title;
   final List<ReportLine> lines;

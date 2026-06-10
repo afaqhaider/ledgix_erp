@@ -4,6 +4,7 @@ import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/reports/services/job_report_service.dart';
 import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 import 'package:ledgixerp/features/settings/models/financial_settings_model.dart';
+import 'package:ledgixerp/core/services/export_service.dart';
 import '../widgets/job_drill_down_modal.dart';
 
 class JobReportScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class JobReportScreen extends StatefulWidget {
 class _JobReportScreenState extends State<JobReportScreen> {
   final _service = JobReportService();
   final _settingsService = FinancialSettingsService();
+  final _exportService = ExportService();
   List<JobReportData>? _data;
   bool _isLoading = true;
   String _searchQuery = '';
@@ -43,6 +45,58 @@ class _JobReportScreenState extends State<JobReportScreen> {
         );
       }
     }
+  }
+
+  void _exportExcel() {
+    if (_data == null || _data!.isEmpty) return;
+    
+    final headers = ['Job #', 'Job Name', 'Revenue', 'Expenses', 'Profit/Loss', 'Budget P/L', 'Variance', 'Margin %'];
+    final rows = _data!.map((d) => [
+      d.job.jobNumber,
+      d.job.jobName,
+      d.actualRevenue,
+      d.actualExpense,
+      d.actualProfitLoss,
+      d.job.expectedProfitLoss,
+      d.variance,
+      d.profitMargin,
+    ]).toList();
+
+    _exportService.exportToExcel(
+      fileName: 'Job_Profitability_Report',
+      sheetName: 'Profitability',
+      headers: headers,
+      data: rows,
+    );
+  }
+
+  void _exportPdf() {
+    if (_data == null || _data!.isEmpty) return;
+
+    final headers = ['Job #', 'Job Name', 'Revenue', 'Expenses', 'P/L', 'Margin %'];
+    final rows = _data!.map((d) => [
+      d.job.jobNumber,
+      d.job.jobName,
+      AppFormatters.currency(d.actualRevenue),
+      AppFormatters.currency(d.actualExpense),
+      AppFormatters.currency(d.actualProfitLoss),
+      '${d.profitMargin.toStringAsFixed(1)}%',
+    ]).toList();
+
+    final totalRevenue = _data!.fold(0.0, (sum, d) => sum + d.actualRevenue);
+    final totalExpense = _data!.fold(0.0, (sum, d) => sum + d.actualExpense);
+
+    _exportService.exportReportToPdf(
+      title: 'Job Profitability Report',
+      subTitle: 'Summary of all active projects',
+      headers: headers,
+      data: rows,
+      summary: {
+        'Total Revenue': AppFormatters.currency(totalRevenue),
+        'Total Expenses': AppFormatters.currency(totalExpense),
+        'Net Profit': AppFormatters.currency(totalRevenue - totalExpense),
+      },
+    );
   }
 
   List<JobReportData> _getFilteredData() {
@@ -152,10 +206,35 @@ class _JobReportScreenState extends State<JobReportScreen> {
             onPressed: _loadData,
           ),
           const SizedBox(width: 8),
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.download_outlined),
-            tooltip: 'Export',
-            onPressed: () {},
+            tooltip: 'Export Profitability',
+            onSelected: (value) {
+              if (value == 'excel') _exportExcel();
+              if (value == 'pdf') _exportPdf();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('Export as PDF'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('Export as Excel'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

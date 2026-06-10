@@ -5,6 +5,8 @@ import 'package:ledgixerp/features/operations/jobs/models/job_model.dart';
 import 'package:ledgixerp/features/operations/jobs/services/job_service.dart';
 import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 import 'package:ledgixerp/features/settings/models/financial_settings_model.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
+import 'job_detail_screen.dart';
 import 'add_job_pane.dart';
 
 class JobsScreen extends StatefulWidget {
@@ -77,19 +79,52 @@ class _JobsScreenState extends State<JobsScreen> {
             return const Center(child: Text('No jobs found. Start by creating a new job.'));
           }
 
-          return ListView.builder(
-            itemCount: jobs.length,
-            itemBuilder: (context, index) {
-              final job = jobs[index];
-              return ListTile(
-                title: Text('${job.jobNumber}: ${job.jobName}'),
-                subtitle: Text(job.customerName ?? 'No Customer'),
-                trailing: _buildStatusChip(job.status),
-                onTap: () {
-                  // View job details / Ledger
-                },
-              );
-            },
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 24,
+                columns: const [
+                  DataColumn(label: Text('Job #')),
+                  DataColumn(label: Text('Job Name')),
+                  DataColumn(label: Text('Customer')),
+                  DataColumn(label: Text('Revenue')),
+                  DataColumn(label: Text('Expenses')),
+                  DataColumn(label: Text('Profit/Loss')),
+                  DataColumn(label: Text('Status')),
+                ],
+                rows: jobs.map((job) {
+                  final profit = job.actualRevenue - job.actualCost;
+                  final profitColor = profit >= 0 ? Colors.green : Colors.red;
+
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(job.jobNumber)),
+                      DataCell(Text(job.jobName)),
+                      DataCell(Text(job.customerName ?? '-')),
+                      DataCell(Text(AppFormatters.currency(job.actualRevenue))),
+                      DataCell(Text(AppFormatters.currency(job.actualCost))),
+                      DataCell(
+                        Text(
+                          AppFormatters.currency(profit),
+                          style: TextStyle(color: profitColor, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      DataCell(_buildStatusChip(job.status)),
+                    ],
+                    onSelectChanged: (_) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => JobDetailScreen(job: job, user: widget.user),
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
           );
         },
       ),

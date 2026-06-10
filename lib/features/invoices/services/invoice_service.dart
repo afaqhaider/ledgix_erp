@@ -114,6 +114,7 @@ class InvoiceService {
         id: docRef.id,
         invoiceNumber: finalInvoiceNumber!,
         status: initialStatus,
+        isPosted: false, // Always false initially, posting service will set it
         approvalStatus: initialApprovalStatus,
       );
 
@@ -154,6 +155,50 @@ class InvoiceService {
         sourceId: invoiceId!,
         sourceNumber: finalInvoiceNumber ?? 'AUTO',
         amount: invoiceToProcess.totalAmount,
+      );
+    }
+  }
+
+  Future<void> updateInvoice(InvoiceModel invoice, AppUser user, {bool shouldPost = false}) async {
+    if (invoice.isPosted) throw Exception('Cannot update a posted invoice.');
+    
+    // Check period lock
+    if (shouldPost && await _settingsService.isPeriodLocked(invoice.companyId, invoice.invoiceDate)) {
+      throw Exception('Accounting period for this date is locked.');
+    }
+
+    final highRoles = [UserRole.owner, UserRole.superAdmin, UserRole.admin, UserRole.accountant, UserRole.generalManager];
+    bool isAuthorizedToPost = highRoles.contains(user.role);
+    bool actualPost = shouldPost && isAuthorizedToPost;
+
+    InvoiceStatus status = invoice.status;
+    String? approvalStatus = invoice.approvalStatus;
+
+    if (actualPost) {
+      status = InvoiceStatus.posted;
+      approvalStatus = 'approved';
+    } else if (shouldPost && !isAuthorizedToPost) {
+      status = InvoiceStatus.pendingApproval;
+      approvalStatus = 'pending';
+    }
+
+    final updatedInvoice = invoice.copyWith(
+      status: status,
+      approvalStatus: approvalStatus,
+    );
+
+    await _getInvoicesRef(invoice.companyId).doc(invoice.id).update(updatedInvoice.toMap());
+
+    if (actualPost) {
+      await _postingService.postSalesInvoice(invoice.companyId, updatedInvoice, user);
+    } else if (shouldPost && !isAuthorizedToPost) {
+      await _approvalService.submitForApproval(
+        user: user,
+        companyId: invoice.companyId,
+        sourceType: 'sales_invoice',
+        sourceId: invoice.id,
+        sourceNumber: invoice.invoiceNumber,
+        amount: invoice.totalAmount,
       );
     }
   }

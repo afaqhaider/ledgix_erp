@@ -6,7 +6,7 @@ import 'package:ledgixerp/features/suppliers/services/supplier_service.dart';
 import 'package:ledgixerp/features/purchase_orders/models/purchase_order_model.dart';
 import 'package:ledgixerp/features/purchase_orders/services/purchase_order_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
-import 'package:ledgixerp/features/suppliers/presentation/widgets/add_supplier_dialog.dart';
+import 'package:ledgixerp/features/suppliers/presentation/widgets/supplier_pane.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
 import 'package:ledgixerp/features/inventory/models/inventory_models.dart';
@@ -14,8 +14,7 @@ import 'package:ledgixerp/features/inventory/services/inventory_service.dart';
 import 'package:ledgixerp/features/settings/models/credit_term_model.dart';
 import 'package:ledgixerp/features/settings/services/terms_service.dart';
 import 'package:ledgixerp/features/settings/presentation/widgets/add_credit_term_dialog.dart';
-import 'package:ledgixerp/core/widgets/side_panel.dart';
-import 'package:ledgixerp/features/inventory/presentation/widgets/add_inventory_item_pane.dart';
+import 'package:ledgixerp/features/inventory/presentation/widgets/inventory_item_pane.dart';
 import 'package:ledgixerp/core/models/attachment_model.dart';
 import 'package:ledgixerp/core/widgets/attachment_section.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
@@ -212,10 +211,9 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
   }
 
   void _showAddSupplierDialog() {
-    showDialog(
+    showErpSidePane(
       context: context,
-      builder: (context) =>
-          AddSupplierDialog(companyId: widget.user.companyId!),
+      builder: SupplierPane(companyId: widget.user.companyId!),
     );
   }
 
@@ -228,10 +226,9 @@ class _AddPurchaseOrderScreenState extends State<AddPurchaseOrderScreen> {
   }
 
   void _showAddProductDialog() {
-    SidePanel.show(
+    showErpSidePane(
       context: context,
-      title: 'New Inventory Item',
-      child: AddInventoryItemPane(user: widget.user),
+      builder: InventoryItemPane(user: widget.user),
     );
   }
 

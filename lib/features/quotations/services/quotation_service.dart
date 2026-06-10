@@ -76,6 +76,10 @@ class QuotationService {
     ).doc(quotationId).update({'status': status.name});
   }
 
+  Future<void> deleteQuotation(String companyId, String quotationId) async {
+    await _getQuoRef(companyId).doc(quotationId).delete();
+  }
+
   Future<void> convertToInvoice(QuotationModel quotation, AppUser user) async {
     // Conversion usually happens as a new transaction
     // We can use the existing addInvoice which handles transactions

@@ -60,9 +60,11 @@ enum AppModuleId {
   bankReconciliation,
   cash,
   reports,
+  financialReports,
   trialBalance,
   profitLoss,
   balanceSheet,
+  statementOfChangesInEquity,
   generalLedger,
   jobReports,
   cashFlowStatement,
@@ -350,25 +352,46 @@ class AppModules {
       icon: Icons.analytics_rounded,
       modules: [
         AppModule(
+          id: AppModuleId.financialReports,
+          icon: Icons.account_balance_rounded,
+          label: 'Financial Reports',
+          permission: AppPermission.viewReports,
+          subModules: [
+            AppModule(
+              id: AppModuleId.profitLoss,
+              icon: Icons.trending_up_rounded,
+              label: 'Profit & Loss',
+              permission: AppPermission.viewReports,
+              pageBuilder: (user) => ProfitLossScreen(companyId: user.companyId!),
+            ),
+            AppModule(
+              id: AppModuleId.balanceSheet,
+              icon: Icons.pie_chart_rounded,
+              label: 'Balance Sheet',
+              permission: AppPermission.viewReports,
+              pageBuilder: (user) => BalanceSheetScreen(companyId: user.companyId!),
+            ),
+            AppModule(
+              id: AppModuleId.cashFlowStatement,
+              icon: Icons.unfold_more_rounded,
+              label: 'Cash Flow Statement',
+              permission: AppPermission.viewReports,
+              pageBuilder: (user) => CashFlowScreen(companyId: user.companyId!),
+            ),
+            const AppModule(
+              id: AppModuleId.statementOfChangesInEquity,
+              icon: Icons.account_balance_rounded,
+              label: 'Statement of Changes in Equity',
+              permission: AppPermission.viewReports,
+            ),
+          ],
+        ),
+        AppModule(
           id: AppModuleId.trialBalance,
           icon: Icons.account_balance_rounded,
           label: 'Trial Balance',
           permission: AppPermission.viewReports,
           pageBuilder: (user) => TrialBalanceScreen(companyId: user.companyId!),
-        ),
-        AppModule(
-          id: AppModuleId.profitLoss,
-          icon: Icons.trending_up_rounded,
-          label: 'Profit & Loss',
-          permission: AppPermission.viewReports,
-          pageBuilder: (user) => ProfitLossScreen(companyId: user.companyId!),
-        ),
-        AppModule(
-          id: AppModuleId.balanceSheet,
-          icon: Icons.pie_chart_rounded,
-          label: 'Balance Sheet',
-          permission: AppPermission.viewReports,
-          pageBuilder: (user) => BalanceSheetScreen(companyId: user.companyId!),
         ),
         AppModule(
           id: AppModuleId.generalLedger,
@@ -377,13 +400,6 @@ class AppModules {
           permission: AppPermission.viewReports,
           pageBuilder: (user) =>
               GeneralLedgerScreen(companyId: user.companyId!),
-        ),
-        AppModule(
-          id: AppModuleId.cashFlowStatement,
-          icon: Icons.unfold_more_rounded,
-          label: 'Cash Flow Statement',
-          permission: AppPermission.viewReports,
-          pageBuilder: (user) => CashFlowScreen(companyId: user.companyId!),
         ),
         AppModule(
           id: AppModuleId.accountStatement,

@@ -32,6 +32,7 @@ class BillModel {
   final String? journalEntryId;
   final List<AttachmentModel> attachments;
   final DateTime createdAt;
+  final String? approvalStatus; // pending, approved, rejected
 
   // Job Link (Header)
   final String? jobId;
@@ -59,6 +60,7 @@ class BillModel {
     this.journalEntryId,
     this.attachments = const [],
     required this.createdAt,
+    this.approvalStatus,
     this.jobId,
     this.jobNumber,
     this.jobName,
@@ -85,6 +87,7 @@ class BillModel {
       'journalEntryId': journalEntryId,
       'attachments': attachments.map((x) => x.toMap()).toList(),
       'createdAt': Timestamp.fromDate(createdAt),
+      'approvalStatus': approvalStatus,
       'jobId': jobId,
       'jobNumber': jobNumber,
       'jobName': jobName,
@@ -124,6 +127,7 @@ class BillModel {
               .toList() ??
           [],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      approvalStatus: map['approvalStatus'],
       jobId: map['jobId'],
       jobNumber: map['jobNumber'],
       jobName: map['jobName'],
@@ -151,6 +155,7 @@ class BillModel {
     String? journalEntryId,
     List<AttachmentModel>? attachments,
     DateTime? createdAt,
+    String? approvalStatus,
     String? jobId,
     String? jobNumber,
     String? jobName,
@@ -176,6 +181,7 @@ class BillModel {
       journalEntryId: journalEntryId ?? this.journalEntryId,
       attachments: attachments ?? this.attachments,
       createdAt: createdAt ?? this.createdAt,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
       jobId: jobId ?? this.jobId,
       jobNumber: jobNumber ?? this.jobNumber,
       jobName: jobName ?? this.jobName,

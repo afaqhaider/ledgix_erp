@@ -49,8 +49,8 @@ class _AddJobPaneState extends State<AddJobPane> {
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextFormField(
             controller: _nameController,
@@ -70,9 +70,10 @@ class _AddJobPaneState extends State<AddJobPane> {
             children: [
               Expanded(
                 child: ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Start Date'),
                   subtitle: Text(DateFormat('yyyy-MM-dd').format(_startDate)),
-                  trailing: const Icon(Icons.calendar_today),
+                  trailing: const Icon(Icons.calendar_today, size: 20),
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
@@ -84,6 +85,7 @@ class _AddJobPaneState extends State<AddJobPane> {
                   },
                 ),
               ),
+              const SizedBox(width: 16),
               Expanded(
                 child: DropdownButtonFormField<JobStatus>(
                   initialValue: _status,
@@ -130,7 +132,11 @@ class _AddJobPaneState extends State<AddJobPane> {
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             child: _isLoading 
-              ? const CircularProgressIndicator() 
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
               : const Text('Create Job'),
           ),
         ],

@@ -349,6 +349,119 @@ class FinancialReportService {
     );
   }
 
+  Future<StatementOfChangesInEquityReport> getStatementOfChangesInEquity(
+    String companyId,
+    DateTime startDate,
+    DateTime endDate, {
+    String? jobId,
+  }) async {
+    final accounts = await _fetchAccounts(companyId);
+
+    // 1. Get Profit & Loss for the period to get Net Income
+    final plReport = await getProfitLoss(
+      companyId,
+      startDate,
+      endDate,
+      jobId: jobId,
+    );
+    final netIncome = plReport.netProfit;
+
+    // 2. Get Opening Balances for all Equity accounts
+    final openingBalances = await _calculateBalances(
+      companyId,
+      accounts,
+      startDate.subtract(const Duration(seconds: 1)),
+      jobId: jobId,
+    );
+
+    // 3. Get Movements for the period
+    final movements = await _calculateDetailedMovements(
+      companyId,
+      accounts,
+      startDate,
+      endDate,
+      jobId: jobId,
+    );
+
+    List<EquityChangeNode> nodes = [];
+    double totalOpening = 0;
+    double totalNetIncomeAlloc = 0;
+    double totalOtherChanges = 0;
+    double totalClosing = 0;
+
+    // Filter only Equity accounts
+    final equityAccounts = accounts
+        .where((a) => a.accountType == AccountType.equity && a.allowPosting)
+        .toList();
+
+    bool netIncomeAllocated = false;
+
+    for (var acc in equityAccounts) {
+      double openingRaw = openingBalances[acc.id] ?? 0.0;
+      // Flip for display (Credit is positive for Equity)
+      double opening = -openingRaw;
+
+      final move = movements[acc.id] ?? {'debit': 0.0, 'credit': 0.0};
+      double dr = move['debit'] ?? 0.0;
+      double cr = move['credit'] ?? 0.0;
+
+      // Change = Credit - Debit (Positive = Increase in Equity)
+      double change = cr - dr;
+
+      double allocated = 0;
+      // Assign Net Income to Retained Earnings
+      if (!netIncomeAllocated &&
+          (acc.accountCategory == AccountCategory.retainedEarnings ||
+              acc.accountName.toLowerCase().contains('retained earnings'))) {
+        allocated = netIncome;
+        netIncomeAllocated = true;
+      }
+
+      double closing = opening + allocated + change;
+
+      // Only show accounts that have any activity or balance
+      if (opening.abs() > 0.01 || allocated.abs() > 0.01 || change.abs() > 0.01) {
+        nodes.add(EquityChangeNode(
+          accountId: acc.id,
+          accountName: acc.accountName,
+          openingBalance: opening,
+          netIncomeAllocated: allocated,
+          drawings: 0,
+          otherChanges: change,
+          closingBalance: closing,
+        ));
+
+        totalOpening += opening;
+        totalNetIncomeAlloc += allocated;
+        totalOtherChanges += change;
+        totalClosing += closing;
+      }
+    }
+
+    // If net income wasn't allocated to an existing account, add a virtual row for it
+    if (!netIncomeAllocated && netIncome.abs() > 0.01) {
+      nodes.add(EquityChangeNode(
+        accountId: 'net_income_virtual',
+        accountName: 'Current Year Earnings (Net Income)',
+        openingBalance: 0,
+        netIncomeAllocated: netIncome,
+        drawings: 0,
+        otherChanges: 0,
+        closingBalance: netIncome,
+      ));
+      totalNetIncomeAlloc += netIncome;
+      totalClosing += netIncome;
+    }
+
+    return StatementOfChangesInEquityReport(
+      nodes: nodes,
+      totalOpeningBalance: totalOpening,
+      totalNetIncome: totalNetIncomeAlloc,
+      totalOtherChanges: totalOtherChanges,
+      totalClosingBalance: totalClosing,
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getGeneralLedger(
     String companyId,
     String accountId,

@@ -1,0 +1,605 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ledgixerp/core/auth/app_user.dart';
+import 'package:ledgixerp/features/expenses/models/expense_voucher_model.dart';
+import 'package:ledgixerp/features/approvals/models/approval_request_model.dart';
+import 'package:ledgixerp/features/approvals/services/approval_service.dart';
+import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/features/company/models/company_model.dart';
+import 'package:ledgixerp/features/company/services/company_service.dart';
+import 'package:ledgixerp/widgets/erp_ui_components.dart';
+import 'package:ledgixerp/features/accounting/journal_entries/accounting_posting_service.dart';
+
+class ExpenseVoucherDetailScreen extends StatefulWidget {
+  final ExpenseVoucherModel voucher;
+  final AppUser user;
+
+  const ExpenseVoucherDetailScreen({
+    super.key,
+    required this.voucher,
+    required this.user,
+  });
+
+  @override
+  State<ExpenseVoucherDetailScreen> createState() => _ExpenseVoucherDetailScreenState();
+}
+
+class _ExpenseVoucherDetailScreenState extends State<ExpenseVoucherDetailScreen> {
+  final _approvalService = ApprovalService();
+  final _companyService = CompanyService();
+  final _postingService = AccountingPostingService();
+  bool _isPosting = false;
+  late ExpenseVoucherModel _currentVoucher;
+  CompanyModel? _company;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentVoucher = widget.voucher;
+    _loadCompany();
+  }
+
+  void _loadCompany() {
+    _companyService.getCompany(widget.user.companyId!).first.then((company) {
+      if (mounted) setState(() => _company = company);
+    });
+  }
+
+  Future<void> _submitForApproval() async {
+    setState(() => _isPosting = true);
+    try {
+      await _approvalService.submitForApproval(
+        user: widget.user,
+        companyId: widget.user.companyId!,
+        sourceType: 'expense_voucher',
+        sourceId: _currentVoucher.id,
+        sourceNumber: _currentVoucher.voucherNumber,
+        amount: _currentVoucher.totalAmount,
+      );
+
+      setState(() {
+        _currentVoucher = _currentVoucher.copyWith(approvalStatus: 'pending');
+      });
+
+      if (mounted) {
+        showErpSuccess(
+          context: context,
+          title: 'Submitted',
+          message: 'Voucher submitted for approval successfully.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showErpError(
+          context: context,
+          title: 'Approval Failed',
+          message: 'Could not submit voucher for approval.',
+          error: e,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPosting = false);
+    }
+  }
+
+  Future<void> _postToAccounting() async {
+    setState(() => _isPosting = true);
+    try {
+      await _postingService.postExpenseVoucher(
+        widget.user.companyId!,
+        _currentVoucher,
+        widget.user,
+      );
+
+      final updatedDoc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.user.companyId)
+          .collection('expenseVouchers')
+          .doc(_currentVoucher.id)
+          .get();
+
+      if (updatedDoc.exists && mounted) {
+        setState(() {
+          _currentVoucher = ExpenseVoucherModel.fromMap(
+            updatedDoc.data()!,
+            updatedDoc.id,
+          );
+        });
+      }
+
+      if (mounted) {
+        showErpSuccess(
+          context: context,
+          title: 'Posted',
+          message: 'Voucher posted to accounting successfully',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showErpError(context: context, error: e);
+      }
+    } finally {
+      if (mounted) setState(() => _isPosting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final voucher = _currentVoucher;
+
+    final primaryColor = _company != null
+        ? Color(
+            int.parse(_company!.primaryBrandColor.replaceFirst('#', '0xFF')),
+          )
+        : theme.colorScheme.primary;
+
+    final isPosted = voucher.status == ExpenseVoucherStatus.posted;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Voucher ${voucher.voucherNumber}'),
+        actions: [
+          if (!isPosted) ...[
+            if (voucher.approvalStatus == 'approved' ||
+                widget.user.role.hasPermission(AppPermission.manageAccounting))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: ElevatedButton.icon(
+                  onPressed: _isPosting ? null : _postToAccounting,
+                  icon: _isPosting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.account_balance),
+                  label: const Text('Post'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              )
+            else if (voucher.approvalStatus == null ||
+                voucher.approvalStatus == 'rejected')
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: ElevatedButton.icon(
+                  onPressed: _isPosting ? null : _submitForApproval,
+                  icon: const Icon(Icons.send),
+                  label: const Text('Submit for Approval'),
+                ),
+              ),
+          ],
+          if (voucher.approvalStatus != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Chip(
+                label: Text(
+                  voucher.approvalStatus!.toUpperCase(),
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
+                ),
+                backgroundColor: voucher.approvalStatus == 'approved'
+                    ? Colors.green
+                    : (voucher.approvalStatus == 'pending'
+                          ? Colors.orange
+                          : Colors.red),
+              ),
+            ),
+          if (isPosted)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Chip(
+                label: Text(
+                  'POSTED',
+                  style: TextStyle(color: Colors.white, fontSize: 10),
+                ),
+                backgroundColor: Colors.blue,
+              ),
+            ),
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
+            onPressed: () {
+              // Future print functionality
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 800),
+          margin: const EdgeInsets.all(20),
+          child: Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(0),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(48),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_company?.companyLogoUrl != null)
+                            Image.network(
+                              _company!.companyLogoUrl!,
+                              height: 60,
+                            )
+                          else
+                            Icon(
+                              Icons.account_balance_wallet,
+                              size: 60,
+                              color: primaryColor,
+                            ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _company?.companyLegalName ?? 'LedGix ERP',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'EXPENSE VOUCHER',
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '# ${voucher.voucherNumber}',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 48),
+
+                  // Info
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'PAID FROM',
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              voucher.fromAccountName,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            _buildInfoRow(
+                              context,
+                              'Date',
+                              DateFormat('dd MMM yyyy').format(voucher.date),
+                            ),
+                            if (voucher.jobNumber != null)
+                              _buildInfoRow(context, 'Job #', voucher.jobNumber!),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 48),
+
+                  // Description
+                  if (voucher.description.isNotEmpty) ...[
+                    Text(
+                      'DESCRIPTION',
+                      style: theme.textTheme.labelLarge?.copyWith(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      voucher.description,
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+
+                  // Items Table
+                  Table(
+                    columnWidths: const {
+                      0: FlexColumnWidth(4),
+                      1: FlexColumnWidth(2),
+                      2: FlexColumnWidth(2),
+                    },
+                    children: [
+                      TableRow(
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: primaryColor, width: 2),
+                          ),
+                        ),
+                        children: [
+                          _buildHeaderCell('Expense Account / Description'),
+                          _buildHeaderCell('VAT', textAlign: TextAlign.right),
+                          _buildHeaderCell('Total', textAlign: TextAlign.right),
+                        ],
+                      ),
+                      ...voucher.lines.map(
+                        (line) => TableRow(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: Colors.grey.shade200),
+                            ),
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    line.accountName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  if (line.description.isNotEmpty)
+                                    Text(
+                                      line.description,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              child: Text(
+                                NumberFormat('#,##0.00').format(line.vatAmount),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                              child: Text(
+                                NumberFormat('#,##0.00').format(line.total),
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Totals
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 250,
+                      child: Column(
+                        children: [
+                          _buildTotalRow(
+                            'Subtotal',
+                            voucher.totalAmount - voucher.totalVat,
+                          ),
+                          _buildTotalRow('VAT Amount', voucher.totalVat),
+                          const Divider(height: 24),
+                          _buildTotalRow(
+                            'Total',
+                            voucher.totalAmount,
+                            isBold: true,
+                            color: primaryColor,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 64),
+                  _buildApprovalHistory(),
+                  const SizedBox(height: 32),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApprovalHistory() {
+    return StreamBuilder<List<ApprovalRequestModel>>(
+      stream: FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.user.companyId)
+          .collection('approvalRequests')
+          .where('sourceId', isEqualTo: _currentVoucher.id)
+          .snapshots()
+          .map(
+            (snap) => snap.docs
+                .map((doc) => ApprovalRequestModel.fromMap(doc.data(), doc.id))
+                .toList(),
+          ),
+      builder: (context, snapshot) {
+        final requests = snapshot.data ?? [];
+        if (requests.isEmpty) return const SizedBox.shrink();
+
+        final request = requests.first;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Approval History',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            ...request.history.map(
+              (h) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      h.action == ApprovalStatus.approved
+                          ? Icons.check_circle
+                          : (h.action == ApprovalStatus.rejected
+                                ? Icons.cancel
+                                : Icons.replay),
+                      size: 16,
+                      color: h.action == ApprovalStatus.approved
+                          ? Colors.green
+                          : (h.action == ApprovalStatus.rejected
+                                ? Colors.red
+                                : Colors.orange),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${h.action.name.toUpperCase()} by ${h.userName}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (h.comments != null && h.comments!.isNotEmpty)
+                            Text(
+                              '"${h.comments}"',
+                              style: const TextStyle(
+                                fontStyle: FontStyle.italic,
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          Text(
+                            DateFormat('dd MMM yyyy HH:mm').format(h.timestamp),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(
+            color: theme.textTheme.bodyMedium?.color,
+            fontSize: 13,
+          ),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(color: Colors.grey),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderCell(String text, {TextAlign textAlign = TextAlign.left}) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        text.toUpperCase(),
+        textAlign: textAlign,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _buildTotalRow(
+    String label,
+    double value, {
+    bool isBold = false,
+    Color? color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 16 : 14,
+            ),
+          ),
+          Text(
+            NumberFormat('#,##0.00').format(value),
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 18 : 14,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

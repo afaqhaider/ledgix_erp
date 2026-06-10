@@ -23,6 +23,8 @@ class JobModel {
   final double expectedRevenue;
   final double expectedCost;
   final double expectedProfitLoss;
+  final double actualRevenue;
+  final double actualCost;
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -41,6 +43,8 @@ class JobModel {
     this.expectedRevenue = 0.0,
     this.expectedCost = 0.0,
     this.expectedProfitLoss = 0.0,
+    this.actualRevenue = 0.0,
+    this.actualCost = 0.0,
     this.notes,
     required this.createdAt,
     required this.updatedAt,
@@ -61,6 +65,8 @@ class JobModel {
       'expectedRevenue': expectedRevenue,
       'expectedCost': expectedCost,
       'expectedProfitLoss': expectedProfitLoss,
+      'actualRevenue': actualRevenue,
+      'actualCost': actualCost,
       'notes': notes,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -85,6 +91,8 @@ class JobModel {
       expectedRevenue: (map['expectedRevenue'] as num?)?.toDouble() ?? 0.0,
       expectedCost: (map['expectedCost'] as num?)?.toDouble() ?? 0.0,
       expectedProfitLoss: (map['expectedProfitLoss'] as num?)?.toDouble() ?? 0.0,
+      actualRevenue: (map['actualRevenue'] as num?)?.toDouble() ?? 0.0,
+      actualCost: (map['actualCost'] as num?)?.toDouble() ?? 0.0,
       notes: map['notes'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: (map['updatedAt'] as Timestamp).toDate(),
@@ -102,6 +110,8 @@ class JobModel {
     double? expectedRevenue,
     double? expectedCost,
     double? expectedProfitLoss,
+    double? actualRevenue,
+    double? actualCost,
     String? notes,
     DateTime? updatedAt,
   }) {
@@ -118,6 +128,8 @@ class JobModel {
       expectedRevenue: expectedRevenue ?? this.expectedRevenue,
       expectedCost: expectedCost ?? this.expectedCost,
       expectedProfitLoss: expectedProfitLoss ?? this.expectedProfitLoss,
+      actualRevenue: actualRevenue ?? this.actualRevenue,
+      actualCost: actualCost ?? this.actualCost,
       notes: notes ?? this.notes,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

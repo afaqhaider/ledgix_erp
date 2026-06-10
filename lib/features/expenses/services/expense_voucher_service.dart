@@ -199,4 +199,20 @@ class ExpenseVoucherService {
             .map((doc) => ExpenseVoucherModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
             .toList());
   }
+
+  Future<void> updateVoucher(ExpenseVoucherModel voucher) async {
+    await _getVouchersRef(voucher.companyId).doc(voucher.id).update(voucher.toMap());
+  }
+
+  Future<void> deleteVoucher(String companyId, String voucherId) async {
+    final doc = await _getVouchersRef(companyId).doc(voucherId).get();
+    if (!doc.exists) return;
+    
+    final voucher = ExpenseVoucherModel.fromMap(doc.data() as Map<String, dynamic>, voucherId);
+    if (voucher.status == ExpenseVoucherStatus.posted) {
+      throw Exception('Cannot delete a posted expense voucher. Void it instead.');
+    }
+    
+    await _getVouchersRef(companyId).doc(voucherId).delete();
+  }
 }

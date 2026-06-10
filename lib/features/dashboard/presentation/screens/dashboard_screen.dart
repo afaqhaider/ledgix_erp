@@ -37,6 +37,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final GlobalKey<NavigatorState> _shellNavigatorKey =
       GlobalKey<NavigatorState>();
   AppModule _selectedModule = AppModules.dashboard;
+  Key _dashboardKey = UniqueKey();
   final _dashboardService = DashboardService();
   final _companyService = CompanyService();
   final _searchService = SearchService();
@@ -58,6 +59,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       widget.user.companyId!,
       widget.user.uid,
     );
+  }
+
+  void _refreshDashboard() {
+    debugPrint('DashboardScreen: refreshing data');
+    setState(() {
+      _statsStream =
+          _dashboardService.getDashboardStats(widget.user.companyId!);
+      _companyStream = _companyService.getCompany(widget.user.companyId!);
+      _dashboardKey = UniqueKey();
+    });
   }
 
   final LayerLink _searchLayerLink = LayerLink();
@@ -253,6 +264,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 companyId: widget.user.companyId,
                 selectedModuleId: _selectedModule.id,
                 onModuleSelected: (module) {
+                  if (module.id == AppModuleId.dashboard) {
+                    _refreshDashboard();
+                  }
                   setState(() => _selectedModule = module);
                   Navigator.pop(context);
                 },
@@ -267,6 +281,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               companyId: widget.user.companyId,
               selectedModuleId: _selectedModule.id,
               onModuleSelected: (module) {
+                if (module.id == AppModuleId.dashboard) {
+                  _refreshDashboard();
+                }
                 setState(() => _selectedModule = module);
               },
             ),
@@ -319,8 +336,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             IconButton(
               icon: const Icon(Icons.arrow_back),
               tooltip: 'Back to Dashboard',
-              onPressed: () =>
-                  setState(() => _selectedModule = AppModules.dashboard),
+              onPressed: () {
+                _refreshDashboard();
+                setState(() => _selectedModule = AppModules.dashboard);
+              },
             )
           else if (isMobile)
             Builder(
@@ -424,6 +443,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final padding = screenWidth < 600 ? 12.0 : 24.0;
 
     return StreamBuilder<CompanyModel?>(
+      key: _dashboardKey,
       stream: _companyStream,
       builder: (context, companySnapshot) {
         final currency = companySnapshot.data?.baseCurrency ?? 'AED';
@@ -435,42 +455,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final stats = statsSnapshot.data ?? DashboardStats();
             final hasStatsError = statsSnapshot.hasError;
 
-            return SingleChildScrollView(
-              padding: EdgeInsets.all(padding),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final showQuickActionsRail = constraints.maxWidth >= 760;
-                  final mainContent = Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (hasStatsError) ...[
-                        _buildDashboardDataNotice(statsSnapshot.error),
+            return RefreshIndicator(
+              onRefresh: () async {
+                _refreshDashboard();
+                await Future.delayed(const Duration(milliseconds: 500));
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(padding),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final showQuickActionsRail = constraints.maxWidth >= 760;
+                    final mainContent = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (hasStatsError) ...[
+                          _buildDashboardDataNotice(statsSnapshot.error),
+                          const SizedBox(height: 16),
+                        ],
+                        _buildKPIGrid(stats, currency),
                         const SizedBox(height: 16),
+                        _buildChartsRow(stats),
+                        const SizedBox(height: 16),
+                        _buildActivityGrid(
+                          widget.user.companyId!,
+                          currency,
+                          stats,
+                        ),
                       ],
-                      _buildKPIGrid(stats, currency),
-                      const SizedBox(height: 16),
-                      _buildChartsRow(stats),
-                      const SizedBox(height: 16),
-                      _buildActivityGrid(widget.user.companyId!, currency, stats),
-                    ],
-                  );
+                    );
 
-                  if (!showQuickActionsRail) return mainContent;
+                    if (!showQuickActionsRail) return mainContent;
 
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: mainContent),
-                      const SizedBox(width: 16),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOut,
-                        width: _isQuickActionsCollapsed ? 48 : 280,
-                        child: _buildQuickActionsRail(),
-                      ),
-                    ],
-                  );
-                },
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: mainContent),
+                        const SizedBox(width: 16),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOut,
+                          width: _isQuickActionsCollapsed ? 48 : 280,
+                          child: _buildQuickActionsRail(),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             );
           },

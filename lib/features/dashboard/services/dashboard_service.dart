@@ -6,6 +6,7 @@ import 'package:ledgixerp/features/quotations/models/quotation_model.dart';
 import 'package:ledgixerp/features/crm/customer_payments/models/customer_payment_model.dart';
 import 'package:ledgixerp/features/supplier_payments/models/supplier_payment_model.dart';
 import 'package:ledgixerp/features/suppliers/models/bill_model.dart';
+import 'package:ledgixerp/features/expenses/models/expense_voucher_model.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
 
@@ -158,6 +159,30 @@ class DashboardService {
           }
         }
 
+        // 2b. Fetch ALL Posted Expense Vouchers
+        final allVouchersSnap = await _firestore
+            .collection('companies')
+            .doc(companyId)
+            .collection('expenseVouchers')
+            .where('isPosted', isEqualTo: true)
+            .get();
+
+        debugPrint(
+          'Dashboard Debug: expenseVouchers query returned ${allVouchersSnap.docs.length} documents',
+        );
+
+        for (var doc in allVouchersSnap.docs) {
+          final data = doc.data();
+          final voucher = ExpenseVoucherModel.fromMap(data, doc.id);
+          totalExpenses += voucher.totalAmount;
+
+          if (!voucher.date.isBefore(prevMonthStart)) {
+            if (voucher.date.isBefore(currentMonthStart)) {
+              prevMonthExpenses += voucher.totalAmount;
+            }
+          }
+        }
+
         // 3. Cash Balance from Chart of Accounts
         final accountSnap = await _firestore
             .collection('companies')
@@ -273,6 +298,16 @@ class DashboardService {
               (now.month - bill.billDate.month);
           if (monthDiff >= 0 && monthDiff < 6) {
             expenseChartData[5 - monthDiff] += bill.totalAmount;
+          }
+        }
+
+        for (var doc in allVouchersSnap.docs) {
+          final voucher = ExpenseVoucherModel.fromMap(doc.data(), doc.id);
+          final monthDiff =
+              (now.year - voucher.date.year) * 12 +
+              (now.month - voucher.date.month);
+          if (monthDiff >= 0 && monthDiff < 6) {
+            expenseChartData[5 - monthDiff] += voucher.totalAmount;
           }
         }
 
@@ -403,6 +438,12 @@ class DashboardService {
         .collection('chartOfAccounts')
         .snapshots()
         .listen((_) => update('chartOfAccounts change'));
+    final sub8 = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('expenseVouchers')
+        .snapshots()
+        .listen((_) => update('expenseVouchers change'));
 
     controller.onCancel = () {
       debugPrint(
@@ -416,6 +457,7 @@ class DashboardService {
       sub5.cancel();
       sub6.cancel();
       sub7.cancel();
+      sub8.cancel();
     };
 
     performUpdate('initial call');

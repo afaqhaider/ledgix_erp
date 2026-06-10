@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:ledgixerp/core/auth/app_user.dart';
 import 'package:ledgixerp/core/auth/permission.dart';
+import 'package:ledgixerp/core/utils/app_formatters.dart';
+import 'package:ledgixerp/core/widgets/erp_layout.dart';
+import 'package:ledgixerp/core/widgets/erp_data_table.dart';
+import 'package:ledgixerp/core/widgets/erp_dialogs.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_model.dart';
 import 'package:ledgixerp/features/accounting/chart_of_accounts/account_service.dart';
-import 'package:ledgixerp/features/accounting/chart_of_accounts/add_account_dialog.dart';
+import 'package:ledgixerp/features/accounting/chart_of_accounts/account_pane.dart';
 import 'package:ledgixerp/features/data_migration/presentation/widgets/import_export_modal.dart';
 import 'package:ledgixerp/features/data_migration/presentation/widgets/export_modal.dart';
 import 'package:ledgixerp/features/data_migration/models/migration_models.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ChartOfAccountsScreen extends StatefulWidget {
   final AppUser user;
@@ -77,393 +79,293 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
       AppPermission.manageAccounting,
     );
 
-    return Column(
-      children: [
-        _buildHeader(theme, canManage),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          child: TextField(
-            onChanged: (value) => setState(() => _searchQuery = value),
-            decoration: InputDecoration(
-              hintText: 'Search accounts by name or code...',
-              prefixIcon: const Icon(Icons.search, size: 20),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(
-                    alpha: 0.5,
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        children: [
+          ERPPageHeader(
+            title: 'Chart of Accounts',
+            subtitle: 'Manage your general ledger accounts and structure',
+            actions: [
+              if (canManage) ...[
+                OutlinedButton.icon(
+                  onPressed: () => _showImportModal(context),
+                  icon: const Icon(Icons.file_upload_outlined, size: 18),
+                  label: const Text('Import'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _showExportModal(context),
+                  icon: const Icon(Icons.file_download_outlined, size: 18),
+                  label: const Text('Export'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () => _showAccountPane(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Account'),
+                ),
+              ],
+            ],
+          ),
+          ERPActionToolbar(
+            searchField: SizedBox(
+              height: 40,
+              child: TextField(
+                onChanged: (value) => setState(() => _searchQuery = value),
+                decoration: InputDecoration(
+                  hintText: 'Search accounts by name or code...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-        Expanded(
-          child: StreamBuilder<List<AccountModel>>(
-            stream: _accountService.getAccounts(widget.user.companyId!),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          Expanded(
+            child: StreamBuilder<List<AccountModel>>(
+              stream: _accountService.getAccounts(widget.user.companyId!),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-              if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-              final allAccounts = snapshot.data ?? [];
+                final allAccounts = snapshot.data ?? [];
 
-              if (allAccounts.isEmpty) {
-                return _buildEmptyState(theme, canManage);
-              }
-
-              final visibleAccounts = _buildVisibleAccounts(allAccounts);
-
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant.withValues(
-                        alpha: 0.5,
-                      ),
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Theme(
-                      data: theme.copyWith(dividerColor: Colors.transparent),
-                      child: DataTable(
-                        headingRowHeight: 48,
-                        dataRowMinHeight: 48,
-                        dataRowMaxHeight: 60,
-                        horizontalMargin: 24,
-                        columnSpacing: 40,
-                        headingRowColor: WidgetStateProperty.all(
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.03)
-                              : Colors.black.withValues(alpha: 0.02),
-                        ),
-                        columns: [
-                          _buildColumn('Code'),
-                          _buildColumn('Name'),
-                          _buildColumn('Category'),
-                          _buildColumn('Type'),
-                          _buildColumn('Posting'),
-                          _buildColumn('Balance', numeric: true),
-                          _buildColumn('Actions'),
-                        ],
-                        rows: visibleAccounts.map((account) {
-                          final bool isExpanded = _expandedAccountIds.contains(
-                            account.id,
-                          );
-                          final bool hasChildren = allAccounts.any(
-                            (a) => a.parentAccountId == account.id,
-                          );
-
-                          return DataRow(
-                            color: account.isGroup
-                                ? WidgetStateProperty.all(
-                                    isDark
-                                        ? Colors.white.withValues(alpha: 0.02)
-                                        : Colors.grey.withValues(alpha: 0.03),
-                                  )
-                                : null,
-                            cells: [
-                              DataCell(
-                                Text(
-                                  account.accountCode,
-                                  style: GoogleFonts.jetBrainsMono(
-                                    fontSize: 12,
-                                    fontWeight: account.isGroup
-                                        ? FontWeight.w700
-                                        : FontWeight.w400,
-                                    color: account.isGroup
-                                        ? theme.colorScheme.onSurface
-                                        : theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.7),
-                                  ),
-                                ),
+                if (allAccounts.isEmpty) {
+                  return ERPEmptyState(
+                    title: 'No accounts found',
+                    message: 'Get started by adding your first account',
+                    icon: Icons.account_balance_wallet_outlined,
+                    action: canManage
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () => _showAccountPane(context),
+                                child: const Text('Add Your First Account'),
                               ),
-                              DataCell(
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    left: account.level * 20.0,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (account.isGroup)
-                                        SizedBox(
-                                          width: 24,
-                                          child: hasChildren
-                                              ? InkWell(
-                                                  onTap: () => _toggleExpanded(
-                                                    account.id,
-                                                  ),
-                                                  child: Icon(
-                                                    isExpanded
-                                                        ? Icons
-                                                              .keyboard_arrow_down_rounded
-                                                        : Icons
-                                                              .keyboard_arrow_right_rounded,
-                                                    size: 20,
-                                                    color: theme
-                                                        .colorScheme
-                                                        .primary,
-                                                  ),
-                                                )
-                                              : Icon(
-                                                  Icons.folder_open_outlined,
-                                                  size: 16,
-                                                  color: theme
-                                                      .colorScheme
-                                                      .primary
-                                                      .withValues(alpha: 0.5),
-                                                ),
-                                        )
-                                      else
-                                        const SizedBox(
-                                          width: 24,
-                                          child: Center(
-                                            child: Icon(
-                                              Icons.description_outlined,
-                                              size: 14,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        account.accountName,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: account.isGroup
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
-                                          color: account.isGroup
-                                              ? theme.colorScheme.onSurface
-                                              : theme.colorScheme.onSurface
-                                                    .withValues(alpha: 0.85),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  _getDisplayCategory(account),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.7),
-                                  ),
-                                ),
-                              ),
-                              DataCell(_buildTypeBadge(account.accountType)),
-                              DataCell(
-                                account.allowPosting
-                                    ? Icon(
-                                        Icons.check_circle_outline_rounded,
-                                        size: 18,
-                                        color: Colors.blue.withValues(
-                                          alpha: 0.7,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.remove_circle_outline_rounded,
-                                        size: 18,
-                                        color: Colors.grey,
-                                      ),
-                              ),
-                              DataCell(
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      NumberFormat(
-                                        '#,##0.00',
-                                      ).format(account.openingBalance),
-                                      style: GoogleFonts.jetBrainsMono(
-                                        fontSize: 13,
-                                        fontWeight: account.isGroup
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      account.openingBalanceType.shortLabel,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color:
-                                            account.openingBalanceType ==
-                                                BalanceType.debit
-                                            ? Colors.blue
-                                            : Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.visibility_outlined,
-                                        size: 18,
-                                      ),
-                                      onPressed: () => _showAddAccountDialog(
-                                        context,
-                                        account: account,
-                                        isReadOnly: true,
-                                      ),
-                                      tooltip: 'View',
-                                    ),
-                                    if (canManage &&
-                                        !account.isSystemAccount) ...[
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.edit_outlined,
-                                          size: 18,
-                                        ),
-                                        onPressed: () => _showAddAccountDialog(
-                                          context,
-                                          account: account,
-                                        ),
-                                        tooltip: 'Edit',
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete_outline_rounded,
-                                          size: 18,
-                                          color: Colors.redAccent,
-                                        ),
-                                        onPressed: () =>
-                                            _confirmDelete(account),
-                                        tooltip: 'Delete',
-                                      ),
-                                    ],
-                                  ],
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: () async {
+                                  await _accountService.seedDefaultAccounts(
+                                    widget.user.companyId!,
+                                  );
+                                },
+                                child: const Text(
+                                  'Seed Default Chart of Accounts',
                                 ),
                               ),
                             ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+                          )
+                        : null,
+                  );
+                }
 
-  Widget _buildHeader(ThemeData theme, bool canManage) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Chart of Accounts',
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                Text(
-                  'Manage your general ledger accounts and structure',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
+                final visibleAccounts = _buildVisibleAccounts(allAccounts);
+
+                return ERPDataTable<AccountModel>(
+                  columns: const [
+                    'CODE',
+                    'NAME',
+                    'CATEGORY',
+                    'TYPE',
+                    'POSTING',
+                    'BALANCE',
+                    '',
+                  ],
+                  items: visibleAccounts,
+                  rowBuilder: (account, index) {
+                    final bool isExpanded = _expandedAccountIds.contains(
+                      account.id,
+                    );
+                    final bool hasChildren = allAccounts.any(
+                      (a) => a.parentAccountId == account.id,
+                    );
+
+                    return DataRow(
+                      color: account.isGroup
+                          ? WidgetStateProperty.all(
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.02)
+                                  : Colors.grey.withValues(alpha: 0.03),
+                            )
+                          : null,
+                      cells: [
+                        DataCell(
+                          Text(
+                            account.accountCode,
+                            style: TextStyle(
+                              fontWeight: account.isGroup
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Padding(
+                            padding: EdgeInsets.only(
+                              left: account.level * 20.0,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (account.isGroup)
+                                  SizedBox(
+                                    width: 24,
+                                    child: hasChildren
+                                        ? InkWell(
+                                            onTap: () => _toggleExpanded(
+                                              account.id,
+                                            ),
+                                            child: Icon(
+                                              isExpanded
+                                                  ? Icons
+                                                        .keyboard_arrow_down_rounded
+                                                  : Icons
+                                                        .keyboard_arrow_right_rounded,
+                                              size: 20,
+                                              color: theme.colorScheme.primary,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.folder_open_outlined,
+                                            size: 16,
+                                            color: theme.colorScheme.primary
+                                                .withValues(alpha: 0.5),
+                                          ),
+                                  )
+                                else
+                                  const SizedBox(
+                                    width: 24,
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.description_outlined,
+                                        size: 14,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  account.accountName,
+                                  style: TextStyle(
+                                    fontWeight: account.isGroup
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        DataCell(Text(_getDisplayCategory(account))),
+                        DataCell(_buildTypeBadge(account.accountType)),
+                        DataCell(
+                          account.allowPosting
+                              ? Icon(
+                                  Icons.check_circle_outline_rounded,
+                                  size: 18,
+                                  color: Colors.blue.withValues(alpha: 0.7),
+                                )
+                              : const Icon(
+                                  Icons.remove_circle_outline_rounded,
+                                  size: 18,
+                                  color: Colors.grey,
+                                ),
+                        ),
+                        DataCell(
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                AppFormatters.currency(account.openingBalance),
+                                style: TextStyle(
+                                  fontWeight: account.isGroup
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                account.openingBalanceType.shortLabel,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: account.openingBalanceType ==
+                                          BalanceType.debit
+                                      ? Colors.blue
+                                      : Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.visibility_outlined,
+                                  size: 18,
+                                ),
+                                onPressed: () => _showAccountPane(
+                                  context,
+                                  account: account,
+                                  isReadOnly: true,
+                                ),
+                                tooltip: 'View',
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              if (canManage && !account.isSystemAccount) ...[
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                  ),
+                                  onPressed: () => _showAccountPane(
+                                    context,
+                                    account: account,
+                                  ),
+                                  tooltip: 'Edit',
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 18,
+                                    color: Colors.redAccent,
+                                  ),
+                                  onPressed: () => _confirmDelete(account),
+                                  tooltip: 'Delete',
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
             ),
           ),
-          if (canManage) ...[
-            _buildHeaderAction(
-              icon: Icons.south_west_rounded,
-              label: 'Import',
-              onTap: () => _showImportModal(context),
-            ),
-            const SizedBox(width: 8),
-            _buildHeaderAction(
-              icon: Icons.north_east_rounded,
-              label: 'Export',
-              onTap: () => _showExportModal(context),
-            ),
-            const SizedBox(width: 16),
-            ElevatedButton.icon(
-              onPressed: () => _showAddAccountDialog(context),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add Account'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildHeaderAction({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-
-  DataColumn _buildColumn(String label, {bool numeric = false}) {
-    return DataColumn(
-      numeric: numeric,
-      label: Text(
-        label.toUpperCase(),
-        style: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-          color: Colors.grey[600],
-        ),
-      ),
-    );
-  }
 
   Widget _buildTypeBadge(AccountType type) {
     return Container(
@@ -479,42 +381,6 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(ThemeData theme, bool canManage) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.account_balance_wallet_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No accounts found',
-            style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
-          ),
-          if (canManage) ...[
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => _showAddAccountDialog(context),
-              child: const Text('Add Your First Account'),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () async {
-                await _accountService.seedDefaultAccounts(
-                  widget.user.companyId!,
-                );
-              },
-              child: const Text('Seed Default Chart of Accounts'),
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -608,14 +474,14 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
     }
   }
 
-  void _showAddAccountDialog(
+  void _showAccountPane(
     BuildContext context, {
     AccountModel? account,
     bool isReadOnly = false,
   }) {
-    showDialog(
+    showErpSidePane(
       context: context,
-      builder: (context) => AddAccountDialog(
+      builder: AccountPane(
         companyId: widget.user.companyId!,
         account: account,
         isReadOnly: isReadOnly,
@@ -624,45 +490,26 @@ class _ChartOfAccountsScreenState extends State<ChartOfAccountsScreen> {
   }
 
   Future<void> _confirmDelete(AccountModel account) async {
-    final confirmed = await showDialog<bool>(
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: Text(
-          'Are you sure you want to delete ${account.accountName}? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
+      builder: (_) => ERPConfirmDeleteDialog(
+        title: 'Delete Account',
+        message: 'Are you sure you want to delete ${account.accountName}? This action cannot be undone and will fail if the account has transactions.',
+        onConfirm: () async {
+          try {
+            await _accountService.deleteAccount(widget.user.companyId!, account.id);
+          } catch (e) {
+            if (mounted) {
+              showErpError(
+                context: context,
+                title: 'Delete Failed',
+                message: e.toString().replaceFirst('Exception: ', ''),
+              );
+            }
+          }
+        },
       ),
     );
-
-    if (confirmed == true) {
-      try {
-        await _accountService.deleteAccount(widget.user.companyId!, account.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account deleted successfully')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          showErpError(
-            context: context,
-            title: 'Delete Failed',
-            message: e.toString().replaceFirst('Exception: ', ''),
-          );
-        }
-      }
-    }
   }
 
   void _showImportModal(BuildContext context) {
