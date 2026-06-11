@@ -150,9 +150,15 @@ class AccountingPostingService {
         double totalCogs = 0.0;
         final List<Map<String, dynamic>> productUpdates = [];
         final Map<String, double> salesImpacts = {}; // accountId -> amount
+        final Map<String, double> jobRevenueImpacts = {}; // jobId -> amount
 
         for (var item in invoice.items) {
           String? itemSalesAccountId;
+
+          final effectiveJobId = (item.jobId != null && item.jobId!.isNotEmpty) ? item.jobId : invoice.jobId;
+          if (effectiveJobId != null && effectiveJobId.isNotEmpty) {
+            jobRevenueImpacts[effectiveJobId] = (jobRevenueImpacts[effectiveJobId] ?? 0) + item.lineSubtotal;
+          }
 
           if (item.productId != null && item.productId!.isNotEmpty) {
             final pRef = _firestore
@@ -378,6 +384,14 @@ class AccountingPostingService {
           'postedBy': user.uid,
           'balanceDue': invoice.totalAmount - invoice.amountPaid,
         });
+
+        // Update Job Balances
+        for (var entry in jobRevenueImpacts.entries) {
+          _updateJobBalanceTx(transaction, companyId, entry.key, revenueDelta: entry.value);
+        }
+        if (totalCogs > 0 && invoice.jobId != null && invoice.jobId!.isNotEmpty) {
+          _updateJobBalanceTx(transaction, companyId, invoice.jobId, costDelta: totalCogs);
+        }
       });
 
       await _auditService.log(
@@ -762,12 +776,17 @@ class AccountingPostingService {
         _validatePostable(apAccTx, 'Accounts Payable');
 
         final List<JournalLineModel> lines = [];
-        final Map<String, double> accountImpacts =
-            {}; // accountId -> subtotal amount
+        final Map<String, double> accountImpacts = {}; // accountId -> subtotal amount
+        final Map<String, double> jobCostImpacts = {}; // jobId -> amount
         final List<Map<String, dynamic>> itemUpdates = [];
 
         for (var item in bill.items) {
           String? targetAccountId;
+
+          final effectiveJobId = (item.jobId != null && item.jobId!.isNotEmpty) ? item.jobId : bill.jobId;
+          if (effectiveJobId != null && effectiveJobId.isNotEmpty) {
+            jobCostImpacts[effectiveJobId] = (jobCostImpacts[effectiveJobId] ?? 0) + item.lineSubtotal;
+          }
 
           if (item.productId != null && item.productId!.isNotEmpty) {
             final pRef = _firestore
@@ -959,6 +978,11 @@ class AccountingPostingService {
           'TX_WRITE (Bill): companies/$companyId/supplierBills/${bill.id} | Fields: $billUpdate | UserRole: ${user.role.name}',
         );
         transaction.update(billRef, billUpdate);
+
+        // Update Job Balances
+        for (var entry in jobCostImpacts.entries) {
+          _updateJobBalanceTx(transaction, companyId, entry.key, costDelta: entry.value);
+        }
       });
 
       await _auditService.log(
@@ -1249,6 +1273,8 @@ class AccountingPostingService {
 
         final Map<String, double> movements = {};
         final Map<String, AccountModel> movementAccounts = {};
+        final Map<String, double> jobRevenueUpdates = {};
+        final Map<String, double> jobCostUpdates = {};
 
         for (var line in entry.lines) {
           final accRef = _firestore
@@ -1276,6 +1302,17 @@ class AccountingPostingService {
               : (line.credit - line.debit);
           movements[account.id] = (movements[account.id] ?? 0) + movement;
           movementAccounts[account.id] = account;
+
+          // Job Costing Updates
+          if (line.jobId != null && line.jobId!.isNotEmpty) {
+            if (account.accountType == AccountType.income || account.accountType == AccountType.otherIncome) {
+              double delta = line.credit - line.debit;
+              jobRevenueUpdates[line.jobId!] = (jobRevenueUpdates[line.jobId!] ?? 0) + delta;
+            } else if (account.accountType == AccountType.expense || account.accountType == AccountType.costOfSales || account.accountType == AccountType.otherExpense) {
+              double delta = line.debit - line.credit;
+              jobCostUpdates[line.jobId!] = (jobCostUpdates[line.jobId!] ?? 0) + delta;
+            }
+          }
         }
 
         for (var m in movements.entries) {
@@ -1286,6 +1323,18 @@ class AccountingPostingService {
             m.value,
             user,
             'Account-Manual',
+          );
+        }
+
+        // Apply Job Updates
+        final allJobIds = {...jobRevenueUpdates.keys, ...jobCostUpdates.keys};
+        for (var jId in allJobIds) {
+          _updateJobBalanceTx(
+            transaction,
+            companyId,
+            jId,
+            revenueDelta: jobRevenueUpdates[jId] ?? 0,
+            costDelta: jobCostUpdates[jId] ?? 0,
           );
         }
 
@@ -1425,6 +1474,15 @@ class AccountingPostingService {
 
         final List<JournalLineModel> lines = [];
         final Map<String, (double, double)> drCrTotals = {}; // accountId -> (debit, credit)
+        final Map<String, double> jobCostImpacts = {}; // jobId -> amount
+
+        // Calculate Job Impacts
+        for (var line in voucher.lines) {
+          final effectiveJobId = (line.jobId != null && line.jobId!.isNotEmpty) ? line.jobId : voucher.jobId;
+          if (effectiveJobId != null && effectiveJobId.isNotEmpty) {
+            jobCostImpacts[effectiveJobId] = (jobCostImpacts[effectiveJobId] ?? 0) + line.amount;
+          }
+        }
 
         void addImpact(String id, double dr, double cr) {
           final current = drCrTotals[id] ?? (0.0, 0.0);
@@ -1528,6 +1586,11 @@ class AccountingPostingService {
           'postedAt': FieldValue.serverTimestamp(),
           'postedByUserId': user.uid,
         });
+
+        // Update Job Balances
+        for (var entry in jobCostImpacts.entries) {
+          _updateJobBalanceTx(transaction, companyId, entry.key, costDelta: entry.value);
+        }
       });
 
       await _auditService.log(
@@ -1795,6 +1858,24 @@ class AccountingPostingService {
                 'isPosted': false,
                 'status': 'voided',
               });
+
+              // Reverse Job Impacts
+              if (entry.sourceType == 'sales_invoice') {
+                for (var line in entry.lines) {
+                  if (line.jobId != null && line.credit > 0) {
+                    _updateJobBalanceTx(transaction, companyId, line.jobId, revenueDelta: -line.credit);
+                  }
+                  if (line.jobId != null && line.debit > 0 && line.memo != null && line.memo!.contains('COGS')) {
+                    _updateJobBalanceTx(transaction, companyId, line.jobId, costDelta: -line.debit);
+                  }
+                }
+              } else if (entry.sourceType == 'supplier_bill' || entry.sourceType == 'expense_voucher') {
+                for (var line in entry.lines) {
+                  if (line.jobId != null && line.debit > 0) {
+                    _updateJobBalanceTx(transaction, companyId, line.jobId, costDelta: -line.debit);
+                  }
+                }
+              }
             }
           }
         }
@@ -1820,6 +1901,31 @@ class AccountingPostingService {
   }
 
   // --- HELPERS ---
+
+  void _updateJobBalanceTx(
+    Transaction tx,
+    String companyId,
+    String? jobId, {
+    double revenueDelta = 0,
+    double costDelta = 0,
+  }) {
+    if (jobId == null || jobId.isEmpty) return;
+
+    final jobRef = _firestore
+        .collection('companies')
+        .doc(companyId)
+        .collection('jobs')
+        .doc(jobId);
+
+    debugPrint(
+      'TX_WRITE (Job): ${jobRef.path} | revenueDelta: $revenueDelta | costDelta: $costDelta',
+    );
+    tx.update(jobRef, {
+      'actualRevenue': FieldValue.increment(revenueDelta),
+      'actualCost': FieldValue.increment(costDelta),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 
   ErpException _handleError(
     dynamic e,
@@ -1894,6 +2000,8 @@ class AccountingPostingService {
         return 'supplierBills';
       case 'supplier_payment':
         return 'supplierPayments';
+      case 'expense_voucher':
+        return 'expenseVouchers';
       default:
         return '';
     }

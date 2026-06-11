@@ -198,7 +198,7 @@ class _AccountPaneState extends State<AccountPane> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<AccountType>(
-              initialValue: _selectedType,
+              value: _selectedType,
               decoration: ErpFormStyle.inputDecoration(context, 'Account Type', icon: Icons.category_outlined),
               items: AccountType.values.map((type) {
                 return DropdownMenuItem(value: type, child: Text(type.label, style: const TextStyle(fontSize: 13)));
@@ -249,7 +249,7 @@ class _AccountPaneState extends State<AccountPane> {
             const SizedBox(height: 16),
             if (_isGroup)
               DropdownButtonFormField<AccountCategory>(
-                initialValue: _selectedCategory,
+                value: _selectedCategory,
                 decoration: ErpFormStyle.inputDecoration(context, 'Account Category', icon: Icons.account_tree_outlined),
                 items: AccountCategory.values.map((cat) {
                   return DropdownMenuItem(value: cat, child: Text(cat.label, style: const TextStyle(fontSize: 13)));
@@ -282,7 +282,7 @@ class _AccountPaneState extends State<AccountPane> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<BalanceType>(
-                    initialValue: _balanceType,
+                    value: _balanceType,
                     decoration: ErpFormStyle.inputDecoration(context, 'Type'),
                     items: BalanceType.values.map((type) {
                       return DropdownMenuItem(value: type, child: Text(type.label, style: const TextStyle(fontSize: 13)));

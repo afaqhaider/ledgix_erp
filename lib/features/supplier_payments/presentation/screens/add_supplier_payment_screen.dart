@@ -12,7 +12,7 @@ import 'package:ledgixerp/features/supplier_payments/models/supplier_payment_mod
 import 'package:ledgixerp/features/supplier_payments/services/supplier_payment_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
 import 'package:ledgixerp/features/suppliers/presentation/widgets/supplier_pane.dart';
-import 'package:ledgixerp/features/banking/presentation/widgets/add_bank_account_dialog.dart';
+import 'package:ledgixerp/features/banking/presentation/widgets/bank_account_pane.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/core/utils/app_formatters.dart';
@@ -21,6 +21,9 @@ import 'package:ledgixerp/widgets/erp_ui_components.dart';
 import 'package:ledgixerp/widgets/form_layout.dart';
 import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/posting_error_modal.dart';
+import 'package:ledgixerp/features/operations/jobs/models/job_model.dart';
+import 'package:ledgixerp/features/operations/jobs/services/job_service.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 
 class AddSupplierPaymentScreen extends StatefulWidget {
   final AppUser user;
@@ -43,6 +46,8 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
   final _poService = PurchaseOrderService();
   final _bankService = BankAccountService();
   final _companyService = CompanyService();
+  final _jobService = JobService();
+  final _settingsService = FinancialSettingsService();
 
   final _amountController = TextEditingController();
   final _referenceController = TextEditingController();
@@ -54,17 +59,35 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
   BankAccountModel? _selectedBankAccount;
   DateTime _paymentDate = DateTime.now();
   PaymentMethod _paymentMethod = PaymentMethod.bank;
+  JobModel? _selectedJob;
 
   List<SupplierModel> _allSuppliers = [];
   List<PurchaseOrderModel> _allPOs = [];
   List<BankAccountModel> _allBankAccounts = [];
+  List<JobModel> _activeJobs = [];
+  bool _jobEnabled = false;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadCompany();
+    _loadSettings();
     _listenToMasterData();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await _settingsService.getSettings(widget.user.companyId!);
+    if (mounted) {
+      setState(() {
+        _jobEnabled = settings.jobBasedAccountingEnabled;
+      });
+      if (_jobEnabled) {
+        _jobService.getActiveJobs(widget.user.companyId!).listen((jobs) {
+          if (mounted) setState(() => _activeJobs = jobs);
+        });
+      }
+    }
   }
 
   void _loadCompany() {
@@ -138,6 +161,9 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
         createdAt: DateTime.now(),
         isPosted: shouldPost && _canPost,
         approvalStatus: shouldPost ? (_canPost ? 'approved' : 'pending') : null,
+        jobId: _selectedJob?.id,
+        jobNumber: _selectedJob?.jobNumber,
+        jobName: _selectedJob?.jobName,
       );
 
       await _paymentService.addPayment(
@@ -215,6 +241,16 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
             ),
             initialValue: _selectedSupplier,
           ),
+          if (_jobEnabled) ...[
+            const SizedBox(height: AppSpacing.md),
+            SearchableSelector<JobModel>(
+              labelText: 'Linked Job (Optional)',
+              items: _activeJobs,
+              itemLabelBuilder: (j) => '${j.jobNumber} - ${j.jobName}',
+              onSelected: (val) => setState(() => _selectedJob = val),
+              initialValue: _selectedJob,
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           SearchableSelector<PurchaseOrderModel>(
             labelText: 'Link to Purchase Order (Optional)',
@@ -274,7 +310,7 @@ class _AddSupplierPaymentScreenState extends State<AddSupplierPaymentScreen> {
             onAdd: () => SidePanel.show(
               context: context,
               title: 'Add Bank Account',
-              child: AddBankAccountDialog(companyId: widget.user.companyId!),
+              child: BankAccountPane(companyId: widget.user.companyId!),
             ),
             addLabel: 'Add Bank Account',
           ),

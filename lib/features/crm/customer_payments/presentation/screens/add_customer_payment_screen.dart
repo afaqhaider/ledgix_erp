@@ -11,7 +11,7 @@ import 'package:ledgixerp/features/crm/customer_payments/models/customer_payment
 import 'package:ledgixerp/features/crm/customer_payments/services/customer_payment_service.dart';
 import 'package:ledgixerp/widgets/searchable_selector.dart';
 import 'package:ledgixerp/features/crm/customers/presentation/widgets/customer_pane.dart';
-import 'package:ledgixerp/features/banking/presentation/widgets/add_bank_account_dialog.dart';
+import 'package:ledgixerp/features/banking/presentation/widgets/bank_account_pane.dart';
 import 'package:ledgixerp/features/accounting/journal/models/journal_entry_model.dart';
 import 'package:ledgixerp/features/accounting/journal/services/journal_service.dart';
 import 'package:ledgixerp/features/company/models/company_model.dart';
@@ -23,6 +23,9 @@ import 'package:ledgixerp/widgets/form_layout.dart';
 import 'package:ledgixerp/core/widgets/side_panel.dart';
 import 'package:ledgixerp/widgets/posting_error_modal.dart';
 import 'package:ledgixerp/core/auth/user_role.dart';
+import 'package:ledgixerp/features/operations/jobs/models/job_model.dart';
+import 'package:ledgixerp/features/operations/jobs/services/job_service.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 
 class AddCustomerPaymentScreen extends StatefulWidget {
   final AppUser user;
@@ -46,6 +49,8 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
   final _bankService = BankAccountService();
   final _journalService = JournalService();
   final _companyService = CompanyService();
+  final _jobService = JobService();
+  final _settingsService = FinancialSettingsService();
 
   final _amountController = TextEditingController();
   final _referenceController = TextEditingController();
@@ -58,18 +63,36 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
   DateTime _paymentDate = DateTime.now();
   CustomerPaymentMethod _paymentMethod = CustomerPaymentMethod.bankTransfer;
   ReceiptType _receiptType = ReceiptType.againstRef;
+  JobModel? _selectedJob;
 
   List<CustomerModel> _allCustomers = [];
   List<InvoiceModel> _allInvoices = [];
   List<JournalEntryModel> _allJVs = [];
   List<BankAccountModel> _allBankAccounts = [];
+  List<JobModel> _activeJobs = [];
+  bool _jobEnabled = false;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadCompany();
+    _loadSettings();
     _listenToMasterData();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await _settingsService.getSettings(widget.user.companyId!);
+    if (mounted) {
+      setState(() {
+        _jobEnabled = settings.jobBasedAccountingEnabled;
+      });
+      if (_jobEnabled) {
+        _jobService.getActiveJobs(widget.user.companyId!).listen((jobs) {
+          if (mounted) setState(() => _activeJobs = jobs);
+        });
+      }
+    }
   }
 
   void _loadCompany() {
@@ -165,6 +188,9 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
         createdAt: DateTime.now(),
         isPosted: shouldPost && _canPost,
         approvalStatus: shouldPost ? (_canPost ? 'approved' : 'pending') : null,
+        jobId: _selectedJob?.id,
+        jobNumber: _selectedJob?.jobNumber,
+        jobName: _selectedJob?.jobName,
       );
 
       await _paymentService.addPayment(
@@ -242,9 +268,19 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
             ),
             initialValue: _selectedCustomer,
           ),
+          if (_jobEnabled) ...[
+            const SizedBox(height: AppSpacing.md),
+            SearchableSelector<JobModel>(
+              labelText: 'Linked Job (Optional)',
+              items: _activeJobs,
+              itemLabelBuilder: (j) => '${j.jobNumber} - ${j.jobName}',
+              onSelected: (val) => setState(() => _selectedJob = val),
+              initialValue: _selectedJob,
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<ReceiptType>(
-            initialValue: _receiptType,
+            value: _receiptType,
             decoration: const InputDecoration(
               labelText: 'Receipt Type',
               border: OutlineInputBorder(),
@@ -296,7 +332,7 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: DropdownButtonFormField<CustomerPaymentMethod>(
-                  initialValue: _paymentMethod,
+                  value: _paymentMethod,
                   decoration: const InputDecoration(
                     labelText: 'Method',
                     border: OutlineInputBorder(),
@@ -325,7 +361,7 @@ class _AddCustomerPaymentScreenState extends State<AddCustomerPaymentScreen> {
             onAdd: () => SidePanel.show(
               context: context,
               title: 'Add Bank Account',
-              child: AddBankAccountDialog(companyId: widget.user.companyId!),
+              child: BankAccountPane(companyId: widget.user.companyId!),
             ),
             addLabel: 'Add Bank Account',
           ),

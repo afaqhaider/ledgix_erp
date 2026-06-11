@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ledgixerp/features/settings/models/financial_settings_model.dart';
+import 'package:ledgixerp/features/settings/services/financial_settings_service.dart';
 import 'package:ledgixerp/features/operations/jobs/models/job_model.dart';
 import 'package:ledgixerp/features/invoices/models/invoice_model.dart';
 import 'package:ledgixerp/features/suppliers/models/bill_model.dart';
@@ -8,6 +8,7 @@ import 'package:rxdart/rxdart.dart';
 
 class JobService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final _settingsService = FinancialSettingsService();
 
   CollectionReference _getJobsRef(String companyId) {
     return _firestore
@@ -17,37 +18,24 @@ class JobService {
   }
 
   Future<String> generateJobNumber(String companyId) async {
-    final settingsDoc = await _firestore
-        .collection('companies')
-        .doc(companyId)
-        .collection('settings')
-        .doc('financial')
-        .get();
-
-    if (!settingsDoc.exists) return 'JOB-00001';
-
-    final settings = FinancialSettingsModel.fromMap(settingsDoc.data()!, companyId);
-    final nextNumber = settings.nextJobNumber;
-    final prefix = settings.jobPrefix;
-    
-    return '$prefix-${nextNumber.toString().padLeft(5, '0')}';
+    return await _settingsService.previewNextDocumentNumber(companyId, 'job');
   }
 
   Future<void> createJob(JobModel job) async {
     await _firestore.runTransaction((transaction) async {
-      final jobRef = _getJobsRef(job.companyId).doc(job.id);
-      transaction.set(jobRef, job.toMap());
+      final jobNumber = await _settingsService.getNextDocumentNumberAndIncrement(
+        job.companyId,
+        'job',
+        transaction: transaction,
+      );
 
-      // Increment nextJobNumber in financial settings
-      final settingsRef = _firestore
-          .collection('companies')
-          .doc(job.companyId)
-          .collection('settings')
-          .doc('financial');
-      
-      transaction.update(settingsRef, {
-        'nextJobNumber': FieldValue.increment(1),
-      });
+      final jobRef = _getJobsRef(job.companyId).doc(job.id.isEmpty ? null : job.id);
+      final jobToSave = job.copyWith(
+        id: jobRef.id,
+        jobNumber: jobNumber,
+      );
+
+      transaction.set(jobRef, jobToSave.toMap());
     });
   }
 

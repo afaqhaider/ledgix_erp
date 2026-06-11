@@ -4,6 +4,7 @@ import 'package:ledgixerp/core/utils/app_formatters.dart';
 import 'package:ledgixerp/features/expenses/models/expense_voucher_model.dart';
 import 'package:ledgixerp/features/expenses/services/expense_voucher_service.dart';
 import 'package:ledgixerp/features/expenses/presentation/screens/add_expense_voucher_screen.dart';
+import 'package:ledgixerp/features/expenses/presentation/screens/expense_voucher_detail_screen.dart';
 import 'package:ledgixerp/core/widgets/voucher_list_page.dart';
 import 'package:ledgixerp/core/widgets/erp_status_badge.dart';
 import 'package:ledgixerp/core/widgets/erp_dialogs.dart';
@@ -56,7 +57,15 @@ class _ExpenseVouchersScreenState extends State<ExpenseVouchersScreen> {
             DataCell(
               VoucherActionMenu(
                 onView: () {
-                   // Show details
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ExpenseVoucherDetailScreen(
+                        voucher: voucher,
+                        user: widget.user,
+                      ),
+                    ),
+                  );
                 },
                 onEdit: () {
                   ScaffoldMessenger.of(context).showSnackBar(

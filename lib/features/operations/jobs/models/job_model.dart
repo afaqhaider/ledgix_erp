@@ -101,6 +101,9 @@ class JobModel {
   }
 
   JobModel copyWith({
+    String? id,
+    String? companyId,
+    String? jobNumber,
     String? jobName,
     String? customerId,
     String? customerName,
@@ -113,12 +116,14 @@ class JobModel {
     double? actualRevenue,
     double? actualCost,
     String? notes,
+    DateTime? createdAt,
     DateTime? updatedAt,
+    String? createdBy,
   }) {
     return JobModel(
-      id: id,
-      companyId: companyId,
-      jobNumber: jobNumber,
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      jobNumber: jobNumber ?? this.jobNumber,
       jobName: jobName ?? this.jobName,
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
@@ -131,9 +136,9 @@ class JobModel {
       actualRevenue: actualRevenue ?? this.actualRevenue,
       actualCost: actualCost ?? this.actualCost,
       notes: notes ?? this.notes,
-      createdAt: createdAt,
+      createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      createdBy: createdBy,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 }

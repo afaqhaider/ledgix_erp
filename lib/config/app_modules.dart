@@ -12,8 +12,8 @@ import 'package:ledgixerp/features/crm/customer_payments/presentation/screens/cu
 import 'package:ledgixerp/features/crm/customers/presentation/screens/customers_screen.dart';
 import 'package:ledgixerp/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:ledgixerp/features/invoices/presentation/screens/invoices_screen.dart';
-import 'package:ledgixerp/features/operations/presentation/screens/shifts_screen.dart';
-import 'package:ledgixerp/features/operations/presentation/screens/tasks_screen.dart';
+import 'package:ledgixerp/features/operations/shifts/presentation/screens/shifts_screen.dart';
+import 'package:ledgixerp/features/operations/tasks/presentation/screens/tasks_screen.dart';
 import 'package:ledgixerp/features/purchase_orders/presentation/screens/purchase_orders_screen.dart';
 import 'package:ledgixerp/features/quotations/presentation/screens/quotations_screen.dart';
 import 'package:ledgixerp/features/expenses/presentation/screens/expense_vouchers_screen.dart';
@@ -36,6 +36,8 @@ import 'package:ledgixerp/features/supplier_payments/presentation/screens/suppli
 import 'package:ledgixerp/features/suppliers/presentation/screens/bills_screen.dart';
 import 'package:ledgixerp/features/suppliers/presentation/screens/suppliers_screen.dart';
 import 'package:ledgixerp/features/users/presentation/screens/users_screen.dart';
+import 'package:ledgixerp/features/operations/hr/presentation/screens/employees_screen.dart';
+import 'package:ledgixerp/features/operations/hr/presentation/screens/attendance_screen.dart';
 
 enum AppModuleId {
   dashboard,
@@ -48,6 +50,8 @@ enum AppModuleId {
   purchaseOrders,
   bills,
   supplierPayments,
+  employees,
+  attendance,
   jobs,
   tasks,
   shifts,
@@ -251,6 +255,20 @@ class AppModules {
       header: 'Operations',
       icon: Icons.precision_manufacturing_rounded,
       modules: [
+        AppModule(
+          id: AppModuleId.employees,
+          icon: Icons.badge_rounded,
+          label: 'HR (Employees)',
+          permission: AppPermission.viewOperations,
+          pageBuilder: (user) => EmployeesScreen(companyId: user.companyId!),
+        ),
+        AppModule(
+          id: AppModuleId.attendance,
+          icon: Icons.how_to_reg_rounded,
+          label: 'Attendance',
+          permission: AppPermission.viewOperations,
+          pageBuilder: (user) => AttendanceScreen(companyId: user.companyId!),
+        ),
         AppModule(
           id: AppModuleId.jobs,
           icon: Icons.work_rounded,

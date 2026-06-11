@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../accounting/journal/models/journal_entry_model.dart';
 import '../../accounting/journal/models/journal_line_model.dart';
-import '../../settings/models/financial_settings_model.dart';
+import '../../settings/services/financial_settings_service.dart';
 import '../models/expense_voucher_model.dart';
 
 class ExpenseVoucherService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final _settingsService = FinancialSettingsService();
 
   CollectionReference _getVouchersRef(String companyId) {
     return _firestore
@@ -16,33 +17,24 @@ class ExpenseVoucherService {
 
   Future<void> createVoucher(ExpenseVoucherModel voucher) async {
     await _firestore.runTransaction((transaction) async {
-      final voucherRef = _getVouchersRef(voucher.companyId).doc(voucher.id);
-      transaction.set(voucherRef, voucher.toMap());
+      final voucherNumber = await _settingsService.getNextDocumentNumberAndIncrement(
+        voucher.companyId,
+        'expenseVoucher',
+        transaction: transaction,
+      );
 
-      final settingsRef = _firestore
-          .collection('companies')
-          .doc(voucher.companyId)
-          .collection('settings')
-          .doc('financial');
-      
-      transaction.update(settingsRef, {
-        'nextExpenseVoucherNumber': FieldValue.increment(1),
-      });
+      final voucherRef = _getVouchersRef(voucher.companyId).doc(voucher.id.isEmpty ? null : voucher.id);
+      final voucherToSave = voucher.copyWith(
+        id: voucherRef.id,
+        voucherNumber: voucherNumber,
+      );
+
+      transaction.set(voucherRef, voucherToSave.toMap());
     });
   }
 
   Future<String> generateVoucherNumber(String companyId) async {
-    final settingsDoc = await _firestore
-        .collection('companies')
-        .doc(companyId)
-        .collection('settings')
-        .doc('financial')
-        .get();
-
-    if (!settingsDoc.exists) return 'EXP-00001';
-
-    final settings = FinancialSettingsModel.fromMap(settingsDoc.data()!, companyId);
-    return '${settings.expenseVoucherPrefix}-${settings.nextExpenseVoucherNumber.toString().padLeft(5, '0')}';
+    return await _settingsService.previewNextDocumentNumber(companyId, 'expenseVoucher');
   }
 
   Future<void> postVoucher(String companyId, String voucherId, String userId) async {
@@ -52,8 +44,32 @@ class ExpenseVoucherService {
     final voucher = ExpenseVoucherModel.fromMap(voucherDoc.data() as Map<String, dynamic>, voucherId);
     if (voucher.status == ExpenseVoucherStatus.posted) throw Exception('Voucher already posted');
 
+    // Fetch VAT Input account outside transaction
+    DocumentSnapshot? vatAccDoc;
+    if (voucher.totalVat > 0) {
+      final vatSnap = await _firestore
+          .collection('companies')
+          .doc(companyId)
+          .collection('chartOfAccounts')
+          .where('accountCategory', isEqualTo: 'vatInput')
+          .limit(1)
+          .get();
+      if (vatSnap.docs.isNotEmpty) {
+        vatAccDoc = vatSnap.docs.first;
+      }
+    }
+
     await _firestore.runTransaction((transaction) async {
-      // 1. Prepare Journal Lines
+      // 1. ALL READS FIRST
+      final bankAccRef = _firestore
+          .collection('companies')
+          .doc(companyId)
+          .collection('bankAccounts')
+          .doc(voucher.fromAccountId);
+      
+      final bankDoc = await transaction.get(bankAccRef);
+
+      // 2. Prepare Journal Lines
       List<JournalLineModel> journalLines = [];
 
       // Debits: Expenses
@@ -61,7 +77,7 @@ class ExpenseVoucherService {
         journalLines.add(JournalLineModel(
           accountId: line.accountId,
           accountName: line.accountName,
-          accountCode: '', // Would need to fetch code if required
+          accountCode: '',
           memo: line.description,
           debit: line.amount,
           credit: 0,
@@ -72,28 +88,16 @@ class ExpenseVoucherService {
       }
 
       // Debit: VAT Input if applicable
-      if (voucher.totalVat > 0) {
-        // Need to find VAT Input account. For now, assume a system search or standard name.
-        // In a real implementation, we should fetch VAT Input account from settings.
-        final vatSnap = await _firestore
-            .collection('companies')
-            .doc(companyId)
-            .collection('chartOfAccounts')
-            .where('accountCategory', isEqualTo: 'vatInput')
-            .limit(1)
-            .get();
-        
-        if (vatSnap.docs.isNotEmpty) {
-          final vatAcc = vatSnap.docs.first;
-          journalLines.add(JournalLineModel(
-            accountId: vatAcc.id,
-            accountName: vatAcc.data()['accountName'] ?? 'VAT Input',
-            accountCode: vatAcc.data()['accountCode'] ?? '',
-            memo: 'VAT on Expense ${voucher.voucherNumber}',
-            debit: voucher.totalVat,
-            credit: 0,
-          ));
-        }
+      if (voucher.totalVat > 0 && vatAccDoc != null) {
+        final data = vatAccDoc.data() as Map<String, dynamic>;
+        journalLines.add(JournalLineModel(
+          accountId: vatAccDoc.id,
+          accountName: data['accountName'] ?? 'VAT Input',
+          accountCode: data['accountCode'] ?? '',
+          memo: 'VAT on Expense ${voucher.voucherNumber}',
+          debit: voucher.totalVat,
+          credit: 0,
+        ));
       }
 
       // Credit: Bank/Cash
@@ -109,7 +113,7 @@ class ExpenseVoucherService {
         jobName: voucher.jobName,
       ));
 
-      // 2. Create Journal Entry
+      // 3. EXECUTE WRITES
       final journalRef = _firestore
           .collection('companies')
           .doc(companyId)
@@ -136,43 +140,29 @@ class ExpenseVoucherService {
 
       transaction.set(journalRef, journalEntry.toMap());
 
-      // 3. Update Voucher Status
       transaction.update(voucherDoc.reference, {
         'status': ExpenseVoucherStatus.posted.name,
         'postedByUserId': userId,
         'postedAt': FieldValue.serverTimestamp(),
       });
 
-      // 4. Update Account Balances (Denormalized)
       for (var line in journalLines) {
         final accRef = _firestore
             .collection('companies')
             .doc(companyId)
             .collection('chartOfAccounts')
             .doc(line.accountId);
-        
-        // For balance update, we need to know normal balance but for now just use (dr - cr)
-        // Adjusting currentBalance field
         transaction.update(accRef, {
           'currentBalance': FieldValue.increment(line.debit - line.credit),
         });
       }
 
-      // 5. Update Bank Account Balance if applicable
-      final bankAccRef = _firestore
-          .collection('companies')
-          .doc(companyId)
-          .collection('bankAccounts')
-          .doc(voucher.fromAccountId);
-      
-      final bankDoc = await transaction.get(bankAccRef);
       if (bankDoc.exists) {
         transaction.update(bankAccRef, {
           'currentBalance': FieldValue.increment(-(voucher.totalAmount + voucher.totalVat)),
         });
       }
 
-      // 6. Audit Log
       final logRef = _firestore
           .collection('companies')
           .doc(companyId)

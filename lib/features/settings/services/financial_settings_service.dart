@@ -84,6 +84,18 @@ class FinancialSettingsService {
         prefix = settings.billPrefix;
         currentNumber = settings.nextBillNumber;
         break;
+      case 'employee':
+        prefix = settings.employeePrefix;
+        currentNumber = settings.nextEmployeeNumber;
+        break;
+      case 'job':
+        prefix = settings.jobPrefix;
+        currentNumber = settings.nextJobNumber;
+        break;
+      case 'expenseVoucher':
+        prefix = settings.expenseVoucherPrefix;
+        currentNumber = settings.nextExpenseVoucherNumber;
+        break;
       default:
         throw Exception("Invalid document type: $type");
     }
@@ -172,6 +184,21 @@ class FinancialSettingsService {
         prefix = data['billPrefix'] ?? 'BILL';
         currentNumber = data['nextBillNumber'] ?? 1;
         fieldName = 'nextBillNumber';
+        break;
+      case 'employee':
+        prefix = data['employeePrefix'] ?? 'EMP';
+        currentNumber = data['nextEmployeeNumber'] ?? 1;
+        fieldName = 'nextEmployeeNumber';
+        break;
+      case 'job':
+        prefix = data['jobPrefix'] ?? 'JOB';
+        currentNumber = data['nextJobNumber'] ?? 1;
+        fieldName = 'nextJobNumber';
+        break;
+      case 'expenseVoucher':
+        prefix = data['expenseVoucherPrefix'] ?? 'EXP';
+        currentNumber = data['nextExpenseVoucherNumber'] ?? 1;
+        fieldName = 'nextExpenseVoucherNumber';
         break;
       default:
         throw Exception("Invalid document type: $type");

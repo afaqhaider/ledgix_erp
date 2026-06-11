@@ -58,6 +58,9 @@ class JournalEntryModel {
     String? sourceId,
     String? sourceNumber,
     String? approvalStatus,
+    String? jobId,
+    String? jobNumber,
+    String? jobName,
   }) {
     return JournalEntryModel(
       id: id ?? this.id,
@@ -73,6 +76,9 @@ class JournalEntryModel {
       sourceId: sourceId ?? this.sourceId,
       sourceNumber: sourceNumber ?? this.sourceNumber,
       approvalStatus: approvalStatus ?? this.approvalStatus,
+      jobId: jobId ?? this.jobId,
+      jobNumber: jobNumber ?? this.jobNumber,
+      jobName: jobName ?? this.jobName,
     );
   }
 
@@ -84,6 +90,7 @@ class JournalEntryModel {
       'reference': reference,
       'description': description,
       'lines': lines.map((l) => l.toMap()).toList(),
+      'accountIds': lines.map((l) => l.accountId).toSet().toList(),
       'status': status.name,
       'createdBy': createdBy,
       'createdAt': Timestamp.fromDate(createdAt),

@@ -7,27 +7,33 @@ import 'package:ledgixerp/features/company/models/company_model.dart';
 import 'package:ledgixerp/features/company/services/company_service.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
-class AddBankAccountDialog extends StatefulWidget {
+class BankAccountPane extends StatefulWidget {
   final String companyId;
-  const AddBankAccountDialog({super.key, required this.companyId});
+  final BankAccountModel? account; // If provided, we are editing
+
+  const BankAccountPane({
+    super.key,
+    required this.companyId,
+    this.account,
+  });
 
   @override
-  State<AddBankAccountDialog> createState() => _AddBankAccountDialogState();
+  State<BankAccountPane> createState() => _BankAccountPaneState();
 }
 
-class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
+class _BankAccountPaneState extends State<BankAccountPane> {
   final _formKey = GlobalKey<FormState>();
   final _accountService = BankAccountService();
   final _chartService = AccountService();
   final _companyService = CompanyService();
 
-  final _nameController = TextEditingController();
-  final _bankNameController = TextEditingController();
-  final _numberController = TextEditingController();
-  final _ibanController = TextEditingController();
-  final _openingBalanceController = TextEditingController();
+  late TextEditingController _nameController;
+  late TextEditingController _bankNameController;
+  late TextEditingController _numberController;
+  late TextEditingController _ibanController;
+  late TextEditingController _openingBalanceController;
 
-  BankAccountType _type = BankAccountType.bank;
+  late BankAccountType _type;
   String? _selectedChartAccountId;
   CompanyModel? _company;
   bool _isLoading = false;
@@ -35,23 +41,42 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
   @override
   void initState() {
     super.initState();
+    _nameController = TextEditingController(text: widget.account?.accountName);
+    _bankNameController = TextEditingController(text: widget.account?.bankName);
+    _numberController = TextEditingController(text: widget.account?.accountNumber);
+    _ibanController = TextEditingController(text: widget.account?.iban);
+    _openingBalanceController = TextEditingController(
+      text: widget.account?.openingBalance.toString() ?? '0.0',
+    );
+    _type = widget.account?.accountType ?? BankAccountType.bank;
+    _selectedChartAccountId = widget.account?.linkedChartAccountId;
     _loadCompany();
   }
 
   void _loadCompany() {
-    _companyService.getCompany(widget.companyId).listen((company) {
+    _companyService.getCompany(widget.companyId).first.then((company) {
       if (mounted) setState(() => _company = company);
     });
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _bankNameController.dispose();
+    _numberController.dispose();
+    _ibanController.dispose();
+    _openingBalanceController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ErpSidePane(
-      title: 'Add Bank/Cash Account',
+      title: widget.account == null ? 'Add Bank/Cash Account' : 'Edit Account',
       isLoading: _isLoading,
       onCancel: () => Navigator.pop(context),
       onSave: _save,
-      saveLabel: 'Add Account',
+      saveLabel: widget.account == null ? 'Add Account' : 'Update Account',
       child: Form(
         key: _formKey,
         child: Column(
@@ -70,7 +95,7 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
             const SizedBox(height: 16),
 
             DropdownButtonFormField<BankAccountType>(
-              initialValue: _type,
+              value: _type,
               dropdownColor: Theme.of(context).colorScheme.surface,
               style: ErpFormStyle.inputStyle(context),
               decoration: ErpFormStyle.inputDecoration(
@@ -97,10 +122,11 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
               stream: _chartService.getAccounts(widget.companyId),
               builder: (context, snapshot) {
                 final assetAccounts = (snapshot.data ?? [])
-                    .where((a) => a.accountType == AccountType.asset)
+                    .where((a) => a.accountType == AccountType.asset && !a.isGroup)
                     .toList();
+                
                 return DropdownButtonFormField<String>(
-                  initialValue: _selectedChartAccountId,
+                  value: _selectedChartAccountId,
                   dropdownColor: Theme.of(context).colorScheme.surface,
                   style: ErpFormStyle.inputStyle(context),
                   decoration: ErpFormStyle.inputDecoration(
@@ -174,6 +200,7 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              enabled: widget.account == null, // Only allowed on creation
               decoration: ErpFormStyle.inputDecoration(
                 context,
                 'Opening Balance',
@@ -197,40 +224,74 @@ class _AddBankAccountDialogState extends State<AddBankAccountDialog> {
 
     setState(() => _isLoading = true);
     try {
-      final account = BankAccountModel(
-        id: '',
-        companyId: widget.companyId,
-        accountName: _nameController.text.trim(),
-        accountType: _type,
-        bankName: _bankNameController.text.trim().isEmpty
-            ? null
-            : _bankNameController.text.trim(),
-        accountNumber: _numberController.text.trim().isEmpty
-            ? null
-            : _numberController.text.trim(),
-        iban: _ibanController.text.trim().isEmpty
-            ? null
-            : _ibanController.text.trim(),
-        currency: _company?.baseCurrency ?? 'AED',
-        linkedChartAccountId: _selectedChartAccountId!,
-        openingBalance: double.parse(_openingBalanceController.text),
-        currentBalance: double.parse(_openingBalanceController.text),
-        createdAt: DateTime.now(),
-      );
-
-      await _accountService.addBankAccount(account);
+      if (widget.account == null) {
+        final account = BankAccountModel(
+          id: '',
+          companyId: widget.companyId,
+          accountName: _nameController.text.trim(),
+          accountType: _type,
+          bankName: _bankNameController.text.trim().isEmpty
+              ? null
+              : _bankNameController.text.trim(),
+          accountNumber: _numberController.text.trim().isEmpty
+              ? null
+              : _numberController.text.trim(),
+          iban: _ibanController.text.trim().isEmpty
+              ? null
+              : _ibanController.text.trim(),
+          currency: _company?.baseCurrency ?? 'AED',
+          linkedChartAccountId: _selectedChartAccountId!,
+          openingBalance: double.parse(_openingBalanceController.text),
+          currentBalance: double.parse(_openingBalanceController.text),
+          createdAt: DateTime.now(),
+        );
+        await _accountService.addBankAccount(account);
+      } else {
+        final updated = widget.account!.copyWith(
+          accountName: _nameController.text.trim(),
+          accountType: _type,
+          bankName: _bankNameController.text.trim(),
+          accountNumber: _numberController.text.trim(),
+          iban: _ibanController.text.trim(),
+          linkedChartAccountId: _selectedChartAccountId!,
+        );
+        await _accountService.updateBankAccount(updated);
+      }
+      
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        showErpError(context: context, error: e);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+}
+
+extension on BankAccountModel {
+  BankAccountModel copyWith({
+    String? accountName,
+    BankAccountType? accountType,
+    String? bankName,
+    String? accountNumber,
+    String? iban,
+    String? linkedChartAccountId,
+  }) {
+    return BankAccountModel(
+      id: id,
+      companyId: companyId,
+      accountName: accountName ?? this.accountName,
+      accountType: accountType ?? this.accountType,
+      bankName: bankName ?? this.bankName,
+      accountNumber: accountNumber ?? this.accountNumber,
+      iban: iban ?? this.iban,
+      currency: currency,
+      linkedChartAccountId: linkedChartAccountId ?? this.linkedChartAccountId,
+      openingBalance: openingBalance,
+      currentBalance: currentBalance,
+      isActive: isActive,
+      createdAt: createdAt,
+    );
   }
 }

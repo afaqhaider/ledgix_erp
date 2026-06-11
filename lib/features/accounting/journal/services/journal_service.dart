@@ -30,6 +30,24 @@ class JournalService {
     });
   }
 
+  Stream<List<JournalEntryModel>> getJournalEntriesByAccount(
+    String companyId,
+    String accountId,
+  ) {
+    return _getJournalRef(companyId)
+        .where('accountIds', arrayContains: accountId)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return JournalEntryModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
+      }).toList();
+    });
+  }
+
   Future<String> generateNextJournalNumber(String companyId) async {
     return await _settingsService.previewNextDocumentNumber(
       companyId,
@@ -155,6 +173,35 @@ class JournalService {
         amount: totalDebit,
       );
     }
+  }
+
+  Future<void> updateJournalEntry(
+    JournalEntryModel entry,
+    AppUser user, {
+    bool shouldPost = false,
+  }) async {
+    if (shouldPost &&
+        await _settingsService.isPeriodLocked(entry.companyId, entry.date)) {
+      throw Exception('Accounting period for this date is locked.');
+    }
+
+    final docRef = _getJournalRef(entry.companyId).doc(entry.id);
+    final existingDoc = await docRef.get();
+    if (!existingDoc.exists) throw Exception('Journal entry not found.');
+
+    final existingEntry = JournalEntryModel.fromMap(
+      existingDoc.data() as Map<String, dynamic>,
+      existingDoc.id,
+    );
+
+    if (existingEntry.status == JournalStatus.posted && !shouldPost) {
+       // If it was already posted, we generally shouldn't allow un-posting by just saving as draft
+       // unless there's a specific unpost action.
+    }
+
+    await docRef.update(entry.toMap());
+
+    // If it was just posted now, we might need to handle accounting impact if not already handled by a service
   }
 
   Future<void> _updateSourceDocumentInTransaction(

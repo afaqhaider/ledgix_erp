@@ -9,6 +9,8 @@ import 'package:ledgixerp/core/widgets/erp_status_badge.dart';
 import 'package:ledgixerp/core/widgets/erp_dialogs.dart';
 import 'package:ledgixerp/widgets/erp_ui_components.dart';
 
+import 'package:ledgixerp/features/suppliers/presentation/screens/bill_detail_screen.dart';
+
 class BillsScreen extends StatefulWidget {
   final AppUser user;
   const BillsScreen({super.key, required this.user});
@@ -55,7 +57,15 @@ class _BillsScreenState extends State<BillsScreen> {
             DataCell(
               VoucherActionMenu(
                 onView: () {
-                  // Show details
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BillDetailScreen(
+                        bill: bill,
+                        user: widget.user,
+                      ),
+                    ),
+                  );
                 },
                 onEdit: () {
                    ScaffoldMessenger.of(context).showSnackBar(

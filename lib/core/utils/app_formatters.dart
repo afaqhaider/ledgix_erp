@@ -20,6 +20,11 @@ class AppFormatters {
     return _dateTimeFormatter.format(date);
   }
 
+  /// Formats time to HH:mm
+  static String formatTime(DateTime date) {
+    return DateFormat('HH:mm').format(date);
+  }
+
   /// Alias for formatCurrency to match user request terminology
   static String currency(double amount, {String? symbol}) {
     // We ignore symbol for now as per "1,000.00" law,

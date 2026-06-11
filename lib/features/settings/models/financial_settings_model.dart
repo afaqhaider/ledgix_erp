@@ -20,6 +20,7 @@ class FinancialSettingsModel {
   final String billPrefix;
   final String jobPrefix;
   final String expenseVoucherPrefix;
+  final String employeePrefix;
 
   final int nextInvoiceNumber;
   final int nextQuotationNumber;
@@ -30,6 +31,7 @@ class FinancialSettingsModel {
   final int nextBillNumber;
   final int nextJobNumber;
   final int nextExpenseVoucherNumber;
+  final int nextEmployeeNumber;
 
   final bool jobBasedAccountingEnabled;
 
@@ -49,6 +51,7 @@ class FinancialSettingsModel {
     this.billPrefix = 'BILL',
     this.jobPrefix = 'JOB',
     this.expenseVoucherPrefix = 'EXP',
+    this.employeePrefix = 'EMP',
     this.nextInvoiceNumber = 1,
     this.nextQuotationNumber = 1,
     this.nextPurchaseOrderNumber = 1,
@@ -58,6 +61,7 @@ class FinancialSettingsModel {
     this.nextBillNumber = 1,
     this.nextJobNumber = 1,
     this.nextExpenseVoucherNumber = 1,
+    this.nextEmployeeNumber = 1,
     this.jobBasedAccountingEnabled = false,
   });
 
@@ -78,6 +82,7 @@ class FinancialSettingsModel {
       'billPrefix': billPrefix,
       'jobPrefix': jobPrefix,
       'expenseVoucherPrefix': expenseVoucherPrefix,
+      'employeePrefix': employeePrefix,
       'nextInvoiceNumber': nextInvoiceNumber,
       'nextQuotationNumber': nextQuotationNumber,
       'nextPurchaseOrderNumber': nextPurchaseOrderNumber,
@@ -87,6 +92,7 @@ class FinancialSettingsModel {
       'nextBillNumber': nextBillNumber,
       'nextJobNumber': nextJobNumber,
       'nextExpenseVoucherNumber': nextExpenseVoucherNumber,
+      'nextEmployeeNumber': nextEmployeeNumber,
       'jobBasedAccountingEnabled': jobBasedAccountingEnabled,
     };
   }
@@ -122,6 +128,7 @@ class FinancialSettingsModel {
       billPrefix: map['billPrefix'] ?? 'BILL',
       jobPrefix: map['jobPrefix'] ?? 'JOB',
       expenseVoucherPrefix: map['expenseVoucherPrefix'] ?? 'EXP',
+      employeePrefix: map['employeePrefix'] ?? 'EMP',
       nextInvoiceNumber: map['nextInvoiceNumber'] ?? 1,
       nextQuotationNumber: map['nextQuotationNumber'] ?? 1,
       nextPurchaseOrderNumber: map['nextPurchaseOrderNumber'] ?? 1,
@@ -132,6 +139,7 @@ class FinancialSettingsModel {
       nextBillNumber: map['nextBillNumber'] ?? 1,
       nextJobNumber: map['nextJobNumber'] ?? 1,
       nextExpenseVoucherNumber: map['nextExpenseVoucherNumber'] ?? 1,
+      nextEmployeeNumber: map['nextEmployeeNumber'] ?? 1,
       jobBasedAccountingEnabled: map['jobBasedAccountingEnabled'] ?? false,
     );
   }
@@ -152,6 +160,7 @@ class FinancialSettingsModel {
     String? billPrefix,
     String? jobPrefix,
     String? expenseVoucherPrefix,
+    String? employeePrefix,
     int? nextInvoiceNumber,
     int? nextQuotationNumber,
     int? nextPurchaseOrderNumber,
@@ -161,6 +170,7 @@ class FinancialSettingsModel {
     int? nextBillNumber,
     int? nextJobNumber,
     int? nextExpenseVoucherNumber,
+    int? nextEmployeeNumber,
     bool? jobBasedAccountingEnabled,
   }) {
     return FinancialSettingsModel(
@@ -182,6 +192,7 @@ class FinancialSettingsModel {
       billPrefix: billPrefix ?? this.billPrefix,
       jobPrefix: jobPrefix ?? this.jobPrefix,
       expenseVoucherPrefix: expenseVoucherPrefix ?? this.expenseVoucherPrefix,
+      employeePrefix: employeePrefix ?? this.employeePrefix,
       nextInvoiceNumber: nextInvoiceNumber ?? this.nextInvoiceNumber,
       nextQuotationNumber: nextQuotationNumber ?? this.nextQuotationNumber,
       nextPurchaseOrderNumber:
@@ -193,6 +204,7 @@ class FinancialSettingsModel {
       nextBillNumber: nextBillNumber ?? this.nextBillNumber,
       nextJobNumber: nextJobNumber ?? this.nextJobNumber,
       nextExpenseVoucherNumber: nextExpenseVoucherNumber ?? this.nextExpenseVoucherNumber,
+      nextEmployeeNumber: nextEmployeeNumber ?? this.nextEmployeeNumber,
       jobBasedAccountingEnabled:
           jobBasedAccountingEnabled ?? this.jobBasedAccountingEnabled,
     );
